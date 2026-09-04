@@ -7,3 +7,11 @@ spring:
     redis:
       host: localhost
       port: 0
+
+auth:
+  jwt:
+    issuer: au-van-api-test
+    audience: au-van-web-test
+    access-token-ttl: PT15M
+  line:
+    channel-id: test-channel-id

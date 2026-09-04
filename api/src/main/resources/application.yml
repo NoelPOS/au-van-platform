@@ -10,6 +10,15 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
+auth:
+  jwt:
+    issuer: au-van-api
+    audience: au-van-web
+    secret: ${JWT_SECRET:}
+    access-token-ttl: PT15M
+  line:
+    channel-id: ${LINE_CHANNEL_ID:}
+
 management:
   endpoints:
     web:
@@ -17,4 +26,4 @@ management:
         include: health,info
       cors:
         allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
-        allowed-methods: GET
+        allowed-methods: GET,POST
