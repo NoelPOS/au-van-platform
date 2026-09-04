@@ -2,6 +2,8 @@
 
 Describe the user or operational outcome of this change.
 
+<!-- PR title format: type(optional-scope): imperative outcome -->
+
 ## Linked issue
 
 Closes #
@@ -23,4 +25,3 @@ Closes #
 - [ ] Booking/payment consistency impact considered, if applicable.
 - [ ] Retry, failure, and idempotency behavior considered, if applicable.
 - [ ] No secrets or production data included.
-
