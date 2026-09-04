@@ -2,16 +2,16 @@
 
 ## Current milestone
 
-**Milestone 0 - Planning foundation complete**
+**Milestone 1 - Local development bootstrap in progress**
 
 The legacy Next.js application has been cloned separately as a read-only migration reference. The rebuild repository has approved scope, architecture, data-model, AWS-target, ADR, issue-template, and pull-request conventions.
 
 ## Repository state
 
 - Default branch: `main`
-- Last merged planning commit: `9d4e145` (`docs: standardize issue and pull request conventions`)
-- Active issue: [#12 Define project continuation and backlog protocol](https://github.com/NoelPOS/au-van-platform/issues/12)
-- Active branch: `docs/project-continuation-protocol`
+- Last merged planning commit: `0affe56` (`docs: define project continuation protocol`)
+- Active issue: [#3 Bootstrap local React and Spring Boot development environment](https://github.com/NoelPOS/au-van-platform/issues/3)
+- Active branch: `chore/bootstrap-local-development`
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
 
 ## Accepted decisions
@@ -27,7 +27,7 @@ None.
 
 ## Next step
 
-Review and merge issue #12. Then start [#3 Bootstrap local React and Spring Boot development environment](https://github.com/NoelPOS/au-van-platform/issues/3).
+Complete and review issue #3. Then refine and start [#4 Establish identity and LINE authentication boundaries](https://github.com/NoelPOS/au-van-platform/issues/4).
 
 ## Ordered backlog
 
