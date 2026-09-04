@@ -23,6 +23,7 @@ Before planning or changing the project, read `AGENTS.md`, `README.md`, `docs/pr
 - Commit and pull-request titles use Conventional Commits; for example, `feat(booking): add seat hold expiry`.
 - Every pull request links its issue, explains the outcome, records verification, and calls out any security, data-consistency, or architecture impact.
 - Keep a pull request focused. Split unrelated changes into separate issues and branches.
+- Introduce an interface only when substitution is useful (for example, an external client or alternative implementation). Name its concrete implementation `XImpl`; do not create empty interfaces for controllers, entities, DTOs, configuration, or Spring Data repositories.
 
 ## Architecture rules
 
