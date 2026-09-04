@@ -1,0 +1,19 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# Build output and dependencies
+node_modules/
+dist/
+build/
+target/
+coverage/
+playwright-report/
+test-results/
+
