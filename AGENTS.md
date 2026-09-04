@@ -12,6 +12,14 @@ AU-Van is a LINE-integrated booking system for Assumption University van service
 4. Run the required automated checks before merging.
 5. Update relevant documentation when behaviour or an architectural decision changes.
 
+## Naming and review conventions
+
+- Issue titles use `<Type>: <outcome>` in sentence case. Allowed types are `Feature`, `Bug`, `Docs`, `Architecture`, `Chore`, and `Security`.
+- Branch names use `<type>/<short-kebab-case-description>`; for example, `feature/seat-holds` or `docs/architecture-decisions`.
+- Commit and pull-request titles use Conventional Commits; for example, `feat(booking): add seat hold expiry`.
+- Every pull request links its issue, explains the outcome, records verification, and calls out any security, data-consistency, or architecture impact.
+- Keep a pull request focused. Split unrelated changes into separate issues and branches.
+
 ## Architecture rules
 
 - Start as a modular monolith. Do not introduce microservices without an ADR.
@@ -36,4 +44,3 @@ AU-Van is a LINE-integrated booking system for Assumption University van service
 - Create an ADR for decisions that materially affect architecture, data consistency, security, deployment, or cost.
 - Keep ADRs concise: context, options, decision, consequences.
 - Documentation describes the current state accurately; planned work must be labeled as planned.
-
