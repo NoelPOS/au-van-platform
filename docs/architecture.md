@@ -41,3 +41,9 @@ Booking and payment changes may generate notifications, reminders, expiry proces
 - Spring application/domain services own workflows and state transitions.
 - Infrastructure adapters isolate PostgreSQL, Redis, S3, SQS, and LINE APIs from core business logic.
 
+## Accepted decisions
+
+- [ADR-001: Start as a Modular Monolith](adr/001-modular-monolith-first.md)
+- [ADR-002: Use React and Spring Boot with Explicit Boundaries](adr/002-react-and-spring-boot-boundaries.md)
+- [ADR-003: PostgreSQL Is the Booking Authority; Redis Is Supporting Infrastructure](adr/003-postgresql-authority-and-redis-support.md)
+- [ADR-004: Use a Cost-Conscious Demo with an AWS-Ready Production Target](adr/004-cost-conscious-demo-and-aws-target.md)
