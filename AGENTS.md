@@ -12,6 +12,10 @@ AU-Van is a LINE-integrated booking system for Assumption University van service
 4. Run the required automated checks before merging.
 5. Update relevant documentation when behaviour or an architectural decision changes.
 
+## Required startup protocol
+
+Before planning or changing the project, read `AGENTS.md`, `README.md`, `docs/project-status.md`, and any ADRs relevant to the work. Then inspect Git status and the open GitHub issues and pull requests. Work only on the next ready issue unless the user explicitly chooses a different priority.
+
 ## Naming and review conventions
 
 - Issue titles use `<Type>: <outcome>` in sentence case. Allowed types are `Feature`, `Bug`, `Docs`, `Architecture`, `Chore`, and `Security`.
