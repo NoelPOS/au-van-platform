@@ -1,34 +1,36 @@
-export type ApplicationRole = 'STUDENT' | 'ADMIN'
+import { apiBaseUrl } from "../api-base-url";
+
+export type ApplicationRole = "STUDENT" | "ADMIN";
 
 export type AuthenticatedUser = {
-  id: string
-  role: ApplicationRole
-  displayName: string | null
-}
+  id: string;
+  role: ApplicationRole;
+  displayName: string | null;
+};
 
 export type AuthSession = {
-  accessToken: string
-  expiresIn: number
-  user: AuthenticatedUser
-}
+  accessToken: string;
+  expiresIn: number;
+  user: AuthenticatedUser;
+};
 
-type ExchangeResponse = AuthSession
+type ExchangeResponse = AuthSession;
 
 export async function exchangeLineIdToken(
   idToken: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AuthSession> {
   const response = await fetcher(`${apiBaseUrl}/api/v1/auth/line/exchange`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error('LINE authentication could not be completed.')
+    throw new Error("LINE authentication could not be completed.");
   }
 
-  return (await response.json()) as ExchangeResponse
+  return (await response.json()) as ExchangeResponse;
 }
 
 export async function authenticatedFetch(
@@ -37,8 +39,7 @@ export async function authenticatedFetch(
   init: RequestInit = {},
   fetcher: typeof fetch = fetch,
 ): Promise<Response> {
-  const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${session.accessToken}`)
-  return fetcher(input, { ...init, headers })
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${session.accessToken}`);
+  return fetcher(input, { ...init, headers });
 }
-import { apiBaseUrl } from '../api-base-url'
