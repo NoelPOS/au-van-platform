@@ -1,17 +1,17 @@
-import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import App from './App'
+import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import App from "./App";
 
-describe('App', () => {
+describe("App", () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+    vi.unstubAllGlobals();
+  });
 
-  it('shows that the API is available when the health check succeeds', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
+  it("shows that the API is available when the health check succeeds", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
-    render(<App />)
+    render(<App />);
 
-    expect(await screen.findByText('Available')).toBeInTheDocument()
-  })
-})
+    expect(await screen.findByText("Available")).toBeInTheDocument();
+  });
+});
