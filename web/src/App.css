@@ -29,6 +29,17 @@ h1 {
   max-width: 38rem;
 }
 
+.setup-note,
+.sign-in-error {
+  border-radius: .75rem;
+  font-size: .9rem;
+  margin: 1.5rem 0 0;
+  padding: .8rem 1rem;
+}
+
+.setup-note { background: #f1eeec; color: #5c5559; }
+.sign-in-error { background: #fff1f0; color: #9d1b14; }
+
 .health-card {
   align-items: center;
   background: #fff;

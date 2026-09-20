@@ -6,7 +6,7 @@ This repository is a clean rebuild of the legacy Next.js application. It will us
 
 ## Status
 
-The planning foundation, local development environment, authentication boundary, and initial administrator bootstrap are complete. The transport-inventory API is in progress; see [project status](docs/project-status.md).
+The planning foundation, local development environment, authentication boundary, initial administrator bootstrap, and transport-inventory API are complete. The transport-inventory administration UI is in progress; see [project status](docs/project-status.md).
 
 ## Planned structure
 

@@ -18,7 +18,7 @@ export async function exchangeLineIdToken(
   idToken: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AuthSession> {
-  const response = await fetcher('/api/v1/auth/line/exchange', {
+  const response = await fetcher(`${apiBaseUrl}/api/v1/auth/line/exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
@@ -41,3 +41,4 @@ export async function authenticatedFetch(
   headers.set('Authorization', `Bearer ${session.accessToken}`)
   return fetcher(input, { ...init, headers })
 }
+import { apiBaseUrl } from '../api-base-url'
