@@ -49,4 +49,20 @@ describe('AdminInventoryPage', () => {
     expect(await screen.findByText('Could not load inventory')).toBeInTheDocument()
     expect(screen.getByText('Access denied.')).toBeInTheDocument()
   })
+
+  it('provides seat-layout, vehicle, and trip management sections', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(json([]))))
+
+    render(<AdminInventoryPage session={session} />)
+    await screen.findByText('No routes yet')
+
+    fireEvent.click(screen.getByRole('button', { name: /seat layouts/i }))
+    expect(screen.getByLabelText('Layout name')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^vehicles/i }))
+    expect(screen.getByLabelText('Vehicle code')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^trips/i }))
+    expect(screen.getByLabelText('Departure')).toBeInTheDocument()
+  })
 })
