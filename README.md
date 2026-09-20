@@ -34,6 +34,19 @@ Paste the generated value after `POSTGRES_PASSWORD=` in `.env`.
 
 For the authentication boundary, also generate a JWT signing key with `openssl rand -base64 32` and set it as `JWT_SECRET` in the ignored root `.env`. Add `LINE_CHANNEL_ID` only when you are ready to test a real LIFF token exchange. `VITE_LIFF_ID` belongs in the ignored `web/.env`; LINE channel secrets never belong in the frontend.
 
+## Bootstrap the initial administrator
+
+After you know your verified LINE user ID, add it as `ADMIN_BOOTSTRAP_LINE_SUBJECT` in the ignored root `.env`. Then run this one-off command from `api/` after exporting the root environment file:
+
+```sh
+set -a
+source ../.env
+set +a
+./gradlew bootstrapAdmin
+```
+
+The command creates that local user if needed, or promotes the existing user to `ADMIN`. It is safe to run again. Never expose this operation as a public API endpoint.
+
 Start PostgreSQL and Redis:
 
 ```sh

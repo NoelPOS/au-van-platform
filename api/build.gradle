@@ -4,6 +4,8 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
+import org.springframework.boot.gradle.tasks.run.BootRun
+
 group = 'com.auvan'
 version = '0.0.1-SNAPSHOT'
 description = 'AU-Van API'
@@ -42,4 +44,11 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('bootstrapAdmin', BootRun) {
+	group = 'application'
+	description = 'Creates or promotes the configured LINE subject as the initial AU-Van administrator.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.auvan.api.auth.bootstrap.AdminBootstrapApplication'
 }

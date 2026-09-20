@@ -18,6 +18,8 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: ${LINE_CHANNEL_ID:}
+  admin-bootstrap:
+    line-subject: ${ADMIN_BOOTSTRAP_LINE_SUBJECT:}
 
 management:
   endpoints:

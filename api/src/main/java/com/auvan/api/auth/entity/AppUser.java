@@ -53,4 +53,9 @@ public class AppUser {
         this.displayName = displayName;
         this.updatedAt = Instant.now();
     }
+
+    public void promoteToAdmin() {
+        this.role = ApplicationRole.ADMIN;
+        this.updatedAt = Instant.now();
+    }
 }
