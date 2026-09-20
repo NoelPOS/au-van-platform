@@ -9,9 +9,9 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 ## Repository state
 
 - Default branch: `main`
-- Last merged implementation commit: `b5e4352` (`feat(auth): bootstrap initial administrator access`)
-- Active issue: [#18 Establish transport inventory API](https://github.com/NoelPOS/au-van-platform/issues/18)
-- Active branch: `feature/transport-inventory-api`
+- Last merged implementation commit: `09de2fe` (`fix(inventory): stabilize duplicate trip conflict check`)
+- Active issue: [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19)
+- Active branch: `feature/transport-inventory-admin-ui`
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
 
 ## Accepted decisions
@@ -27,7 +27,7 @@ None.
 
 ## Next step
 
-Implement and review [#18 Establish transport inventory API](https://github.com/NoelPOS/au-van-platform/issues/18). The next ready issue after it is [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19).
+Implement and review [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19). The next ready issue after it is [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6).
 
 ## Ordered backlog
 
