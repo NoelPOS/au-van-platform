@@ -9,9 +9,9 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 ## Repository state
 
 - Default branch: `main`
-- Last merged implementation commit: `19f3a17` (`chore: bootstrap local React and Spring Boot development environment`)
-- Active issue: [#4 Establish identity and LINE authentication boundaries](https://github.com/NoelPOS/au-van-platform/issues/4)
-- Active branch: `feature/line-auth-boundaries`
+- Last merged implementation commit: `237d894` (`feat(auth): establish LINE identity JWT boundary`)
+- Active issue: [#16 Bootstrap initial administrator access](https://github.com/NoelPOS/au-van-platform/issues/16)
+- Active branch: `feature/bootstrap-admin-access`
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
 
 ## Accepted decisions
@@ -27,13 +27,13 @@ None.
 
 ## Next step
 
-Implement and review [#4 Establish identity and LINE authentication boundaries](https://github.com/NoelPOS/au-van-platform/issues/4). The next ready issue after it is [#5 Manage routes, trips, and vehicle seat layouts](https://github.com/NoelPOS/au-van-platform/issues/5).
+Implement and review [#16 Bootstrap initial administrator access](https://github.com/NoelPOS/au-van-platform/issues/16). The next ready issue after it is [#5 Manage routes, trips, and vehicle seat layouts](https://github.com/NoelPOS/au-van-platform/issues/5).
 
 ## Ordered backlog
 
 The issue tracker is the durable implementation queue. Refine an issue when it becomes the next ready item; do not expand its scope without updating the issue and, when relevant, an ADR.
 
-1. [#4 Establish identity and LINE authentication boundaries](https://github.com/NoelPOS/au-van-platform/issues/4)
+1. [#16 Bootstrap initial administrator access](https://github.com/NoelPOS/au-van-platform/issues/16)
 2. [#5 Manage routes, trips, and vehicle seat layouts](https://github.com/NoelPOS/au-van-platform/issues/5)
 3. [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6)
 4. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)

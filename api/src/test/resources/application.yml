@@ -15,3 +15,5 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: test-channel-id
+  admin-bootstrap:
+    line-subject:
