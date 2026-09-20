@@ -86,7 +86,7 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString());
 
-        String departureAt = OffsetDateTime.now().plusDays(1).toString();
+        String departureAt = OffsetDateTime.now().plusDays(1).withNano(0).toString();
         String tripId = idFrom(authenticatedPost("/api/v1/admin/trips", """
                 {"routeId":"%s","vehicleId":"%s","departureAt":"%s"}
                 """.formatted(routeId, vehicleId, departureAt), adminToken)
@@ -145,7 +145,7 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
         authenticatedPut("/api/v1/admin/routes/" + routeId, "{" +
                 "\"status\":\"INACTIVE\"}", adminToken).andExpect(status().isOk());
 
-        String departureAt = OffsetDateTime.now().plusDays(1).toString();
+        String departureAt = OffsetDateTime.now().plusDays(1).withNano(0).toString();
         authenticatedPost("/api/v1/admin/trips", """
                 {"routeId":"%s","vehicleId":"%s","departureAt":"%s"}
                 """.formatted(routeId, vehicleId, departureAt), adminToken)

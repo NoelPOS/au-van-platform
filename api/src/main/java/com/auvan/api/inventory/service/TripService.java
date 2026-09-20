@@ -11,6 +11,7 @@ import com.auvan.api.inventory.entity.RouteStatus;
 import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import com.auvan.api.inventory.repository.VehicleRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,12 @@ public class TripService {
         if (trips.existsByVehicleIdAndDepartureAt(vehicle.getId(), request.departureAt())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This vehicle already has a trip at that departure time.");
         }
-        return TripResponse.from(trips.save(new Trip(findRoute(request.routeId()), vehicle, request.departureAt())));
+        try {
+            return TripResponse.from(trips.save(new Trip(findRoute(request.routeId()), vehicle, request.departureAt())));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This vehicle already has a trip at that departure time.", exception);
+        }
     }
 
     @Transactional
