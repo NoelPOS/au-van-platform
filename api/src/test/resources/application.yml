@@ -22,3 +22,7 @@ auth:
     channel-id: test-channel-id
   admin-bootstrap:
     line-subject:
+
+booking:
+  hold-ttl: PT5M
+  max-seats-per-hold: 4
