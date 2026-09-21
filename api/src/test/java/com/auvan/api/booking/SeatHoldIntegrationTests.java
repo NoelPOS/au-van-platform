@@ -19,6 +19,8 @@ import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import com.auvan.api.inventory.repository.VehicleRepository;
 import com.jayway.jsonpath.JsonPath;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -69,6 +72,12 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
 
     @Autowired
     private SeatClaimRepository claims;
+
+    @Autowired
+    private TransactionTemplate transactions;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @MockitoBean
     private LineTokenVerifier lineTokenVerifier;
@@ -194,6 +203,53 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
 
         hold(studentToken, seats.get(0)).andExpect(status().isCreated());
         assertThat(claims.count()).isOne();
+    }
+
+    @Test
+    void aBookedSeatIsReportedAsBookedEvenToTheStudentWhoHeldIt() throws Exception {
+        hold(studentToken, seats.get(0)).andExpect(status().isCreated());
+        bookTheClaimOn(seats.get(0), OffsetDateTime.now().plusMinutes(5));
+
+        mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
+                .andExpect(jsonPath("$.seats[0].state").value("BOOKED"))
+                .andExpect(jsonPath("$.seats[1].state").value("AVAILABLE"));
+        mockMvc.perform(authenticated(get("/api/v1/trips")))
+                .andExpect(jsonPath("$[0].availableSeats").value(3));
+    }
+
+    /** ADR-006: a booked claim blocks its seat whatever {@code expires_at} says. */
+    @Test
+    void aBookedClaimStillBlocksItsSeatAfterTheHoldWindowHasPassed() throws Exception {
+        hold(studentToken, seats.get(0)).andExpect(status().isCreated());
+        bookTheClaimOn(seats.get(0), OffsetDateTime.now().minusHours(1));
+
+        mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
+                .andExpect(jsonPath("$.seats[0].state").value("BOOKED"));
+
+        String otherToken = tokenFor("other-token", "Uother");
+        hold(otherToken, seats.get(0))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(containsString("refresh")));
+        // Not even the student who booked it can take it back as a hold.
+        hold(studentToken, seats.get(0)).andExpect(status().isConflict());
+        assertThat(claims.count()).isOne();
+    }
+
+    /**
+     * Once a claim carries a booking it stops being the caller's hold, so the
+     * release endpoint cannot be used to give away a seat that has been paid for.
+     */
+    @Test
+    void aHoldThatHasBecomeABookingCanNoLongerBeReleased() throws Exception {
+        String holdId = holdIdFrom(hold(studentToken, seats.get(0)).andExpect(status().isCreated()));
+        bookTheClaimOn(seats.get(0), OffsetDateTime.now().plusMinutes(5));
+
+        mockMvc.perform(authenticated(post("/api/v1/seat-holds/" + holdId + "/release")))
+                .andExpect(status().isNotFound());
+
+        assertThat(claims.count()).isOne();
+        mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
+                .andExpect(jsonPath("$.seats[0].state").value("BOOKED"));
     }
 
     @Test
@@ -349,6 +405,24 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         Trip created = new Trip(route, vehicle, departureAt);
         created.update(departureAt, status);
         return trips.save(created);
+    }
+
+    /**
+     * Attaches a booking to the seat's claim, which no endpoint in this issue can
+     * do. The booking id is arbitrary because nothing maps the {@code bookings}
+     * table yet; once #25 adds the entity, and #27 makes {@code V3} the schema
+     * that actually runs, this needs a real booking row for the foreign key.
+     */
+    private void bookTheClaimOn(TripSeat seat, OffsetDateTime expiresAt) {
+        transactions.executeWithoutResult(status -> entityManager.createQuery("""
+                        update SeatClaim claim
+                        set claim.bookingId = :bookingId, claim.expiresAt = :expiresAt
+                        where claim.tripSeat.id = :seatId
+                        """)
+                .setParameter("bookingId", UUID.randomUUID())
+                .setParameter("expiresAt", expiresAt)
+                .setParameter("seatId", seat.getId())
+                .executeUpdate());
     }
 
     /** Writes a claim that expired a minute ago, which no API call can produce. */
