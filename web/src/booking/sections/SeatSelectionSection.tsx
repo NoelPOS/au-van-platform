@@ -4,6 +4,12 @@ import { SeatLegend, SeatMap } from "../components/SeatMap";
 import { formatDeparture, formatFare } from "../format";
 import type { AvailableTrip, TripSeat } from "../types";
 
+/** Empty when nothing was lost, so the live region can stay mounted. */
+function lostSeatMessage(labels: string[]): string {
+  if (labels.length === 0) return "";
+  return `Seat ${labels.join(", ")} was taken by another student and has been removed from your selection.`;
+}
+
 export function SeatSelectionSection({
   trip,
   seats,
@@ -44,11 +50,16 @@ export function SeatSelectionSection({
           <p className="text-sm text-red-700">{error.message}</p>
         </div>
       )}
-      {lostSeatLabels.length > 0 && (
-        <p className="mt-4 text-sm text-red-700" role="status">
-          {`Seat ${lostSeatLabels.join(", ")} was taken by another student and has been removed from your selection.`}
-        </p>
-      )}
+      {/*
+        Mounted even when empty: a `role="status"` region inserted together
+        with its first text is announced unreliably, so only the text changes.
+      */}
+      <p
+        className={lostSeatLabels.length > 0 ? "mt-4 text-sm text-red-700" : ""}
+        role="status"
+      >
+        {lostSeatMessage(lostSeatLabels)}
+      </p>
       {seats.length > 0 && (
         <div className="mt-4 flex flex-col gap-4">
           <SeatLegend />
