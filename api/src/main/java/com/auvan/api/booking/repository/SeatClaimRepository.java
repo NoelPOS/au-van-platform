@@ -38,10 +38,17 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
      * a bulk delete rather than {@code deleteAll}: it runs immediately, and it
      * skips the row-count check that would turn two students reclaiming the same
      * expired claim into a {@code StaleStateException} for the loser.
+     *
+     * <p>{@code booking_id is null} is a correctness guard, not an optimisation.
+     * Every caller selects its rows from a read taken earlier in the transaction,
+     * and a confirmation can attach a booking to one of those rows in between —
+     * a row lock does not help, because the reclaimer simply waits and then
+     * deletes a row that has since been sold. Matching on the current value of
+     * {@code booking_id} is what makes the delete refuse to free a booked seat.
      */
     // clearAutomatically so the deleted rows do not linger in the persistence
     // context; harmless today, a trap as soon as a caller re-reads after a delete.
     @Modifying(clearAutomatically = true)
-    @Query("delete from SeatClaim claim where claim.id in :ids")
+    @Query("delete from SeatClaim claim where claim.id in :ids and claim.bookingId is null")
     void deleteByIdIn(@Param("ids") Collection<UUID> ids);
 }
