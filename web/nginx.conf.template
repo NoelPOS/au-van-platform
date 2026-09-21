@@ -1,0 +1,50 @@
+# Rendered into /etc/nginx/conf.d/default.conf at container start by the base
+# image's entrypoint, which runs envsubst over this file. Only ${API_UPSTREAM}
+# and ${DNS_RESOLVER} are substituted; nginx's own $uri, $host and friends are
+# left alone, because envsubst replaces nothing that is not in the environment.
+
+# nginx resolves a literal proxy_pass hostname once, when it loads the
+# configuration. `proxy_pass http://api:8080` would therefore make this
+# container refuse to start with "host not found in upstream" whenever the API
+# is absent -- including any standalone run of this image. Going through a
+# variable defers resolution to request time, so the web container starts on
+# its own and picks the API up when it appears.
+resolver ${DNS_RESOLVER} valid=10s ipv6=off;
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Vite writes content-hashed filenames under /assets, so those can be
+    # cached indefinitely.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # index.html must not be cached, or a browser keeps loading a stale bundle
+    # that references asset hashes the new build no longer has. This is the
+    # inverse of the rule above, and getting the pair backwards is the classic
+    # single-page-application deployment bug.
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+
+    # Same-origin routing, so the SPA calls a relative /api and no bundle ever
+    # carries an API hostname. ADR-007 gives CloudFront the same shape.
+    location ~ ^/(api|actuator)/ {
+        set $api_upstream ${API_UPSTREAM};
+        # No URI part after the variable, so nginx forwards the request path
+        # unchanged rather than rewriting it.
+        proxy_pass http://$api_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+}

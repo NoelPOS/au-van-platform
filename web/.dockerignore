@@ -1,0 +1,26 @@
+# Docker's build context is the filesystem, not git: .gitignore has no effect
+# here, so everything machine-specific has to be named again.
+
+# The critical entry. The README tells every developer to `cp web/.env.example
+# web/.env`, and that file ships VITE_API_BASE_URL=http://localhost:8080.
+# `vite build` auto-loads .env from the project root and inlines its VITE_*
+# values into the bundle, so a developer's local file would silently become
+# part of the image and point every visitor's browser at their own machine.
+# .env.example is covered by the second line and is not needed in the image.
+.env
+.env.*
+
+# Host-installed dependencies and build output. node_modules here is built for
+# the developer's own platform -- esbuild, oxlint and Rollup all ship native
+# binaries -- so copying it into a linux build stage breaks the build rather
+# than speeding it up. `npm ci` in the image installs the same lockfile.
+node_modules/
+dist/
+dist-ssr/
+coverage/
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+*.log
