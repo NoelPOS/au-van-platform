@@ -31,3 +31,11 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
+
+management:
+  health:
+    redis:
+      # Mirrors the main configuration; see the comment there. The Redis port
+      # above is 0, so leaving the indicator on would report this application
+      # DOWN exactly as an absent ElastiCache does in the demo topology.
+      enabled: false
