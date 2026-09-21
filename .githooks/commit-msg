@@ -4,19 +4,13 @@
 # conventions".
 #
 # This hook is fast local feedback. Enforcement that cannot be bypassed lives in
-# the "Commit checks" CI job, which runs the same rules over a pull request's
-# commits. Install this hook with scripts/setup-hooks.sh.
+# the "Commit checks" CI job, a required status check on main that runs the same
+# rules. Install this hook with scripts/setup-hooks.sh.
 
 message_file="$1"
 
 body=$(grep -v '^#' "$message_file")
 subject=$(printf '%s\n' "$body" | head -n 1)
-
-# Messages git generates itself. Reverts and merges legitimately carry a body,
-# and fixup/squash subjects are rewritten when the branch is tidied.
-case "$subject" in
-    'Revert "'*|'Merge '*|'fixup! '*|'squash! '*) exit 0 ;;
-esac
 
 fail() {
     echo "commit-msg: $1" >&2
@@ -24,6 +18,8 @@ fail() {
     exit 1
 }
 
+# Attribution is checked on every message, with no exemptions. A subject that
+# merely looks git-generated must not be a way past this.
 if printf '%s\n' "$body" | grep -qi '^co-authored-by:'; then
     fail "commit messages carry no Co-Authored-By trailer."
 fi
@@ -32,11 +28,35 @@ if printf '%s\n' "$body" | grep -qi 'generated with claude\|co-authored-by: clau
     fail "commit messages carry no tool attribution."
 fi
 
+# Messages git writes itself legitimately carry a body and a non-Conventional
+# subject, so they skip the shape rules below — but only these exact shapes.
+case "$subject" in
+    'fixup! '*|'squash! '*)
+        exit 0
+        ;;
+    'Merge branch '*|'Merge remote-tracking branch '*|'Merge tag '*)
+        exit 0
+        ;;
+esac
+
+# GitHub's pull-request merge ref, which the CI job checks out.
+if printf '%s' "$subject" | grep -Eq '^Merge [0-9a-f]{7,40} into [0-9a-f]{7,40}$'; then
+    exit 0
+fi
+
+# git revert --no-edit, identified by the trailer git appends, not by subject.
+if printf '%s' "$subject" | grep -q '^Revert "'; then
+    if printf '%s\n' "$body" | grep -Eq '^This reverts commit [0-9a-f]{40}\.$'; then
+        exit 0
+    fi
+    fail "a Revert subject is only accepted on a message git generated; write 'revert(scope): outcome' instead."
+fi
+
 if [ "$(printf '%s\n' "$body" | wc -l | tr -d ' ')" -gt 1 ]; then
     fail "commit messages are a single subject line with no body."
 fi
 
-if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?!?: ([a-z]|[a-z].*[^.])$'; then
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?!?: ([a-z0-9]|[a-z0-9].*[^.])$'; then
     fail "subject must be Conventional Commits, lower-case, no trailing period: 'type(scope): imperative outcome'."
 fi
 
