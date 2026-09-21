@@ -251,14 +251,20 @@ describe("StudentBookingPage", () => {
       screen.getByRole("button", { name: "Seat B2, booked" }),
     ).toBeDisabled();
 
+    // The name carries the state and `aria-pressed` carries the toggle, so a
+    // screen reader reads the same thing twice over rather than not at all.
+    expect(
+      screen.getByRole("button", { name: "Seat A1, available", pressed: false }),
+    ).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Seat A1, available" }));
     expect(
-      screen.getByRole("button", { name: "Seat A1, selected" }),
+      screen.getByRole("button", { name: "Seat A1, selected", pressed: true }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Seat A1, selected" }));
     expect(
-      screen.getByRole("button", { name: "Seat A1, available" }),
+      screen.getByRole("button", { name: "Seat A1, available", pressed: false }),
     ).toBeInTheDocument();
   });
 
@@ -306,6 +312,11 @@ describe("StudentBookingPage", () => {
       await screen.findByRole("button", { name: "Seat A1, held by someone else" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
+    // Nothing is selected any more, so holding again would send an empty
+    // request the server would only reject.
+    expect(
+      screen.getByRole("button", { name: "Hold these seats" }),
+    ).toBeDisabled();
   });
 
   it("returns to the trip list when the trip is withdrawn before the hold", async () => {
@@ -848,7 +859,9 @@ describe("StudentBookingPage", () => {
     renderPage();
 
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
+    // A confirmed booking is a success, not the failure colour the badge
+    // falls back to for anything it does not recognise.
+    expect(screen.getByText("CONFIRMED")).toHaveClass("text-emerald-700");
     expect(screen.getByText(/^AU → Mega Bangna · /)).toBeInTheDocument();
     expect(screen.getByText("Seat A1 · 35.00 THB")).toBeInTheDocument();
   });
