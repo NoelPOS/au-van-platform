@@ -4,6 +4,7 @@ import com.auvan.api.AuthenticationTestSupport;
 import com.auvan.api.auth.client.LineTokenVerifier;
 import com.auvan.api.auth.client.VerifiedLineIdentity;
 import com.auvan.api.auth.repository.AppUserRepository;
+import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.repository.SeatLayoutRepository;
 import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
@@ -48,11 +49,16 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private TripRepository trips;
 
+    // seat_claims references trip_seats, so claims have to go before the trips do.
+    @Autowired
+    private SeatClaimRepository claims;
+
     @MockitoBean
     private LineTokenVerifier lineTokenVerifier;
 
     @BeforeEach
     void clearData() {
+        claims.deleteAll();
         trips.deleteAll();
         vehicles.deleteAll();
         seatLayouts.deleteAll();
