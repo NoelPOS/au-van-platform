@@ -223,13 +223,14 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
      */
     @Test
     void theDeadLetterViewReportsOnlyTheRowsTheDispatcherGaveUpOn() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now();
         UUID aggregate = UUID.randomUUID();
         UUID dead = deadLetter(aggregate, firstStudent, "LINE refused the push: 400 invalid recipient.");
         outbox.save(new OutboxEvent(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), secondStudent,
-                "{}", OffsetDateTime.now()));
+                "{}", now));
         UUID inFlight = outbox.save(new OutboxEvent(OutboxEventType.PAYMENT_APPROVED, UUID.randomUUID(),
-                thirdStudent, "{}", OffsetDateTime.now())).getId();
-        outbox.claim(inFlight, OffsetDateTime.now(), OffsetDateTime.now().plusMinutes(5));
+                thirdStudent, "{}", now.minusMinutes(1))).getId();
+        assertThat(outbox.claim(inFlight, now, now.plusMinutes(5))).isEqualTo(1);
 
         mockMvc.perform(get("/api/v1/admin/operations/dead-letters")
                         .header("Authorization", bearer(adminToken)))
@@ -396,11 +397,21 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
      * then given up on — rather than by writing {@code DEAD} at the column.
      * {@code markDead} only moves an {@code IN_FLIGHT} row, so a fixture that
      * skipped the claim would be testing a state the application cannot reach.
+     *
+     * <p>The row is recorded a minute in the past rather than at {@code now}.
+     * {@link com.auvan.api.outbox.repository.OutboxEventRepository#claim}
+     * selects on {@code nextAttemptAt <= :now}, and a row written at the same
+     * instant it is claimed sits on that boundary: the column keeps fewer
+     * decimal places than a nanosecond clock produces, so on a machine with
+     * one the stored value can come back a shade later than the {@code now}
+     * being compared against and the claim silently matches nothing. Making
+     * the row plainly due is the same thing {@code OutboxIntegrationTests}
+     * does with its own {@code dueAt} helper.
      */
     private UUID deadLetter(UUID aggregateId, UUID recipient, String error) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID id = outbox.save(new OutboxEvent(OutboxEventType.BOOKING_CANCELLED, aggregateId, recipient,
-                "{\"reference\":\"AUV-OP-0001\"}", now)).getId();
+                "{\"reference\":\"AUV-OP-0001\"}", now.minusMinutes(1))).getId();
         assertThat(outbox.claim(id, now, now.plusMinutes(5))).isEqualTo(1);
         assertThat(outbox.markDead(id, now, error)).isEqualTo(1);
         return id;
