@@ -29,17 +29,7 @@
       "Bash(npm test:*)",
       "Bash(docker compose:*)",
       "Bash(scripts/setup-hooks.sh:*)",
-      "Bash(git push --force-with-lease:*)",
-      "Bash(terraform fmt:*)",
-      "Bash(terraform validate:*)",
-      "Bash(terraform init:*)",
-      "Bash(terraform -chdir=infra/demo fmt:*)",
-      "Bash(terraform -chdir=infra/demo validate:*)",
-      "Bash(terraform -chdir=infra/demo init:*)",
-      "Bash(terraform -chdir=infra/budget fmt:*)",
-      "Bash(terraform -chdir=infra/budget validate:*)",
-      "Bash(terraform -chdir=infra/budget init:*)",
-      "Bash(tflint:*)"
+      "Bash(git push --force-with-lease:*)"
     ],
     "deny": [
       "Read(./**/.env)",
@@ -59,15 +49,7 @@
       "Bash(terraform destroy:*)",
       "Bash(gh secret:*)",
       "Bash(gh repo delete:*)",
-      "Bash(gh workflow run:*)",
-      "Bash(terraform -chdir=infra/demo apply:*)",
-      "Bash(terraform -chdir=infra/demo destroy:*)",
-      "Bash(terraform -chdir=infra/budget apply:*)",
-      "Bash(terraform -chdir=infra/budget destroy:*)",
-      "Bash(cdk deploy:*)",
-      "Bash(cdk bootstrap:*)",
-      "Bash(aws-cli:*)",
-      "Bash(sam deploy:*)"
+      "Bash(gh workflow run:*)"
     ]
   }
 }
