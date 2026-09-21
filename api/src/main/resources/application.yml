@@ -81,6 +81,17 @@ booking:
     # time.
     poll-interval: PT1M
     batch-size: 50
+  waitlist:
+    # Every instance may sweep, for the same reason booking.expiry.enabled
+    # above gives: each entry's row lock decides who promotes it (ADR-011).
+    enabled: true
+    # How long a promoted student has to take the seat, capped at
+    # departure-cutoff before departure. Deliberately not hold-ttl: five
+    # minutes is calibrated for a student already in the seat map, and a
+    # promoted student has to notice a LINE push first.
+    promotion-window: PT30M
+    poll-interval: PT1M
+    batch-size: 50
 
 outbox:
   # How many due rows one poll takes. Small: a poll holds no lock and the next
