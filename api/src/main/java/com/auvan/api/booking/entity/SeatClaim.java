@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.OffsetDateTime;
@@ -18,16 +19,20 @@ import java.util.UUID;
  * The unique constraint on {@code trip_seat_id} is what prevents overselling,
  * so a claim is released by deleting its row rather than by changing a status.
  * {@code bookingId} is a plain column until the booking entity exists.
+ *
+ * <p>The constraint is declared here as well as in {@code V3}, under the same
+ * name, so the two descriptions of the table cannot drift apart.
  */
 @Entity
-@Table(name = "seat_claims")
+@Table(name = "seat_claims", uniqueConstraints =
+        @UniqueConstraint(name = "seat_claims_trip_seat_unique", columnNames = "trip_seat_id"))
 public class SeatClaim {
     @Id
     @UuidGenerator
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "trip_seat_id", nullable = false, unique = true)
+    @JoinColumn(name = "trip_seat_id", nullable = false)
     private TripSeat tripSeat;
 
     @Column(name = "user_id", nullable = false)
