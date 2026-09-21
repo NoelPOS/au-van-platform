@@ -77,17 +77,6 @@ gh project item-edit --project-id PVT_kwHOCYR5w84BiaZt \
 - The legacy Next.js application is at `~/Desktop/AU-Van-reference`. It is
   read-only and outside this repository. Port business rules from it, not code.
 
-## Infrastructure is never applied
-
-`terraform apply`, `terraform destroy`, `cdk deploy`, `cdk bootstrap` and the
-AWS CLI are denied. Those denies are **best-effort**: permission patterns match
-a command prefix, so a form the list does not anticipate slips through. The
-guarantee that actually holds is that no agent has AWS credentials — the
-repository owner applies infrastructure themselves, from their own machine.
-Infrastructure work here is written, statically checked, reviewed and merged;
-it is never executed. Say "designed and codified", never "deployed", until an
-apply has happened.
-
 ## Delivery loop
 
 `.claude/commands/next-issue.md` is one full issue cycle. The agent roles it
