@@ -446,6 +446,53 @@ describe("StudentBookingPage", () => {
     expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
   });
 
+  it("sends the student back to seat selection when the hold no longer exists", async () => {
+    stubApi({
+      createBooking: () =>
+        json(
+          { detail: "This seat hold no longer exists.", code: "hold_not_found" },
+          404,
+        ),
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    // Without this branch the 404 falls into the generic retry case and the
+    // student retries against a hold that is not there.
+    expect(
+      await screen.findByText(
+        "That seat hold is no longer available. Choose your seats again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
+  });
+
+  it("sends the student back to the trip list when the trip is withdrawn", async () => {
+    stubApi({
+      createBooking: () =>
+        json(
+          {
+            detail: "This trip is no longer available.",
+            code: "trip_not_available",
+          },
+          409,
+        ),
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    expect(
+      await screen.findByText(
+        "That trip is no longer available. Choose another.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+  });
+
   it("sends the student back to the trip list when the trip has departed", async () => {
     stubApi({
       createBooking: () =>
