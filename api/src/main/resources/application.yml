@@ -27,6 +27,13 @@ server:
   # what makes it finish in-flight requests instead of dropping them.
   shutdown: graceful
 
+cors:
+  # Also read by management.endpoints.web.cors below, from the same variable,
+  # so the API's own CORS filter and the actuator's never drift apart. A comma
+  # in the value binds as multiple origins; never a wildcard here, since these
+  # requests carry an Authorization header.
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 auth:
   jwt:
     issuer: au-van-api

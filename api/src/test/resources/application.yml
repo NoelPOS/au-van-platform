@@ -25,6 +25,10 @@ server:
   # with it, so a key added to one has to be added to the other.
   shutdown: graceful
 
+cors:
+  # Mirrors the main configuration's default; see the comment there.
+  allowed-origins: http://localhost:5173
+
 auth:
   jwt:
     issuer: au-van-api-test
