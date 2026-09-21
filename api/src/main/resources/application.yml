@@ -41,3 +41,14 @@ management:
       cors:
         allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
         allowed-methods: GET,POST
+  health:
+    redis:
+      # spring-boot-starter-data-redis is on the classpath and configured, but
+      # no application code uses Redis: ADR-003 made PostgreSQL the authority
+      # and seat holds shipped without it, and ADR-007's demo topology defaults
+      # ElastiCache off. The auto-configured indicator would therefore report
+      # the whole application DOWN wherever Redis is absent, failing every
+      # container health check for a dependency nothing calls. The database
+      # indicator stays enabled: an instance that cannot reach PostgreSQL
+      # should fail. Re-enable this with the first Redis-backed feature.
+      enabled: false
