@@ -23,6 +23,13 @@ const trip = {
   availableSeats: 3,
 };
 
+const otherTrip = {
+  ...trip,
+  id: "trip-2",
+  destination: "Siam Paragon",
+  departureAt: "2026-10-01T03:00:00Z",
+};
+
 const booking = {
   id: "booking-1",
   reference: "AUV-260921-7KQ2M4XR",
@@ -313,6 +320,45 @@ describe("StudentBookingPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+  });
+
+  it("drops the withdrawn trip from the list the student lands back on", async () => {
+    // The message alone is not the remedy: with the application-wide thirty
+    // second staleTime and the trips query permanently mounted, the refetch in
+    // the transition is the only thing taking the dead trip off the list.
+    let tripsRequested = 0;
+    stubApi({
+      trips: () => {
+        tripsRequested += 1;
+        return json(tripsRequested === 1 ? [trip, otherTrip] : [otherTrip]);
+      },
+      hold: () =>
+        json(
+          {
+            detail: "This trip is no longer available.",
+            code: "trip_not_available",
+          },
+          409,
+        ),
+    });
+
+    renderPage();
+    await selectSeatA1();
+    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+
+    expect(
+      await screen.findByText(
+        "That trip is no longer available. Choose another.",
+      ),
+    ).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /Mega Bangna/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /Siam Paragon/ }),
+    ).toBeInTheDocument();
   });
 
   it("returns to the trip list when the trip departs before the hold", async () => {
