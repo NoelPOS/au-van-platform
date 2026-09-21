@@ -32,6 +32,15 @@ public final class Problems {
         return of(HttpStatus.CONFLICT, code, detail, cause);
     }
 
+    /**
+     * A dependency this module needs was not reachable. The cause is attached
+     * for the log and never rendered: the body carries only the code and the
+     * prose, so a storage failure cannot answer a student with a stack trace.
+     */
+    public static ResponseStatusException serviceUnavailable(String code, String detail, Throwable cause) {
+        return of(HttpStatus.SERVICE_UNAVAILABLE, code, detail, cause);
+    }
+
     private static ResponseStatusException of(HttpStatus status, String code, String detail, Throwable cause) {
         var exception = new ResponseStatusException(status, detail, cause);
         // getBody() hands back the very ProblemDetail that will be serialised,

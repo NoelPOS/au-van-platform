@@ -122,6 +122,11 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
 
     // Success paths
 
+    /**
+     * Confirming a hold secures the seats; it no longer pays for them. ADR-009
+     * made the payment review the only path to {@code CONFIRMED}, so the
+     * booking this returns is {@code PENDING_PAYMENT}.
+     */
     @Test
     void confirmingAHoldReturnsTheBookingItsSeatsAndItsFirstHistoryEntry() throws Exception {
         String holdId = holdOn(seats.get(0), seats.get(1));
@@ -131,7 +136,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.reference").value(matchesPattern("AUV-\\d{6}-[23456789ABCDEFGHJKMNPQRSTVWXYZ]{8}")))
-                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.trip.id").value(trip.getId().toString()))
                 .andExpect(jsonPath("$.trip.origin").value("AU"))
                 .andExpect(jsonPath("$.trip.destination").value("Asok"))
@@ -160,7 +165,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
     }
 
     @Test
-    void theSeatsOfAConfirmedBookingReadAsBookedAndKeepTheirClaims() throws Exception {
+    void theSeatsOfANewBookingReadAsBookedAndKeepTheirClaims() throws Exception {
         confirm(studentToken, holdOn(seats.get(0)), "key-1").andExpect(status().isCreated());
 
         mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
@@ -201,7 +206,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
 
         confirm(studentToken, holdId, "key-1")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.events.length()").value(1));
     }
 
@@ -231,7 +236,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         mockMvc.perform(authenticated(get("/api/v1/bookings/" + bookingId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(bookingId))
-                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
     }
 
     @Test
@@ -420,7 +425,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(claims.count()).isOne();
         mockMvc.perform(authenticated(get("/api/v1/bookings/" + bookingId)))
-                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+                .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
     }
 
     @Test

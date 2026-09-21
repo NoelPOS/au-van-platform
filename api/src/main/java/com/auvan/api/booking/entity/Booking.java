@@ -88,7 +88,9 @@ public class Booking {
         this.passengerName = passengerName;
         this.passengerPhone = passengerPhone;
         this.totalFare = totalFare;
-        this.status = BookingStatus.CONFIRMED;
+        // Seats are secured, money is not. ADR-009 made the payment review the
+        // only path to CONFIRMED, so creation can no longer produce one.
+        this.status = BookingStatus.PENDING_PAYMENT;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -117,6 +119,20 @@ public class Booking {
 
     public boolean isCancelled() {
         return status == BookingStatus.CANCELLED;
+    }
+
+    /**
+     * Only a booking still waiting for payment accepts a proof. #52 adds the
+     * rejected state a student may resubmit from; until then this is the one
+     * status a submission is allowed against.
+     */
+    public boolean isAwaitingPaymentProof() {
+        return status == BookingStatus.PENDING_PAYMENT;
+    }
+
+    public void markPaymentUnderReview(OffsetDateTime now) {
+        this.status = BookingStatus.PAYMENT_UNDER_REVIEW;
+        this.updatedAt = now;
     }
 
     public void cancel(OffsetDateTime now) {

@@ -40,7 +40,7 @@ class DatabaseMigrationIntegrationTests extends AuthenticationTestSupport {
                 order by "installed_rank"
                 """, String.class);
 
-        assertThat(applied).containsExactly("1", "2", "3", "4");
+        assertThat(applied).containsExactly("1", "2", "3", "4", "5");
     }
 
     @Test
