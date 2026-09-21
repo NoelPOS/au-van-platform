@@ -17,6 +17,13 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  # Mirrors the main configuration; this file replaces it rather than merging
+  # with it, so a key added to one has to be added to the other.
+  shutdown: graceful
 
 auth:
   jwt:
