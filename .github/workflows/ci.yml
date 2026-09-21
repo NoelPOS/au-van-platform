@@ -113,12 +113,16 @@ jobs:
   # and no `secrets.` reference. It builds the images and runs them, which is
   # the whole of the verification; nothing is deployed anywhere.
   #
-  # It costs roughly 7-9 minutes cold and 3-4 warm. It runs in parallel with
-  # the other jobs but is the longest of them, so it takes a pull request's
-  # wall-clock time from about 3 minutes to about 8. Plain `docker compose
-  # build` first: caching via build-push-action would roughly halve the warm
-  # case and roughly double this file, and that is not worth paying before the
-  # cost is actually felt.
+  # Measured, rather than estimated: 2m19s. A GitHub-hosted runner keeps no
+  # layer cache between runs, so every run is that cold run -- 1m36s building
+  # both images, 32s waiting for four containers to report healthy, and
+  # seconds for everything else. The job runs in parallel with the others and
+  # is now the longest of them, so it takes a pull request's wall-clock time
+  # from about 1m40s, which was `API checks`, to about 2m20s.
+  #
+  # Plain `docker compose build`, deliberately. build-push-action with
+  # `type=gha` caching would cut the image build, but it roughly doubles this
+  # file and brings its own failure modes, and 40 seconds is not worth that.
   containers:
     name: Container checks
     runs-on: ubuntu-latest
