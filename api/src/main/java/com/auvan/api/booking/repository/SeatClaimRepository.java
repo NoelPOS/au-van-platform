@@ -39,7 +39,9 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
      * skips the row-count check that would turn two students reclaiming the same
      * expired claim into a {@code StaleStateException} for the loser.
      */
-    @Modifying
+    // clearAutomatically so the deleted rows do not linger in the persistence
+    // context; harmless today, a trap as soon as a caller re-reads after a delete.
+    @Modifying(clearAutomatically = true)
     @Query("delete from SeatClaim claim where claim.id in :ids")
     void deleteByIdIn(@Param("ids") Collection<UUID> ids);
 }

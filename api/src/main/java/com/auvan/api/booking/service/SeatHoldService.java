@@ -96,7 +96,10 @@ public class SeatHoldService {
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Hold not found.");
         }
-        claims.deleteAll(held);
+        // Bulk delete for the same reason as the reclaim above: deleting managed
+        // entities row-count-checks, so two simultaneous releases of one hold give
+        // the loser an untranslated failure rather than a quiet no-op.
+        claims.deleteByIdIn(held.stream().map(SeatClaim::getId).toList());
     }
 
     private void assertBookable(Trip trip, OffsetDateTime now) {
