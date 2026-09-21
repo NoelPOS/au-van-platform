@@ -65,13 +65,17 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Driven by CORS_ALLOWED_ORIGINS, the same variable the actuator's own
+        // CORS setting reads, so the two never drift apart. The Vite dev proxy
+        // makes local development same-origin, which hides a wrong value here
+        // entirely -- the fault appears only through a tunnel, a container, or
+        // the eventual CloudFront distribution.
+        configuration.setAllowedOrigins(properties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         // Idempotency-Key is not a CORS-safelisted header, so without it here the
-        // browser's preflight refuses every booking confirmation. The Vite dev
-        // proxy makes local development same-origin, which hides this entirely.
+        // browser's preflight refuses every booking confirmation.
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
