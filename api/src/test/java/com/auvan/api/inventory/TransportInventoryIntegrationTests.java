@@ -119,6 +119,35 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
+    /**
+     * Regression guard for Hibernate's flush ordering: with the removal and the
+     * re-add in one flush, the replacement rows go in before the rows they
+     * replace come out and collide on {@code seat_layout_seats_label_unique}.
+     * Only the migrated schema declares that constraint, so this test could not
+     * fail while Hibernate was generating the schema from the mappings.
+     */
+    @Test
+    void aSeatLayoutCanBeUpdatedWithTheSeatLabelsItAlreadyHas() throws Exception {
+        String adminToken = tokenFor("admin-token", "Uadmin", true);
+        String seatLayoutId = idFrom(authenticatedPost("/api/v1/admin/seat-layouts", """
+                {"name":"Toyota 10-seat","seats":[
+                  {"label":"A1","rowNumber":1,"columnNumber":1},
+                  {"label":"A2","rowNumber":1,"columnNumber":2}
+                ]}
+                """, adminToken).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+
+        authenticatedPut("/api/v1/admin/seat-layouts/" + seatLayoutId, """
+                {"name":"Toyota 10-seat","seats":[
+                  {"label":"A1","rowNumber":1,"columnNumber":1},
+                  {"label":"A2","rowNumber":1,"columnNumber":2},
+                  {"label":"A3","rowNumber":1,"columnNumber":3}
+                ]}
+                """, adminToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seats.length()").value(3))
+                .andExpect(jsonPath("$.seats[2].label").value("A3"));
+    }
+
     @Test
     void studentCannotAccessInventoryAdministration() throws Exception {
         String studentToken = tokenFor("student-token", "Ustudent", false);
