@@ -156,8 +156,10 @@ gh pr view <n> --json comments \
   --jq '[.comments[] | select(.body | contains("VERDICT:"))] | length'
 ```
 
-Expect one such comment per review round. Zero means the reviewer did not post
-— abort the cycle and report it. Reviews that live only in an agent transcript
+Expect `>= 1`. The count is the running total over every round on this pull
+request, not the count for the round you just ran, and you hold no round
+counter — so assert only that it is not zero. Zero means the reviewer did not
+post: abort the cycle and report it. Reviews that live only in an agent transcript
 leave no trail; every claim the loop makes about having been reviewed must be
 checkable from GitHub.
 
