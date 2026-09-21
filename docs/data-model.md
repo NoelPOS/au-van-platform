@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. The asynchronous-workflow tables remain planned.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it.
 
 ## Schema ownership
 
@@ -27,10 +27,10 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `booking_events` | `V3` | Append-only history of a booking's state changes |
 | `idempotency_keys` | `V3`, `V4` | The response a critical client write already produced, for replay on retry |
 | `payment_proofs` | `V5`, `V6` | One payment-proof submission: its object key, metadata, and the administrator's decision |
-| `notifications` | planned | Delivery intent and result for LINE, in-app, and email channels |
-| `reminder_jobs` | planned | Scheduled reminder work and retry metadata |
+| `outbox_events` | `V7` | Outbound work a committed transaction owes, with its claim, retry, and delivery state |
+| `notifications` | dropped | Delivery intent and result; ADR-010 folded both into `outbox_events` |
+| `reminder_jobs` | dropped | Scheduled reminders; ADR-010 made one a future-dated `outbox_events` row |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
-| `outbox_events` | planned | Durable domain events awaiting asynchronous delivery |
 | `waitlist_entries` | planned | Optional queue for full timeslots and promotion processing |
 
 ## Seat claims
@@ -67,7 +67,20 @@ A booking is created `PENDING_PAYMENT` and only an approved payment proof reache
 - A decision locks the booking's row first and is made only from what the lock returned, the same discipline ADR-008 established for confirmation. Approval moves the booking to `CONFIRMED`, rejection to `PAYMENT_REJECTED`, from which the student may submit another proof.
 - The submission is one transaction, and the image is written to storage before any row. A storage failure therefore leaves no proof row, no status change, and no history entry.
 - `booking_events` carries `PAYMENT_PROOF_SUBMITTED`, `PAYMENT_APPROVED`, and `PAYMENT_REJECTED`, so the audit trail stays in the one append-only table rather than growing a parallel one. A rejection's note is the event's detail, which is how the student is told what to fix.
-- `seat_claims` are not released while a booking waits for payment or for review, so a seat can be held indefinitely until #8's expiry processing bounds it. ADR-009 records that as an accepted consequence.
+- `seat_claims` are not released while a booking waits for payment or for review, so a seat can be held indefinitely until #62's expiry processing bounds it. ADR-009 records that as an accepted consequence and ADR-010 decides the bound.
+
+## Asynchronous work
+
+Everything a committed transaction owes the outside world is one row in `outbox_events`. ADR-010 records the decision.
+
+- The row is written **in the same transaction as the state change it describes**, by a recorder that joins the caller's transaction and never opens its own. A rolled-back booking leaves no row; a committed one leaves exactly one. There is no second system to reconcile with.
+- A dispatch claims a row with one conditional `UPDATE` whose `WHERE` carries the current `status` and `next_attempt_at`, and the affected-row count is the answer. That is the only thing that stops two workers sending one message, and the only thing that stops a `SENT` or `DEAD` row being sent again.
+- The claim pushes `next_attempt_at` forward by a lease and increments `attempts`, so a worker that dies mid-send leaves a row that becomes due again on its own and has still spent an attempt. No separate sweeper exists or is needed.
+- `status` is `PENDING`, `IN_FLIGHT`, `SENT`, or `DEAD`. The first two are claimable; the last two are terminal. A row that fails `outbox.max-attempts` times lands `DEAD` with `last_error` set and is never retried again.
+- `payload` is `VARCHAR(2000)` of JSON — facts about the booking, not message text, so rewording a message does not have to be migrated into rows written before it. The width is deliberate; ADR-010 gives the arithmetic.
+- `dedupe_key` is unique and nullable: null for a state-change event, which legitimately repeats, and set for a scheduled reminder in #63, where the constraint is what makes scheduling idempotent.
+- There are **no foreign keys** on this table. A queue row must not block the deletion of the booking or the user it names, and the dispatcher must tolerate an aggregate that has since gone.
+- The index is `(status, next_attempt_at)`, which is exactly the dispatcher's predicate.
 
 ## Critical constraints to design
 

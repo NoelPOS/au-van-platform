@@ -32,7 +32,15 @@ PostgreSQL is authoritative for confirmed seat inventory, bookings, payment stat
 
 ## Asynchronous work
 
-Booking and payment changes may generate notifications, reminders, expiry processing, and waitlist promotion. These side effects must be retryable and observable. The target production design uses a transactional outbox and SQS-backed workers; the local development implementation will be documented separately.
+Booking and payment changes may generate notifications, reminders, expiry processing, and waitlist promotion. These side effects must be retryable and observable. ADR-010 records how, and the outbox half of it is implemented.
+
+- Every booking or payment transition that owes outbound work writes an `outbox_events` row **in the same transaction as the state change**. The recorder joins the caller's transaction and never opens one of its own, so the work and the record of it cannot diverge.
+- A dispatcher claims a due row with one conditional `UPDATE`, sends outside any transaction, and records the outcome in a second one. The claim pushes the row's `next_attempt_at` forward by a lease, so a worker that dies mid-send leaves a row that simply becomes due again — SQS's visibility-timeout model, expressed in one table.
+- Retries back off exponentially and stop at `outbox.max-attempts`, leaving the row in a discoverable `DEAD` state with its last error.
+- The trigger is an in-process `@Scheduled` poller gated on `outbox.dispatch.enabled`. It is only a trigger: an SQS consumer or a separate worker process can call the same dispatch entry point unchanged, which is what "SQS-compatible" means here. No Redis is involved, and ADR-010 records that as a decision rather than an omission.
+- LINE delivery goes through the `LineMessageSender` port. Its Messaging API implementation and the departure reminders are #63; until then a recorded event is resolved without being delivered.
+
+Booking expiry and seat release, the other half of ADR-010, are #62.
 
 ## Boundaries
 
@@ -51,3 +59,5 @@ Booking and payment changes may generate notifications, reminders, expiry proces
 - [ADR-006: Hold and Book Seats in One `seat_claims` Table with Lazy Expiry](adr/006-seat-claims-single-table-and-lazy-hold-expiry.md)
 - [ADR-007: Use Terraform for the AWS Target Infrastructure](adr/007-terraform-for-aws-target-infrastructure.md)
 - [ADR-008: Create a Booking Exactly Once, from a Locked Hold and a Stored Response](adr/008-exactly-once-booking-creation.md)
+- [ADR-009: Payment-Proof Object Storage and the Payment-Review Gate on Booking Confirmation](adr/009-payment-proof-storage-and-review-gate.md)
+- [ADR-010: Deliver Asynchronous Work from a Transactional Outbox in PostgreSQL, and Give Every Unpaid Booking a Deadline](adr/010-transactional-outbox-and-booking-deadline.md)
