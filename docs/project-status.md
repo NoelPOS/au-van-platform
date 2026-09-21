@@ -2,16 +2,16 @@
 
 ## Current milestone
 
-**Milestone 2 - Core booking in progress**
+**Milestone 2 - Core booking, one issue from complete**
 
-The legacy Next.js application has been cloned separately as a read-only migration reference. The rebuild repository has approved scope, architecture, data-model, AWS-target, ADR, issue-template, and pull-request conventions.
+The booking core is merged. A student can list bookable trips, hold seats behind a database constraint, confirm the hold into a booking exactly once, read their own bookings, and cancel one. The student-facing interface is the last piece and is in review.
 
 ## Repository state
 
-- Default branch: `main`, protected: "Web checks", "API checks", and "Commit checks" must pass, branches must be up to date, and the rule applies to administrators.
-- Last merged implementation commit: `86b323c` (`fix(booking): release holds with the bulk delete too`)
-- Active issues, running as concurrent tracks on disjoint file surfaces: [#27 migrations](https://github.com/NoelPOS/au-van-platform/issues/27) on `fix/apply-database-migrations`, [#29 delivery cycle](https://github.com/NoelPOS/au-van-platform/issues/29) on `chore/harden-delivery-cycle`, and [#32 Terraform foundation](https://github.com/NoelPOS/au-van-platform/issues/32) on `feature/terraform-foundation`
-- This file is owned by the orchestrator. Implementers do not edit it, because every concurrent track would otherwise conflict on it.
+- Default branch: `main`, protected: "Web checks", "API checks", and "Commit checks" must pass, branches must be up to date, and the rule applies to administrators. "Infrastructure checks" and "Container checks" also run on every pull request but are deliberately not yet required; each is promoted once it has been green on real pull requests.
+- Last merged implementation commit: `4c96591` (`ci(infra): record the measured cost of the container job`)
+- In review: [#26 LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26) on `feature/liff-booking-flow` ([#44](https://github.com/NoelPOS/au-van-platform/pull/44))
+- This file is owned by the orchestrator. Implementers do not edit it, because every concurrent track would otherwise conflict on it. It is landed as its own `docs/` pull request after each merge.
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
 - Delivery is agent-driven: roles in `.claude/agents/`, one cycle in `.claude/commands/next-issue.md`.
 
@@ -24,31 +24,35 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 - Verify LINE identity server-side and issue short-lived AU-Van JWTs.
 - Hold and book seats in one `seat_claims` table, with lazy hold expiry and no Redis.
 - Write the AWS target topology in Terraform, statically checked and never applied by an agent.
+- Make booking creation exactly-once with a stored-response idempotency record and a row lock on the hold's claims ([ADR-008](adr/008-exactly-once-booking-creation.md)).
 
 ## Current blockers
 
-None. [#27](https://github.com/NoelPOS/au-van-platform/issues/27) — that Flyway auto-configuration moved to a module `api/build.gradle` never declared, so `V1`–`V3` had never been applied and Hibernate generated the schema from the mappings — is fixed and in review. Its fix also resolved the pre-existing `SeatLayout.replaceSeats` collision that only became visible once the migrations ran.
+None.
 
-Two limitations are known and deliberately deferred. The API test suite runs on H2 in PostgreSQL mode rather than real PostgreSQL, so concurrency behaviour is proven only on H2; that belongs to [#10](https://github.com/NoelPOS/au-van-platform/issues/10). Infrastructure code is statically checked but never executed, so it is designed and codified rather than deployed until the owner applies it themselves.
+Four limitations are known and deliberately deferred.
+
+1. **Concurrency is proven on H2, not PostgreSQL.** The suite runs H2 in PostgreSQL mode, which establishes that the application logic is right — the lock reaches the query, decisions read the locked rows, the flushes make the catch blocks reachable — and establishes nothing about PostgreSQL's own `SELECT … FOR UPDATE` semantics under READ COMMITTED. [#10](https://github.com/NoelPOS/au-van-platform/issues/10) owns it.
+2. **The LIFF flow has never run against a real API or a real LINE browser.** Its tests stub `fetch`. Before it is exercised through a tunnel, [#41](https://github.com/NoelPOS/au-van-platform/issues/41) must land: CORS `allowedOrigins` is hard-coded to the Vite dev server and is not environment-driven, so a tunnelled request is rejected on origin before any header matters.
+3. **Infrastructure is written and statically checked, never executed.** It is designed and codified, not deployed, until the owner applies it.
+4. **No end-to-end coverage.** There is no Playwright suite yet; [#10](https://github.com/NoelPOS/au-van-platform/issues/10) owns that too.
 
 ## Next step
 
-Merge the three tracks in review: [#27](https://github.com/NoelPOS/au-van-platform/issues/27), [#29](https://github.com/NoelPOS/au-van-platform/issues/29) and [#32](https://github.com/NoelPOS/au-van-platform/issues/32). Then [#31 Containerize the API and web build](https://github.com/NoelPOS/au-van-platform/issues/31), which blocks the AWS topology because no Dockerfile exists, followed by [#25 Create bookings idempotently](https://github.com/NoelPOS/au-van-platform/issues/25) and [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26).
+Merge [#44](https://github.com/NoelPOS/au-van-platform/pull/44), which closes [#26](https://github.com/NoelPOS/au-van-platform/issues/26) and with it the [#6](https://github.com/NoelPOS/au-van-platform/issues/6) parent and Milestone 2. Then [#41](https://github.com/NoelPOS/au-van-platform/issues/41), because it is what stands between the merged booking flow and a student actually using it, followed by Milestone 3 starting with [#7](https://github.com/NoelPOS/au-van-platform/issues/7).
 
 ## Ordered backlog
 
 The issue tracker is the durable implementation queue. Refine an issue when it becomes the next ready item; do not expand its scope without updating the issue and, when relevant, an ADR.
 
-1. [#27 Database migrations have never been applied](https://github.com/NoelPOS/au-van-platform/issues/27) — in review
-2. [#29 Harden the delivery cycle](https://github.com/NoelPOS/au-van-platform/issues/29) — in review
-3. [#32 Establish the Terraform foundation](https://github.com/NoelPOS/au-van-platform/issues/32) — in review
-4. [#31 Containerize the API and web build](https://github.com/NoelPOS/au-van-platform/issues/31)
-5. [#25 Create bookings idempotently with an auditable state history](https://github.com/NoelPOS/au-van-platform/issues/25)
-6. [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26)
-5. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
-6. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
-7. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
-8. [#10 Add end-to-end, concurrency, CI/CD, and demo deployment coverage](https://github.com/NoelPOS/au-van-platform/issues/10)
-9. [#11 Provision AWS-target infrastructure as code](https://github.com/NoelPOS/au-van-platform/issues/11)
+1. [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26) — in review
+2. [#41 CORS allowed origins are hard-coded to the Vite dev server](https://github.com/NoelPOS/au-van-platform/issues/41) — blocks any real use of the LIFF flow
+3. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
+4. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
+5. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
+6. [#10 Add end-to-end, concurrency, CI/CD, and demo deployment coverage](https://github.com/NoelPOS/au-van-platform/issues/10)
+7. [#11 Provision AWS-target infrastructure as code](https://github.com/NoelPOS/au-van-platform/issues/11)
 
-Completed: [#5](https://github.com/NoelPOS/au-van-platform/issues/5) (parent), [#18](https://github.com/NoelPOS/au-van-platform/issues/18), [#19](https://github.com/NoelPOS/au-van-platform/issues/19), and [#22](https://github.com/NoelPOS/au-van-platform/issues/22) — the transport inventory API, administration UI, and agent-driven delivery configuration are merged.
+Filed while building the above, none blocking: [#36](https://github.com/NoelPOS/au-van-platform/issues/36) and [#42](https://github.com/NoelPOS/au-van-platform/issues/42) (permission entries the loop needs, each the owner's to approve on its own), [#37](https://github.com/NoelPOS/au-van-platform/issues/37) (the commit guard accepts a trailer hidden in a comment), [#38](https://github.com/NoelPOS/au-van-platform/issues/38) (Terraform lock files, which need the binary), [#39](https://github.com/NoelPOS/au-van-platform/issues/39) (the admin trip form offers a status the API rejects), [#40](https://github.com/NoelPOS/au-van-platform/issues/40) (Node 20 is end-of-life), and [#43](https://github.com/NoelPOS/au-van-platform/issues/43) (`git -C` bypasses every git deny rule).
+
+Completed: [#5](https://github.com/NoelPOS/au-van-platform/issues/5), [#18](https://github.com/NoelPOS/au-van-platform/issues/18), [#19](https://github.com/NoelPOS/au-van-platform/issues/19), [#22](https://github.com/NoelPOS/au-van-platform/issues/22), [#24](https://github.com/NoelPOS/au-van-platform/issues/24), [#25](https://github.com/NoelPOS/au-van-platform/issues/25), [#27](https://github.com/NoelPOS/au-van-platform/issues/27), [#29](https://github.com/NoelPOS/au-van-platform/issues/29), [#31](https://github.com/NoelPOS/au-van-platform/issues/31), [#32](https://github.com/NoelPOS/au-van-platform/issues/32), [#34](https://github.com/NoelPOS/au-van-platform/issues/34) — the transport inventory API and administration UI, the agent-driven delivery configuration and its hardening, seat holds, idempotent booking creation, the Flyway repair, the Terraform foundation, and the container images.
