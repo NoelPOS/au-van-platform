@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AuthSession } from "../auth/session";
 import { ApiError } from "./booking-api";
 import {
@@ -68,6 +68,18 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
   const lostSeatLabels = seats
     .filter((seat) => selected.includes(seat.id) && !takeable.has(seat.id))
     .map((seat) => seat.label);
+
+  // A 404 on the map means the trip itself is gone. Rendering the error beside
+  // an empty grid would leave the student on a dead trip that is still in the
+  // list, so this is the same forced transition the other trip-gone codes take.
+  const tripIsGone = seatMap.error instanceof ApiError && seatMap.error.status === 404;
+  useEffect(() => {
+    if (tripIsGone)
+      backToTrips("That trip is no longer available. Choose another.");
+    // `backToTrips` is redeclared every render, so depending on it would fire
+    // the transition on every render instead of on the edge into the 404.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripIsGone]);
 
   if (
     [trips.error, bookings.error, seatMap.error, holdSeats.error, createBooking.error].some(

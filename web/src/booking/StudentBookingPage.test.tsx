@@ -289,6 +289,39 @@ describe("StudentBookingPage", () => {
     expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
   });
 
+  it("returns to the trip list when the seat map says the trip is gone", async () => {
+    stubApi({ seats: () => json({ detail: "Trip not found." }, 404) });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Mega Bangna/ }));
+
+    expect(
+      await screen.findByText(
+        "That trip is no longer available. Choose another.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Seat map" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the student on the seat step when the map fails for another reason", async () => {
+    stubApi({
+      seats: () => json({ detail: "The seat map could not be loaded." }, 500),
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Mega Bangna/ }));
+
+    expect(
+      await screen.findByText("The seat map could not be loaded."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Back to trips" }),
+    ).toBeInTheDocument();
+  });
+
   it("drops a selected seat that the poll shows has been taken", async () => {
     vi.useFakeTimers();
     let seatsRequested = 0;
