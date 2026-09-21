@@ -9,6 +9,9 @@ import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.TripSeat;
+import com.auvan.api.notification.dto.BookingNotification;
+import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,13 +41,15 @@ public class BookingService {
     private final IdempotencyService idempotency;
     private final BookingRepository bookings;
     private final SeatClaimRepository claims;
+    private final OutboxRecorder outbox;
 
     public BookingService(BookingWriter writer, IdempotencyService idempotency, BookingRepository bookings,
-                          SeatClaimRepository claims) {
+                          SeatClaimRepository claims, OutboxRecorder outbox) {
         this.writer = writer;
         this.idempotency = idempotency;
         this.bookings = bookings;
         this.claims = claims;
+        this.outbox = outbox;
     }
 
     public IdempotencyService.StoredResponse create(UUID userId, String key, CreateBookingRequest request) {
@@ -96,8 +101,15 @@ public class BookingService {
             throw Problems.conflict("booking_already_cancelled", "That booking has already been cancelled.");
         }
         booking.cancel(now);
-        booking.recordEvent(BookingEventType.CANCELLED, "Cancelled and released seats " + labelsOf(booking) + ".",
-                userId, now);
+        String detail = "Cancelled and released seats " + labelsOf(booking) + ".";
+        booking.recordEvent(BookingEventType.CANCELLED, detail, userId, now);
+        // Recorded here, before the flush, for the same reason the flush exists:
+        // deleteByBookingId clears the persistence context, and an outbox insert
+        // that has not been flushed by then is discarded silently. The booking
+        // would commit cancelled with nothing saying the student was owed a
+        // message, which is exactly the divergence the outbox exists to prevent.
+        outbox.record(OutboxEventType.BOOKING_CANCELLED, booking.getId(), booking.getUserId(),
+                new BookingNotification(booking.getReference(), detail), now);
         // Load-bearing, and it must come before the delete. deleteByBookingId
         // clears the persistence context, which would discard the cancellation
         // and the event above without raising anything at all.

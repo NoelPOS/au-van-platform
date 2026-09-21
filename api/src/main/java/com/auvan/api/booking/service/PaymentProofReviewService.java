@@ -9,6 +9,9 @@ import com.auvan.api.booking.entity.PaymentProofStatus;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.PaymentProofRepository;
+import com.auvan.api.notification.dto.BookingNotification;
+import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +41,14 @@ public class PaymentProofReviewService {
     private final BookingRepository bookings;
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
+    private final OutboxRecorder outbox;
 
     public PaymentProofReviewService(BookingRepository bookings, PaymentProofRepository proofs,
-                                     PaymentProofStorage storage) {
+                                     PaymentProofStorage storage, OutboxRecorder outbox) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
+        this.outbox = outbox;
     }
 
     /** Everything still waiting for a decision, oldest first. */
@@ -70,9 +75,10 @@ public class PaymentProofReviewService {
         UnderReview reviewed = lockedForDecision(proofId);
 
         reviewed.proof().approve(adminId, reviewNote, now);
-        reviewed.booking().recordEvent(BookingEventType.PAYMENT_APPROVED,
-                reviewNote == null ? "Payment approved." : "Payment approved: " + reviewNote, adminId, now);
+        String detail = reviewNote == null ? "Payment approved." : "Payment approved: " + reviewNote;
+        reviewed.booking().recordEvent(BookingEventType.PAYMENT_APPROVED, detail, adminId, now);
         reviewed.booking().confirm(now);
+        recordForStudent(OutboxEventType.PAYMENT_APPROVED, reviewed.booking(), detail, now);
         return BookingResponse.from(reviewed.booking());
     }
 
@@ -87,7 +93,19 @@ public class PaymentProofReviewService {
         // and without a reason they will send the same blurred slip again.
         reviewed.booking().recordEvent(BookingEventType.PAYMENT_REJECTED, reviewNote, adminId, now);
         reviewed.booking().markPaymentRejected(now);
+        recordForStudent(OutboxEventType.PAYMENT_REJECTED, reviewed.booking(), reviewNote, now);
         return BookingResponse.from(reviewed.booking());
+    }
+
+    /**
+     * The decision is the administrator's; the news is the student's. The
+     * recipient is the booking's owner and never {@code adminId}, and it is
+     * recorded inside the decision's own transaction, so a decision that rolls
+     * back tells nobody anything.
+     */
+    private void recordForStudent(OutboxEventType type, Booking booking, String detail, OffsetDateTime now) {
+        outbox.record(type, booking.getId(), booking.getUserId(),
+                new BookingNotification(booking.getReference(), detail), now);
     }
 
     /** A proof that may still be decided, and the locked booking it belongs to. */

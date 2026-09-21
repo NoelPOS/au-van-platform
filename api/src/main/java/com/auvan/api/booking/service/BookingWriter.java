@@ -11,6 +11,9 @@ import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
+import com.auvan.api.notification.dto.BookingNotification;
+import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,11 +40,14 @@ public class BookingWriter {
     private final BookingRepository bookings;
     private final SeatClaimRepository claims;
     private final IdempotencyService idempotency;
+    private final OutboxRecorder outbox;
 
-    public BookingWriter(BookingRepository bookings, SeatClaimRepository claims, IdempotencyService idempotency) {
+    public BookingWriter(BookingRepository bookings, SeatClaimRepository claims, IdempotencyService idempotency,
+                         OutboxRecorder outbox) {
         this.bookings = bookings;
         this.claims = claims;
         this.idempotency = idempotency;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -60,7 +66,8 @@ public class BookingWriter {
         Booking booking = new Booking(trip, userId, BookingReference.generate(now), request.passengerName(),
                 request.passengerPhone(), trip.getFare().multiply(BigDecimal.valueOf(held.size())), now);
         held.forEach(claim -> booking.addSeat(claim.getTripSeat()));
-        booking.recordEvent(BookingEventType.CREATED, "Booked seats " + labelsOf(held) + ".", userId, now);
+        String detail = "Booked seats " + labelsOf(held) + ".";
+        booking.recordEvent(BookingEventType.CREATED, detail, userId, now);
 
         try {
             bookings.save(booking);
@@ -76,6 +83,14 @@ public class BookingWriter {
             throw Problems.conflict("booking_creation_conflict",
                     "That booking could not be completed. Please try again.", collision);
         }
+
+        // Inside this transaction, which is the point: this method is where the
+        // outbox write belongs precisely because BookingService.create has no
+        // transaction of its own to join. Recording there would leave the row
+        // committed independently of the booking it describes — and every test
+        // that only counts rows would still pass.
+        outbox.record(OutboxEventType.BOOKING_CREATED, booking.getId(), userId,
+                new BookingNotification(booking.getReference(), detail), now);
 
         return idempotency.record(userId, endpoint, key, requestHash, HttpStatus.CREATED.value(),
                 BookingResponse.from(booking), now);

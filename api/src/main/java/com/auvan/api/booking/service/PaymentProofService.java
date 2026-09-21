@@ -8,6 +8,9 @@ import com.auvan.api.booking.entity.PaymentProof;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.PaymentProofRepository;
+import com.auvan.api.notification.dto.BookingNotification;
+import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,13 +40,16 @@ public class PaymentProofService {
     private final BookingRepository bookings;
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
+    private final OutboxRecorder outbox;
     private final long maxFileBytes;
 
     public PaymentProofService(BookingRepository bookings, PaymentProofRepository proofs,
-                               PaymentProofStorage storage, PaymentProofProperties properties) {
+                               PaymentProofStorage storage, OutboxRecorder outbox,
+                               PaymentProofProperties properties) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
+        this.outbox = outbox;
         this.maxFileBytes = properties.maxFileSize().toBytes();
     }
 
@@ -74,9 +80,13 @@ public class PaymentProofService {
         store(objectKey, image.contentType(), read(file));
 
         proofs.save(new PaymentProof(booking, userId, objectKey, image.contentType(), file.getSize(), now));
-        booking.recordEvent(BookingEventType.PAYMENT_PROOF_SUBMITTED, "Payment proof submitted for review.",
-                userId, now);
+        String detail = "Payment proof submitted for review.";
+        booking.recordEvent(BookingEventType.PAYMENT_PROOF_SUBMITTED, detail, userId, now);
         booking.markPaymentUnderReview(now);
+        // In this transaction, so a storage or database failure leaves no
+        // message owed for a submission that never happened.
+        outbox.record(OutboxEventType.PAYMENT_PROOF_SUBMITTED, booking.getId(), booking.getUserId(),
+                new BookingNotification(booking.getReference(), detail), now);
         return BookingResponse.from(booking);
     }
 
