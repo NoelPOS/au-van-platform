@@ -1,14 +1,33 @@
 export type SeatState = "AVAILABLE" | "HELD" | "HELD_BY_YOU" | "BOOKED";
 /**
  * A booking now starts at `PENDING_PAYMENT` and only an approved payment proof
- * reaches `CONFIRMED` (ADR-009). The rejected state a student can resubmit
- * from arrives with the admin review in #52.
+ * reaches `CONFIRMED` (ADR-009). `PAYMENT_REJECTED` is not a dead end: the
+ * booking keeps its seats and the student can send another slip.
  */
 export type BookingStatus =
   | "PENDING_PAYMENT"
   | "PAYMENT_UNDER_REVIEW"
+  | "PAYMENT_REJECTED"
   | "CONFIRMED"
   | "CANCELLED";
+
+export type BookingEventType =
+  | "CREATED"
+  | "PAYMENT_PROOF_SUBMITTED"
+  | "PAYMENT_APPROVED"
+  | "PAYMENT_REJECTED"
+  | "CANCELLED";
+
+/**
+ * One entry in a booking's history. `actorUserId` is whoever caused it, which
+ * for a review is a member of staff rather than the student reading it.
+ */
+export type BookingEvent = {
+  type: BookingEventType;
+  detail: string | null;
+  actorUserId: string | null;
+  createdAt: string;
+};
 
 export type AvailableTrip = {
   id: string;
@@ -68,5 +87,6 @@ export type Booking = {
   passengerPhone: string;
   totalFare: number;
   seats: HeldSeat[];
+  events: BookingEvent[];
   createdAt: string;
 };

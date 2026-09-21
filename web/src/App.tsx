@@ -5,7 +5,7 @@ import { configuredLiffId } from "./auth/liff-config";
 import type { AuthSession } from "./auth/session";
 import { Button } from "./components/ui/Button";
 import { StudentBookingPage } from "./booking/StudentBookingPage";
-import { AdminInventoryPage } from "./inventory/AdminInventoryPage";
+import { AdminPage } from "./admin/AdminPage";
 
 type HealthState = "checking" | "available" | "unavailable";
 
@@ -46,7 +46,7 @@ function App() {
   }
 
   if (session?.user.role === "ADMIN") {
-    return <AdminInventoryPage session={session} />;
+    return <AdminPage session={session} />;
   }
 
   if (session?.user.role === "STUDENT") {
