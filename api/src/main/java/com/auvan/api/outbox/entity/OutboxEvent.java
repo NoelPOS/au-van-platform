@@ -37,7 +37,13 @@ public class OutboxEvent {
     @Column(name = "event_type", nullable = false, length = 64)
     private OutboxEventType eventType;
 
-    /** The booking this is about. A plain column: see {@code V7} on why there is no foreign key. */
+    /**
+     * The thing this event is about: a booking for every type but the two
+     * waitlist ones, whose aggregate is a {@code waitlist_entries} row, because
+     * a promotion happens before any booking exists (ADR-011). A plain column
+     * with no foreign key — see {@code V7} on why that is deliberate — which is
+     * what lets the meaning widen without a migration.
+     */
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
 
