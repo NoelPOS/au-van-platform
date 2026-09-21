@@ -40,15 +40,26 @@ class DatabaseMigrationIntegrationTests extends AuthenticationTestSupport {
                 order by "installed_rank"
                 """, String.class);
 
-        assertThat(applied).containsExactly("1", "2", "3");
+        assertThat(applied).containsExactly("1", "2", "3", "4");
     }
 
     @Test
-    void theSchemaCarriesATableNoEntityMaps() {
-        // idempotency_keys exists only in V3 and no entity maps it, so Hibernate
-        // could never have generated it. Being able to query it at all is the
-        // proof that the migrations, not the mappings, built this schema.
-        assertThat(jdbc.queryForObject("select count(*) from idempotency_keys", Integer.class)).isZero();
+    void theSchemaCarriesABookingCheckConstraintNoMappingCouldExpress() {
+        // This used to query idempotency_keys: nothing mapped it, so Hibernate
+        // could not have generated it, and reading it at all was the proof. #25
+        // maps that table, so the proof had to move to something a mapping
+        // cannot express at all. bookings_total_fare_non_negative is a CHECK
+        // clause and exists only in V3.
+        //
+        // It is read from the catalog rather than provoked, because bookings has
+        // two foreign keys and a violation of either would be reported exactly
+        // like a violated check clause from here — the test would pass whether
+        // or not the constraint existed.
+        assertThat(jdbc.queryForObject("""
+                select count(*) from information_schema.table_constraints
+                where upper(constraint_name) = 'BOOKINGS_TOTAL_FARE_NON_NEGATIVE'
+                  and constraint_type = 'CHECK'
+                """, Integer.class)).isOne();
     }
 
     /**

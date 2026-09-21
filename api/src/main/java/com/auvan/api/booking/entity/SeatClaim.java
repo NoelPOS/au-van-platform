@@ -76,8 +76,28 @@ public class SeatClaim {
         return isBooked() || expiresAt.isAfter(moment);
     }
 
-    /** True only for an unbooked claim this user owns, expired or not. */
+    /**
+     * True only for an unbooked claim this user owns, expired or not.
+     *
+     * <p>Not for the confirmation path: it folds "booked" and "not yours" into
+     * one answer, which would tell a student confirming their own hold a second
+     * time that the hold does not exist. Confirmation asks the three questions
+     * separately.
+     */
     public boolean isHeldBy(UUID candidate) {
         return !isBooked() && userId.equals(candidate);
+    }
+
+    public boolean isOwnedBy(UUID candidate) {
+        return userId.equals(candidate);
+    }
+
+    public boolean hasExpiredAt(OffsetDateTime moment) {
+        return !expiresAt.isAfter(moment);
+    }
+
+    /** Turns a hold into a booked seat in place, so the seat is never unprotected. */
+    public void attachTo(UUID bookingId) {
+        this.bookingId = bookingId;
     }
 }
