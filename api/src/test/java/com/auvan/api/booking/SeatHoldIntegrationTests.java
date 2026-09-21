@@ -285,21 +285,30 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * Someone else's hold answers 404, not 403, so that a stranger cannot tell a
+     * live hold id from an imaginary one by the status they get back.
+     */
     @Test
-    void anotherStudentCannotReleaseSomeoneElsesHold() throws Exception {
+    void someoneElsesHoldReadsAsMissingAndSurvivesTheAttempt() throws Exception {
         String holdId = holdIdFrom(hold(studentToken, seats.get(0)).andExpect(status().isCreated()));
         String otherToken = tokenFor("other-token", "Uother");
 
         mockMvc.perform(post("/api/v1/seat-holds/" + holdId + "/release")
                         .header("Authorization", "Bearer " + otherToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Hold not found."));
+
         assertThat(claims.count()).isOne();
+        mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
+                .andExpect(jsonPath("$.seats[0].state").value("HELD_BY_YOU"));
     }
 
     @Test
-    void releasingAnUnknownHoldIsNotFound() throws Exception {
+    void releasingAHoldThatNeverExistedAnswersIdentically() throws Exception {
         mockMvc.perform(authenticated(post("/api/v1/seat-holds/" + UUID.randomUUID() + "/release")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("Hold not found."));
     }
 
     @Test
