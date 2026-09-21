@@ -2,8 +2,25 @@
 description: Run one full AU-Van delivery cycle — plan, implement, review, merge, and update the board for the next ready issue.
 ---
 
-Run one complete delivery cycle for the next ready AU-Van issue. Work one issue
-at a time; do not start a second while a pull request is open.
+Run one complete delivery cycle for the next ready AU-Van issue.
+
+## Concurrent tracks
+
+Several issues may run at once when their file surfaces are disjoint. Check
+before starting: two tracks must not both touch the same package, the same
+migration sequence, or the same workflow file. Typical safe pairings are an API
+issue with an infrastructure issue, or an API issue with a web issue whose
+endpoints already exist on `main`.
+
+Two rules keep them from colliding:
+
+- **The orchestrator owns `docs/project-status.md`.** Implementers must not
+  touch it; every track would otherwise conflict on it. Update it yourself
+  after each merge.
+- **Each track rebases on `main` after any other track merges**, then re-runs
+  both CI and the reviewer, because the diff has changed.
+
+When surfaces do overlap, serialise: finish one before starting the other.
 
 ## 1. Sync and select
 
@@ -101,8 +118,14 @@ Counters are per issue and reset on merge.
   Real failure → the implementer fixes it on the same branch with a new
   subject-only commit. **Limit 3.**
 - **Review rejected.** The implementer addresses every finding; the reviewer
-  runs again from scratch. **Limit 2 rounds.** A third rejection means the issue
-  is mis-scoped → **Blocked**.
+  runs again from scratch. Keep going while each round surfaces a **new** defect
+  — rounds that are still finding real problems are working, and a raw cap on
+  them was tried here and overridden twice because it measured the wrong thing.
+  Escalate to **Blocked** when a round finds nothing new but still rejects, when
+  a finding recurs after being fixed, or after six rounds, whichever comes
+  first. If the only remaining findings are description inaccuracies, fix the
+  description, verify each claim mechanically, and merge without another full
+  round.
 - **Conflict with `main`.** `git fetch origin && git rebase origin/main`,
   resolve, `git push --force-with-lease`, then re-run **both** CI and the
   reviewer. A conflict in booking or payment logic → **Blocked** immediately;
@@ -111,7 +134,8 @@ Counters are per issue and reset on merge.
   fix forward; if that does not work in one cycle, revert the merge with
   `git revert --no-commit <sha>` followed by a hand-written
   `revert(scope): …` subject, so the commit convention still holds.
-- **Caps.** Six corrective iterations, or two hours on one issue → **Blocked**.
+- **Caps.** Two hours of wall clock on one issue → **Blocked**, regardless of
+  progress.
 
 Never bypass the commit hook, never merge on a red or pending check, and never
 weaken a test to get green.
