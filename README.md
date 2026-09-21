@@ -20,7 +20,7 @@ docs/       product, architecture, decisions, and migration inventory
 
 ## Local development
 
-Prerequisites: Docker Desktop, Node.js 20+, and Java 21. On macOS, install Java with `brew install openjdk@21`, then add `export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"` to `~/.zshrc` and restart the shell before running Gradle.
+Prerequisites: Docker Desktop, Node.js 22+, and Java 21. On macOS, install Java with `brew install openjdk@21`, then add `export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"` to `~/.zshrc` and restart the shell before running Gradle.
 
 Point git at the tracked hooks once per clone, so commit messages are checked
 locally before they reach CI:
