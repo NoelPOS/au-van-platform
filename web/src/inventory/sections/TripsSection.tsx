@@ -42,7 +42,7 @@ export function TripsSection({
     routeId: routes[0]?.id ?? "",
     vehicleId: vehicles[0]?.id ?? "",
     departureAt: "",
-    status: "SCHEDULED" as const,
+    status: "ACTIVE" as const,
   };
   const ready = routes.length > 0 && vehicles.length > 0;
   const busy = createTrip.isPending || updateTrip.isPending;
@@ -132,7 +132,7 @@ export function TripsSection({
                 name="status"
                 defaultValue={trip.status}
               >
-                <option>SCHEDULED</option>
+                <option>ACTIVE</option>
                 <option>CANCELLED</option>
               </select>
             </label>

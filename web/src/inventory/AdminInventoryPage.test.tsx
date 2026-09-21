@@ -118,4 +118,73 @@ describe("AdminInventoryPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /^trips/i }));
     expect(screen.getByLabelText("Departure")).toBeInTheDocument();
   });
+
+  it("offers only trip statuses the API can deserialise", async () => {
+    const trip = {
+      id: "trip-1",
+      routeId: "route-1",
+      vehicleId: "vehicle-1",
+      departureAt: "2026-01-05T09:00:00Z",
+      fare: 35,
+      durationMinutes: 45,
+      status: "ACTIVE",
+      seats: [],
+    };
+    const fetcher = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/trips") && !init?.method) {
+          return json([trip]);
+        }
+        if (
+          String(input).endsWith("/trips/trip-1") &&
+          init?.method === "PUT"
+        ) {
+          const body = JSON.parse(String(init.body)) as { status: string };
+          return json({ ...trip, status: body.status });
+        }
+        return json([]);
+      },
+    );
+    vi.stubGlobal("fetch", fetcher);
+
+    renderPage();
+    await screen.findByText("No routes yet");
+    fireEvent.click(screen.getByRole("button", { name: /^trips/i }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+
+    const offered = Array.from(
+      (screen.getByLabelText("Status") as HTMLSelectElement).options,
+    ).map((option) => option.value);
+    // TripStatus in web/src/inventory/types.ts is "ACTIVE" | "CANCELLED";
+    // any other offered value is one Jackson cannot deserialise into the
+    // API's own TripStatus enum.
+    expect(offered).toEqual(["ACTIVE", "CANCELLED"]);
+
+    // Submitting resets the form to create mode, so each offered status is
+    // proven independently by re-entering edit mode.
+    for (const status of offered) {
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Status"), {
+        target: { value: status },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save trip" }));
+
+      // The form round-trips departureAt through a minute-precision
+      // datetime-local input, so the resubmitted value gains ":00.000Z"
+      // rather than reproducing the fixture's "Z" literally.
+      await vi.waitFor(() =>
+        expect(fetcher).toHaveBeenCalledWith(
+          expect.stringContaining("/trips/trip-1"),
+          expect.objectContaining({
+            method: "PUT",
+            body: JSON.stringify({
+              departureAt: "2026-01-05T09:00:00.000Z",
+              status,
+            }),
+          }),
+        ),
+      );
+      await screen.findByRole("button", { name: "Edit" });
+    }
+  });
 });
