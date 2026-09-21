@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.List;
 import java.util.UUID;
 
@@ -69,8 +70,12 @@ class DatabaseMigrationIntegrationTests extends AuthenticationTestSupport {
     }
 
     private Object ddlAutoIn(Resource configuration) throws IOException {
+        // Stream.findFirst rejects a null element, so mapping first would throw a
+        // bare NullPointerException when the setting is absent -- which is the
+        // case this test exists to report clearly.
         return new YamlPropertySourceLoader().load(configuration.getDescription(), configuration).stream()
                 .map(source -> source.getProperty("spring.jpa.hibernate.ddl-auto"))
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
     }
