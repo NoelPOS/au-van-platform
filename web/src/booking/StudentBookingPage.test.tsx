@@ -149,6 +149,13 @@ async function selectSeatA1() {
   fireEvent.click(await screen.findByRole("button", { name: "Seat A1, available" }));
 }
 
+async function holdFailsWith(body: unknown, status: number) {
+  stubApi({ hold: () => json(body, status) });
+  renderPage();
+  await selectSeatA1();
+  fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+}
+
 async function reachPassengerDetails() {
   await selectSeatA1();
   fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
@@ -243,6 +250,43 @@ describe("StudentBookingPage", () => {
       await screen.findByRole("button", { name: "Seat A1, held by someone else" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
+  });
+
+  it("returns to the trip list when the trip is withdrawn before the hold", async () => {
+    await holdFailsWith(
+      { detail: "This trip is no longer available.", code: "trip_not_available" },
+      409,
+    );
+
+    expect(
+      await screen.findByText(
+        "That trip is no longer available. Choose another.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+  });
+
+  it("returns to the trip list when the trip departs before the hold", async () => {
+    await holdFailsWith(
+      { detail: "This trip has already departed.", code: "trip_departed" },
+      409,
+    );
+
+    expect(
+      await screen.findByText("That trip has already departed. Choose another."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+  });
+
+  it("returns to the trip list when the hold finds no such trip", async () => {
+    await holdFailsWith({ detail: "Trip not found." }, 404);
+
+    expect(
+      await screen.findByText(
+        "That trip is no longer available. Choose another.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
   });
 
   it("drops a selected seat that the poll shows has been taken", async () => {
