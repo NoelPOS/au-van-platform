@@ -46,7 +46,31 @@ const booking = {
   passengerPhone: "0812345678",
   totalFare: 35,
   seats: [{ seatId: "seat-a1", label: "A1" }],
+  events: [
+    {
+      type: "CREATED",
+      detail: "Booked seat A1.",
+      actorUserId: "student-id",
+      createdAt: "2026-09-21T10:01:12Z",
+    },
+  ],
   createdAt: "2026-09-21T10:01:12Z",
+};
+
+/** What the student sees after an administrator has sent the slip back. */
+const rejectedBooking = {
+  ...booking,
+  status: "PAYMENT_REJECTED",
+  events: [
+    ...booking.events,
+    {
+      type: "PAYMENT_REJECTED",
+      detail: "The slip is too blurred to read.",
+      // An administrator's id, on the student's own booking.
+      actorUserId: "admin-id",
+      createdAt: "2026-09-21T11:02:00Z",
+    },
+  ],
 };
 
 function seatMap(a1: SeatState = "AVAILABLE") {
@@ -960,6 +984,35 @@ describe("StudentBookingPage", () => {
     expect(
       screen.queryByLabelText("Upload your payment slip"),
     ).not.toBeInTheDocument();
+  });
+
+  it("tells the student why a slip was rejected and takes another one", async () => {
+    const fetcher = stubApi({
+      bookings: () => json([rejectedBooking]),
+      trips: () => json([]),
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText("The slip is too blurred to read."),
+    ).toBeInTheDocument();
+    // Rejection is a failure, and the badge's fallback tone already says so.
+    expect(screen.getByText("PAYMENT_REJECTED")).toHaveClass("text-red-700");
+
+    fireEvent.change(screen.getByLabelText("Upload your payment slip"), {
+      target: {
+        files: [new File(["clearer"], "slip.jpg", { type: "image/jpeg" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send payment proof" }));
+
+    await vi.waitFor(() =>
+      expect(fetcher).toHaveBeenCalledWith(
+        "/api/v1/bookings/booking-1/payment-proof",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
   });
 
   it("reports the reason a payment slip was refused and keeps the form", async () => {

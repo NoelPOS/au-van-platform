@@ -8,6 +8,17 @@ import type { Booking } from "../types";
 /** Mirrors the API's own allowlist; its 400 is the backstop. */
 const acceptedImageTypes = "image/jpeg,image/png,image/webp";
 
+/**
+ * Why the last slip was turned down. The history is oldest first and a booking
+ * can be rejected more than once, so the reason to show is the last one.
+ */
+function rejectionReason(booking: Booking): string | null {
+  return (
+    booking.events.findLast((event) => event.type === "PAYMENT_REJECTED")
+      ?.detail ?? null
+  );
+}
+
 export function MyBookingsSection({
   bookings,
   loading,
@@ -51,7 +62,14 @@ export function MyBookingsSection({
             <p className="mt-1 text-sm text-muted">
               {`Seat ${booking.seats.map((seat) => seat.label).join(", ")} · ${formatFare(booking.totalFare)}`}
             </p>
-            {booking.status === "PENDING_PAYMENT" && (
+            {booking.status === "PAYMENT_REJECTED" && (
+              <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                {rejectionReason(booking) ??
+                  "Your payment slip was not accepted. Please send another one."}
+              </p>
+            )}
+            {(booking.status === "PENDING_PAYMENT" ||
+              booking.status === "PAYMENT_REJECTED") && (
               <PaymentProofForm
                 bookingId={booking.id}
                 onSubmitProof={onSubmitProof}
