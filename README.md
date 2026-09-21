@@ -13,7 +13,7 @@ The planning foundation, local development environment, authentication boundary,
 ```text
 web/        React application: admin and student LIFF route groups
 api/        Spring Boot modular monolith
-infra/      local containers and deployment infrastructure
+infra/      Terraform for the AWS target topology
 tests/e2e/  Playwright end-to-end coverage
 docs/       product, architecture, decisions, and migration inventory
 ```
@@ -84,5 +84,39 @@ npm run dev
 ```
 
 The frontend runs at `http://localhost:5173` and displays the result of the API health check. The API health endpoint is `http://localhost:8080/actuator/health`.
+
+## Run the whole stack in containers
+
+The two `Dockerfile`s build the API and the production web bundle, and
+`compose.yaml` runs them next to PostgreSQL and Redis. Nothing here is
+deployed anywhere and no registry is involved.
+
+```sh
+docker compose up -d --wait
+```
+
+It reads the same ignored root `.env`, so `POSTGRES_PASSWORD` and `JWT_SECRET`
+have to be set first: the API refuses to start without a signing key, and
+Flyway needs the database. The API answers on `http://localhost:8080` and the
+production web build on `http://localhost:8081`.
+
+That second port serves the bundle and proxies `/api` and `/actuator` to the
+API, so the browser sees a single origin. This is the same contract the Vite
+dev proxy gives you at `http://localhost:5173` and, per ADR-007, the one
+CloudFront gives the deployed demo. `VITE_API_BASE_URL` is therefore
+deliberately unset for a container build: Vite inlines build-time values into
+the bundle, so an image built with a host in it would point every visitor's
+browser at that host.
+
+`VITE_LIFF_ID` is the exception, because the LINE SDK needs it before any
+network call. It is a build argument, and an image built with one is specific
+to that LINE channel.
+
+```sh
+docker compose build --build-arg VITE_LIFF_ID=your-liff-id web
+```
+
+Stop the stack with `docker compose down`, or `docker compose down -v` to
+delete the local database volume as well.
 
 Run validation locally with `cd web && npm run lint && npm run test && npm run build` and `cd api && ./gradlew test`.
