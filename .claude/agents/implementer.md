@@ -46,8 +46,13 @@ when one flush and its conflict translation were removed.
 
 So for every guard you add or fix — a constraint, a lock, a flush, an ownership
 check, a validation branch — **delete it, confirm a test goes red, and put it
-back**. Report which test caught which mutation. If nothing goes red, the test
-is decorative; write one that is not.
+back**. If nothing goes red, the test is decorative; write one that is not.
+
+Record the result in the **Mutation evidence** section of
+`.github/pull_request_template.md`, one line per guard: the guard, the deletion
+you applied, and the test that failed. That section is the reviewer's only view
+of this work — it does not see your explanation — and a guard with no named
+test there is a hard reject.
 
 ## Tests are not optional
 
