@@ -74,6 +74,12 @@ resource "aws_security_group" "load_balancer" {
   tags = {
     Name = "${local.name_prefix}-alb"
   }
+
+  # name_prefix only avoids the name collision if the replacement is created
+  # before the old group is destroyed.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "load_balancer_http" {
@@ -104,6 +110,12 @@ resource "aws_security_group" "task" {
   tags = {
     Name = "${local.name_prefix}-task"
   }
+
+  # name_prefix only avoids the name collision if the replacement is created
+  # before the old group is destroyed.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "task_from_load_balancer" {
@@ -133,6 +145,12 @@ resource "aws_security_group" "database" {
 
   tags = {
     Name = "${local.name_prefix}-db"
+  }
+
+  # name_prefix only avoids the name collision if the replacement is created
+  # before the old group is destroyed.
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
