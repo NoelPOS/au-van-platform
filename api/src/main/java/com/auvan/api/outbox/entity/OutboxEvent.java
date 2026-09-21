@@ -62,9 +62,15 @@ public class OutboxEvent {
     private String lastError;
 
     /**
-     * Null for a state-change event, which legitimately repeats. #63 sets it
-     * for a scheduled reminder, where the unique constraint on this column is
-     * what makes scheduling idempotent.
+     * Null for a state-change event, which legitimately repeats, and set for a
+     * scheduled departure reminder, where the unique constraint on this column
+     * is what makes scheduling idempotent — the legacy application's own
+     * {@code unique (bookingId, type)} ({@code src/models/ReminderJob.ts:46}).
+     *
+     * <p>It is therefore also the column that says <em>which rows are
+     * reminders</em>, which is what
+     * {@link com.auvan.api.outbox.repository.OutboxEventRepository#cancelScheduled}
+     * selects on when a booking stops being eligible for one.
      */
     @Column(name = "dedupe_key", length = 255)
     private String dedupeKey;
@@ -88,6 +94,25 @@ public class OutboxEvent {
         this.attempts = 0;
         this.nextAttemptAt = now;
         this.createdAt = now;
+    }
+
+    /**
+     * A reminder: the same row, due in the future and carrying a dedupe key.
+     *
+     * <p>That is the whole of what makes a scheduled reminder different from a
+     * notification, and the reason ADR-010 rejected a second {@code reminder_jobs}
+     * table — the claim, the backoff and the dead-letter rule are already
+     * written here and would otherwise be written twice.
+     *
+     * @param dueAt when the reminder should reach the student, which is always
+     *              in the future: a reminder whose time has already passed is
+     *              not scheduled at all
+     */
+    public OutboxEvent(OutboxEventType eventType, UUID aggregateId, UUID recipientUserId, String payload,
+                       String dedupeKey, OffsetDateTime dueAt, OffsetDateTime now) {
+        this(eventType, aggregateId, recipientUserId, payload, now);
+        this.dedupeKey = dedupeKey;
+        this.nextAttemptAt = dueAt;
     }
 
     public UUID getId() { return id; }

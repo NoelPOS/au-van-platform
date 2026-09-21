@@ -42,14 +42,16 @@ public class BookingService {
     private final BookingRepository bookings;
     private final SeatClaimRepository claims;
     private final OutboxRecorder outbox;
+    private final DepartureReminderService reminders;
 
     public BookingService(BookingWriter writer, IdempotencyService idempotency, BookingRepository bookings,
-                          SeatClaimRepository claims, OutboxRecorder outbox) {
+                          SeatClaimRepository claims, OutboxRecorder outbox, DepartureReminderService reminders) {
         this.writer = writer;
         this.idempotency = idempotency;
         this.bookings = bookings;
         this.claims = claims;
         this.outbox = outbox;
+        this.reminders = reminders;
     }
 
     public IdempotencyService.StoredResponse create(UUID userId, String key, CreateBookingRequest request) {
@@ -117,6 +119,13 @@ public class BookingService {
         // Built while the booking is still managed, for the same reason.
         BookingResponse response = BookingResponse.from(booking);
         claims.deleteByBookingId(booking.getId());
+        // A cancelled booking is not departing, so its scheduled reminders must
+        // not fire. Last, and after the claim delete on purpose: this is a bulk
+        // update, the delete has already cleared the persistence context, and
+        // nothing below reads a managed entity. It is scoped to rows carrying a
+        // dedupe key, so the BOOKING_CANCELLED row recorded above — which the
+        // student does still need — is untouched.
+        reminders.cancel(bookingId, now);
         return response;
     }
 

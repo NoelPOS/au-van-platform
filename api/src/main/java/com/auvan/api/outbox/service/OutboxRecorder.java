@@ -49,4 +49,27 @@ public class OutboxRecorder {
         return events.save(new OutboxEvent(type, aggregateId, recipientUserId,
                 json.writeValueAsString(payload), now));
     }
+
+    /**
+     * Records work that is owed later rather than now — today, a departure
+     * reminder.
+     *
+     * <p>Joins the caller's transaction for the same reason {@link #record}
+     * does: the reminder and the approval that earned it are one commit, so an
+     * approval that rolls back schedules nothing.
+     *
+     * @param dedupeKey unique across the table, which is what makes scheduling
+     *                  idempotent; this returns {@code null} without writing
+     *                  when that key is already present
+     * @param dueAt     when the reminder becomes claimable, which the caller has
+     *                  already established is in the future
+     */
+    public OutboxEvent schedule(OutboxEventType type, UUID aggregateId, UUID recipientUserId, Object payload,
+                                String dedupeKey, OffsetDateTime dueAt, OffsetDateTime now) {
+        if (events.existsByDedupeKey(dedupeKey)) {
+            return null;
+        }
+        return events.save(new OutboxEvent(type, aggregateId, recipientUserId,
+                json.writeValueAsString(payload), dedupeKey, dueAt, now));
+    }
 }
