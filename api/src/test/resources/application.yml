@@ -62,6 +62,18 @@ booking:
     enabled: false
     poll-interval: PT1M
     batch-size: 50
+  waitlist:
+    # False, and deliberately different from the main configuration, for the
+    # reason booking.expiry.enabled above gives: a live promotion sweep would
+    # hand seats out under the booking and payment-proof concurrency tests'
+    # own fixtures mid-assertion. The sweep this gates is issue #69's; nothing
+    # on this branch reads the flag.
+    enabled: false
+    # Mirrors the main configuration; this file replaces it rather than merging
+    # with it, so a key added to one has to be added to the other.
+    promotion-window: PT30M
+    poll-interval: PT1M
+    batch-size: 50
 
 outbox:
   # Mirrors the main configuration; this file replaces it rather than merging

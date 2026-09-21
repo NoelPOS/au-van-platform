@@ -21,7 +21,8 @@ import java.time.OffsetDateTime;
  */
 @ConfigurationProperties(prefix = "booking")
 public record BookingProperties(Duration holdTtl, int maxSeatsPerHold, Duration paymentWindow,
-                                Duration departureCutoff, Duration idempotencyKeyRetention, Expiry expiry) {
+                                Duration departureCutoff, Duration idempotencyKeyRetention, Expiry expiry,
+                                Waitlist waitlist) {
     /**
      * The scheduled sweep. {@code enabled} is {@code false} in the test
      * configuration for the reason {@code OutboxProperties.Dispatch} gives: a
@@ -30,6 +31,22 @@ public record BookingProperties(Duration holdTtl, int maxSeatsPerHold, Duration 
      * directly.
      */
     public record Expiry(boolean enabled, Duration pollInterval, int batchSize) { }
+
+    /**
+     * The waitlist and its promotion sweep (ADR-011). {@code enabled} is
+     * {@code false} in the test configuration for exactly the reason
+     * {@link Expiry}'s is.
+     *
+     * <p>{@code promotionWindow} is deliberately not {@code holdTtl}: five
+     * minutes is calibrated for a student already sitting in the seat map, and
+     * a promoted student has to notice a LINE push first.
+     *
+     * <p>Only {@code promotionWindow} is read on this branch, by
+     * {@link #promotionDeadlineFor}. The sweep the other three configure is
+     * issue #69; the configuration surface is here because this is the branch
+     * that owns the waitlist's shape.
+     */
+    public record Waitlist(boolean enabled, Duration promotionWindow, Duration pollInterval, int batchSize) { }
 
     /**
      * The deadline a booking gets when it starts waiting for a payment:
@@ -54,5 +71,20 @@ public record BookingProperties(Duration holdTtl, int maxSeatsPerHold, Duration 
      */
     public OffsetDateTime departureBoundFor(OffsetDateTime departureAt) {
         return departureAt.minus(departureCutoff);
+    }
+
+    /**
+     * How long a promoted student has to take the seat they were offered:
+     * {@code min(now + waitlist.promotion-window, departureAt - departureCutoff)}.
+     *
+     * <p>The same shape as {@link #paymentDeadlineFor} and bounded the same way,
+     * so a promotion never outlives the seat's usefulness. A trip already past
+     * its departure bound produces a deadline in the past, which is the point:
+     * ADR-011 makes that trip promote nobody rather than special-casing it here.
+     */
+    public OffsetDateTime promotionDeadlineFor(OffsetDateTime departureAt, OffsetDateTime now) {
+        OffsetDateTime window = now.plus(waitlist.promotionWindow());
+        OffsetDateTime departureBound = departureBoundFor(departureAt);
+        return window.isBefore(departureBound) ? window : departureBound;
     }
 }
