@@ -54,8 +54,9 @@ attribution in the body.** Set the board item to **In review** (`811cdd56`).
 gh pr checks <n> --watch
 ```
 
-"Web checks", "API checks", and "GitGuardian Security Checks" must all be
-`SUCCESS`. Red → **Failure handling**.
+"Web checks", "API checks", "Commit checks", and "GitGuardian Security Checks"
+must all be `SUCCESS`. The first three are required contexts on `main`, so a red
+one cannot be merged around. Red → **Failure handling**.
 
 ## 6. Review gate
 

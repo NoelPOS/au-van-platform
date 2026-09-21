@@ -75,8 +75,11 @@ End with exactly one line, nothing after it:
 Then post your findings and verdict as a comment:
 
 ```sh
-gh pr comment <n> --body-file <findings>
+gh pr comment <n> --body "<your findings and verdict>"
 ```
+
+Pass the text inline with `--body`. Do not write a findings file — you are not
+permitted to create files, and a stray file would trip the caller's tree check.
 
 Do **not** use `gh pr review --approve`. The reviewing account is the same as
 the pull-request author on this repository, and GitHub rejects self-approval
