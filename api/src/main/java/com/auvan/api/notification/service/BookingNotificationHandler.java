@@ -65,6 +65,8 @@ public class BookingNotificationHandler {
         String lead = switch (type) {
             case BOOKING_CREATED -> "Your seats are held. Send your payment proof to keep them.";
             case BOOKING_CANCELLED -> "Your booking has been cancelled.";
+            case BOOKING_EXPIRED ->
+                    "Your booking was not paid for in time, so the seats have been released.";
             case PAYMENT_PROOF_SUBMITTED -> "We have your payment proof and are reviewing it.";
             case PAYMENT_APPROVED -> "Your payment is approved and your booking is confirmed.";
             case PAYMENT_REJECTED -> "Your payment proof was not accepted.";
