@@ -102,16 +102,20 @@ exception to this gate: when the only findings left are inaccuracies in the
 pull-request description, correct them, verify each claim mechanically, and
 merge without a further round.
 
-## 6b. Record the review
+## 6b. Confirm the review is on the pull request
 
-Post the verdict and its findings on the pull request:
+The reviewer posts its own findings and verdict, so do not post them again —
+a second comment would only duplicate it. Assert that its comment landed:
 
 ```sh
-gh pr comment <n> --body "<verdict and findings>"
+gh pr view <n> --json comments \
+  --jq '[.comments[] | select(.body | contains("VERDICT:"))] | length'
 ```
 
-Reviews that live only in an agent transcript leave no trail. Every claim the
-loop makes about having been reviewed must be checkable from GitHub.
+Expect one such comment per review round. Zero means the reviewer did not post
+— abort the cycle and report it. Reviews that live only in an agent transcript
+leave no trail; every claim the loop makes about having been reviewed must be
+checkable from GitHub.
 
 ## 7. Merge
 
