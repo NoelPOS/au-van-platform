@@ -572,6 +572,15 @@ describe("StudentBookingPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("asks the student to sign in again when the hold is refused as expired", async () => {
+    // The sign-in screen replaces the page, so a 401 mid-flow needs no notice
+    // of its own in the failure handler.
+    await holdFailsWith(null, 401);
+
+    expect(await screen.findByText("Sign in again")).toBeInTheDocument();
+    expect(screen.queryByText("Upcoming trips")).not.toBeInTheDocument();
+  });
+
   it("offers a retry when the trip list cannot be loaded", async () => {
     let attempts = 0;
     stubApi({
