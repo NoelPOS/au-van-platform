@@ -20,4 +20,18 @@ public interface PaymentProofStorage {
      *                          half-written booking behind.
      */
     void store(String objectKey, String contentType, byte[] content);
+
+    /**
+     * Reads the image back for the administrator reviewing it.
+     *
+     * <p>Returns the bytes rather than a stream: the ceiling is five megabytes
+     * and {@code payment-proof.max-file-size} enforces it, so there is nothing
+     * to stream defensively around. ADR-009's "streams it back" is about who
+     * brokers the bytes — the API, never a presigned URL — not about the type.
+     *
+     * @throws RuntimeException if the object could not be read, including when
+     *                          it is not there; never {@code null}, so a caller
+     *                          cannot mistake a missing image for an empty one.
+     */
+    byte[] load(String objectKey);
 }

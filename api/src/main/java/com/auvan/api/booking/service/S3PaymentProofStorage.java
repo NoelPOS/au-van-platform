@@ -4,6 +4,7 @@ import com.auvan.api.booking.config.PaymentProofProperties;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
@@ -35,5 +36,16 @@ public class S3PaymentProofStorage implements PaymentProofStorage {
                         .contentType(contentType)
                         .build(),
                 RequestBody.fromBytes(content));
+    }
+
+    @Override
+    public byte[] load(String objectKey) {
+        // Throws NoSuchKeyException when the object is gone, which the caller
+        // turns into a clean 503 rather than letting the SDK's own message —
+        // bucket, endpoint, and all — reach the administrator's browser.
+        return s3.getObjectAsBytes(GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectKey)
+                .build()).asByteArray();
     }
 }
