@@ -1,6 +1,6 @@
 export type RouteStatus = "ACTIVE" | "INACTIVE";
 export type VehicleStatus = "ACTIVE" | "INACTIVE";
-export type TripStatus = "SCHEDULED" | "CANCELLED";
+export type TripStatus = "ACTIVE" | "CANCELLED";
 
 export type VanRoute = {
   id: string;
