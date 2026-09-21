@@ -232,10 +232,19 @@ Counters are per issue and reset on merge.
   Escalate to **Blocked** when a round finds nothing new but still rejects, when
   a finding recurs after being fixed, or after six rounds, whichever comes
   first.
-- **Conflict with `main`.** `git fetch origin && git rebase origin/main`,
-  resolve, `git push --force-with-lease`, then re-run **both** CI and the
-  reviewer. A conflict in booking or payment logic → **Blocked** immediately;
-  never guess at merge semantics for seats or money.
+- **Conflict with `main`.** Name the worktree on every one of these, in the
+  compound form §3 establishes — one Bash call per line:
+
+  ```sh
+  cd .worktrees/<short-name> && git fetch origin && git rebase origin/main
+  cd .worktrees/<short-name> && git push --force-with-lease
+  ```
+
+  Resolve between the two, then re-run **both** CI and the reviewer. Run from
+  the root tree instead and the rebase reports that `main` is up to date,
+  leaves the track branch at its original base, and the force-push that follows
+  targets `main`. A conflict in booking or payment logic → **Blocked**
+  immediately; never guess at merge semantics for seats or money.
 - **`main` goes red after a merge.** Highest priority. Open a `Bug:` issue and
   fix forward; if that does not work in one cycle, revert the merge with
   `git revert --no-commit <sha>` followed by a hand-written
