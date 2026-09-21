@@ -13,6 +13,28 @@ Read `AGENTS.md`, `docs/project-status.md`, and the plan posted on the issue.
 Match the patterns already in the codebase; do not introduce new ones without a
 reason you can state in the pull request.
 
+## Work in the track's worktree, not the repository root
+
+The orchestrator gives you this track's worktree path, `.worktrees/<short-name>`
+relative to the repository root. **Everything you do happens there.** The root
+tree belongs to whatever other track holds it, on whatever branch it holds; a
+commit or a build you run there is the collision the worktree exists to
+prevent. If no path was given to you, ask for it before you touch anything.
+
+Your shell working directory resets to the repository root between every Bash
+call, so a `cd` in one call is gone by the next. Put the `cd` and the command it
+applies to in **one compound Bash call**, one call per operation:
+
+- **Git:** `cd .worktrees/<short-name> && git add <path>`, then
+  `cd .worktrees/<short-name> && git commit -m "<subject>"`. The permission
+  matcher decomposes an `&&` chain and evaluates each sub-command, so the
+  `git commit` is matched by the existing allow entry and nothing prompts.
+- **Do not use `git -C <worktree> …`.** Inserting `-C <path>` before the
+  subcommand defeats prefix matching, so it matches no allow entry and prompts
+  on every call. #43 records that gap.
+- **File tools:** absolute paths under the worktree. A relative path resolves
+  against the root tree, not the worktree.
+
 ## Simplicity is the priority
 
 The repository owner's stated top value is clean, readable, maintainable code.
@@ -65,12 +87,13 @@ test there is a hard reject.
 ## The local gate — run it before every push
 
 ```sh
-cd web && npm ci && npm run lint && npm run test && npm run build
-cd api && ./gradlew test
+cd .worktrees/<short-name>/web && npm ci && npm run lint && npm run test && npm run build
+cd .worktrees/<short-name>/api && ./gradlew test
 ```
 
 This reproduces CI exactly and needs neither Docker nor credentials. Do not push
-until both pass.
+until both pass. Each line is its own Bash call, and each names the worktree:
+`cd web && …` would build the root tree's checkout, not your branch.
 
 ## Say only what you can show
 
