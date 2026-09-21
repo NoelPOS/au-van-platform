@@ -66,8 +66,11 @@ booking:
     # False, and deliberately different from the main configuration, for the
     # reason booking.expiry.enabled above gives: a live promotion sweep would
     # hand seats out under the booking and payment-proof concurrency tests'
-    # own fixtures mid-assertion. The sweep this gates is issue #69's; nothing
-    # on this branch reads the flag.
+    # own fixtures mid-assertion. WaitlistPromotionScheduler reads this flag
+    # through @ConditionalOnProperty, so false leaves no scheduler bean at all.
+    # Tests call WaitlistPromotionService.sweep() directly;
+    # WaitlistPromotionSchedulingIntegrationTests turns this back on in
+    # isolation to prove the scheduled path is really wired.
     enabled: false
     # Mirrors the main configuration; this file replaces it rather than merging
     # with it, so a key added to one has to be added to the other.
