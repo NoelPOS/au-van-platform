@@ -43,6 +43,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -329,6 +330,10 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(sender.messages()).isEmpty();
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
+        // Not even a candidate. The claim would refuse it anyway, but a table
+        // whose history is mostly SENT would otherwise fill every batch with
+        // rows there is nothing to do about and starve the ones there is.
+        assertThat(events.findDispatchable(OffsetDateTime.now(), PageRequest.of(0, 50))).isEmpty();
     }
 
     /**
