@@ -48,8 +48,9 @@ So for every guard you add or fix — a constraint, a lock, a flush, an ownershi
 check, a validation branch — **delete it, confirm a test goes red, and put it
 back**. If nothing goes red, the test is decorative; write one that is not.
 
-Record the result in the **Mutation evidence** section of
-`.github/pull_request_template.md`, one line per guard: the guard, the deletion
+Record the result in the **Mutation evidence** section of the pull-request
+body (the section `.github/pull_request_template.md` provides — fill it in the
+body; do not edit the template), one line per guard: the guard, the deletion
 you applied, and the test that failed. That section is the reviewer's only view
 of this work — it does not see your explanation — and a guard with no named
 test there is a hard reject.
