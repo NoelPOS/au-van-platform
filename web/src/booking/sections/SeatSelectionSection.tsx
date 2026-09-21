@@ -4,10 +4,15 @@ import { SeatLegend, SeatMap } from "../components/SeatMap";
 import { formatDeparture, formatFare } from "../format";
 import type { AvailableTrip, TripSeat } from "../types";
 
-/** Empty when nothing was lost, so the live region can stay mounted. */
+/**
+ * Empty when nothing was lost, so the live region can stay mounted. The
+ * four-seat cap means more than one seat can go at once, so this pluralises.
+ */
 function lostSeatMessage(labels: string[]): string {
   if (labels.length === 0) return "";
-  return `Seat ${labels.join(", ")} was taken by another student and has been removed from your selection.`;
+  if (labels.length === 1)
+    return `Seat ${labels[0]} was taken by another student and has been removed from your selection.`;
+  return `Seats ${labels.join(", ")} were taken by another student and have been removed from your selection.`;
 }
 
 export function SeatSelectionSection({
