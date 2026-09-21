@@ -17,6 +17,15 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      # The container's backstop, deliberately above payment-proof.max-file-size
+      # so that every upload it accepts is answered by the application's own
+      # validation with a clean 400 and a machine-readable code. Bounded rather
+      # than unlimited: without a cap an absurd upload is buffered to disk in
+      # full before anything gets to reject it.
+      max-file-size: 8MB
+      max-request-size: 8MB
   lifecycle:
     # Sits under ECS's default 30s stopTimeout, so a task drains rather than
     # being killed with requests still in flight.
@@ -48,6 +57,19 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
+
+payment-proof:
+  # A private bucket; nothing here is ever handed to a browser (ADR-009).
+  bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}
+  region: ${PAYMENT_PROOF_REGION:ap-southeast-1}
+  # Blank against AWS S3. Set to the MinIO service for local development and
+  # compose; the client is the same either way. No credentials here: the AWS
+  # SDK's default chain reads them from the environment locally and from the
+  # task role in the deployed target.
+  endpoint: ${PAYMENT_PROOF_ENDPOINT:}
+  # The legacy application's own ceiling. spring.servlet.multipart above is the
+  # container's backstop and sits deliberately higher.
+  max-file-size: 5MB
 
 management:
   endpoints:

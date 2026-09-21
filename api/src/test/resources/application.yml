@@ -17,6 +17,11 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      # Mirrors the main configuration; see the comment there.
+      max-file-size: 8MB
+      max-request-size: 8MB
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
@@ -42,6 +47,15 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
+
+payment-proof:
+  # Mirrors the main configuration; this file replaces it rather than merging
+  # with it. No endpoint and no credentials: the tests substitute an in-memory
+  # PaymentProofStorage, so the S3 client is built but never called.
+  bucket: test-payment-proofs
+  region: ap-southeast-1
+  endpoint:
+  max-file-size: 5MB
 
 management:
   health:

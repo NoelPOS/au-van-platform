@@ -54,17 +54,17 @@ set +a
 
 The command creates that local user if needed, or promotes the existing user to `ADMIN`. It is safe to run again. Never expose this operation as a public API endpoint.
 
-Start PostgreSQL and Redis:
+Start PostgreSQL, Redis, and MinIO:
 
 ```sh
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio
 ```
 
 If you started PostgreSQL before creating `.env`, recreate the local database so it receives the new password. This deletes local development data only:
 
 ```sh
 docker compose down -v
-docker compose up -d postgres redis
+docker compose up -d postgres redis minio
 ```
 
 In separate terminals, start the API and web app. Spring Boot uses the database password exported from the ignored root `.env` file:
@@ -85,10 +85,31 @@ npm run dev
 
 The frontend runs at `http://localhost:5173` and displays the result of the API health check. The API health endpoint is `http://localhost:8080/actuator/health`.
 
+## Payment-proof storage
+
+Payment-proof images live in a private S3 bucket (ADR-009): AWS S3 in the
+deployed target, MinIO locally, one client either way. MinIO starts with its
+own `minioadmin` / `minioadmin` default, so put that pair in the ignored root
+`.env` as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` -- the AWS SDK's
+default credentials chain is what reads them. `PAYMENT_PROOF_BUCKET` and
+`PAYMENT_PROOF_REGION` have working defaults; set `PAYMENT_PROOF_ENDPOINT` to
+`http://localhost:9000` only when running the API on the host with `./gradlew
+bootRun`, since `compose.yaml` already points the `api` container at the MinIO
+service.
+
+The bucket is not created for you. Once, after MinIO is up, open the console at
+<http://localhost:9001>, sign in with those credentials, and create a bucket
+named `au-van-payment-proofs`. Leave it private: nothing outside the API ever
+reads it, and no URL to it is ever sent to a browser.
+
+Neither `./gradlew test` nor CI needs any of this. The tests substitute an
+in-memory implementation of the storage port, so the suite still runs with no
+container and no credential.
+
 ## Run the whole stack in containers
 
 The two `Dockerfile`s build the API and the production web bundle, and
-`compose.yaml` runs them next to PostgreSQL and Redis. Nothing here is
+`compose.yaml` runs them next to PostgreSQL, Redis, and MinIO. Nothing here is
 deployed anywhere and no registry is involved.
 
 ```sh

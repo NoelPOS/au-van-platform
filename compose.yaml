@@ -24,6 +24,33 @@ services:
       timeout: 5s
       retries: 10
 
+  # Payment-proof object storage for local development, speaking the same S3
+  # API the deployed target's bucket does (ADR-009), so the application talks
+  # to one client either way.
+  #
+  # Pulled from quay.io rather than Docker Hub: an anonymous pull of
+  # docker.io/minio/minio is refused, and neither a fresh checkout nor CI is
+  # logged in to anything.
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ':9001'
+    # No MINIO_ROOT_USER/MINIO_ROOT_PASSWORD, so the image's own
+    # minioadmin/minioadmin applies: a local development default is not a
+    # credential worth committing a value for. Put the same pair in .env as
+    # AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the API to use.
+    ports:
+      # 9000 is the S3 API, 9001 the console the bucket is created from.
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      # `mc` ships in the image and `local` is its own preconfigured alias.
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: api
@@ -34,10 +61,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATA_REDIS_HOST: redis
+      PAYMENT_PROOF_ENDPOINT: http://minio:9000
     ports:
       - '8080:8080'
     depends_on:
       postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
       # Started alongside, not waited on. No application code uses Redis yet
       # (ADR-003, ADR-007) and its health indicator is disabled, so making the
@@ -60,3 +90,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  minio-data:
