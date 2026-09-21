@@ -6,7 +6,7 @@ The transport-inventory tables are implemented in migration `V2`. The booking ta
 
 Flyway owns the schema. The migrations under `api/src/main/resources/db/migration` are the only thing that creates or changes a table, and `spring.jpa.hibernate.ddl-auto` is `validate` in both `application.yml` files, so Hibernate checks the mappings against the migrated schema at startup and refuses to start when they disagree.
 
-Entity mappings therefore describe the table rather than define it. Column lengths and named unique constraints are repeated in the mapping so that a divergence shows up in review; `CHECK` clauses and the indexes in `V3` exist only in SQL, because a mapping cannot express them.
+Entity mappings therefore describe the table rather than define it. Column lengths and named unique constraints are repeated in the mapping so that a divergence shows up in review; `CHECK` clauses and the indexes in `V3` exist only in SQL, because `validate` checks neither, so mirroring them would buy nothing.
 
 Until issue #27 this was not the case: `flyway-core` was on the classpath without `spring-boot-flyway`, which is where Spring Boot 4 moved `FlywayAutoConfiguration`, so no Flyway bean existed and no migration had ever run. Tests passed on a schema Hibernate generated from the mappings, and against PostgreSQL the application had no tables at all.
 
