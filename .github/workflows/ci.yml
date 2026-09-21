@@ -33,12 +33,23 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check commit messages
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          base="origin/${{ github.base_ref }}"
-          git fetch --quiet origin "${{ github.base_ref }}"
+          git fetch --quiet origin "$BASE_REF"
           status=0
-          for sha in $(git rev-list "$base..HEAD"); do
+          for sha in $(git rev-list "origin/$BASE_REF..HEAD"); do
             git log -1 --format=%B "$sha" > /tmp/commit-msg
+            subject=$(head -n 1 /tmp/commit-msg)
+            # The hook exempts these so local work is not obstructed, but a
+            # rebase merge would land them on the default branch as-is.
+            case "$subject" in
+              'fixup! '*|'squash! '*)
+                echo "commit-msg: tidy away '$subject' before merging." >&2
+                status=1
+                continue
+                ;;
+            esac
             if ! .githooks/commit-msg /tmp/commit-msg; then
               echo "  in commit $(git log -1 --format='%h %s' "$sha")"
               status=1
