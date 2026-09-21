@@ -256,6 +256,22 @@ describe("StudentBookingPage", () => {
     });
   });
 
+  it("leaves the confirmation when the student goes back to the trip list", async () => {
+    stubApi();
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    await screen.findByText("Booking confirmed");
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to trips" }));
+
+    expect(
+      await screen.findByRole("button", { name: /Mega Bangna/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Booking confirmed")).not.toBeInTheDocument();
+  });
+
   it("names each seat state so it is not carried by colour alone", async () => {
     stubApi();
 
