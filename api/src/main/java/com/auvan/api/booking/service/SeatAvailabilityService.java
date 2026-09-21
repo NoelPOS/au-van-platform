@@ -4,14 +4,13 @@ import com.auvan.api.booking.dto.SeatState;
 import com.auvan.api.booking.dto.TripSeatMapResponse;
 import com.auvan.api.booking.dto.TripSummaryResponse;
 import com.auvan.api.booking.entity.SeatClaim;
+import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -54,7 +53,7 @@ public class SeatAvailabilityService {
     public TripSeatMapResponse seatMap(UUID tripId, UUID userId) {
         OffsetDateTime now = OffsetDateTime.now();
         Trip trip = trips.findById(tripId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found."));
+                .orElseThrow(() -> Problems.notFound("trip_not_found", "Trip not found."));
         Map<UUID, SeatClaim> claimsBySeat = claims.findByTripIdIn(List.of(tripId)).stream()
                 .collect(Collectors.toMap(claim -> claim.getTripSeat().getId(), Function.identity()));
         List<TripSeatMapResponse.SeatResponse> seats = trip.getSeats().stream()

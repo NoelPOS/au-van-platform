@@ -4,16 +4,15 @@ import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.CreateSeatHoldRequest;
 import com.auvan.api.booking.dto.SeatHoldResponse;
 import com.auvan.api.booking.entity.SeatClaim;
+import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -46,13 +45,13 @@ public class SeatHoldService {
     public SeatHoldResponse hold(UUID userId, CreateSeatHoldRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
         Trip trip = trips.findById(request.tripId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found."));
+                .orElseThrow(() -> Problems.notFound("trip_not_found", "Trip not found."));
         assertBookable(trip, now);
         List<TripSeat> seats = seatsOf(trip, request.seatIds());
 
         List<SeatClaim> onRequestedSeats = claims.findBySeatIdIn(request.seatIds());
         if (onRequestedSeats.stream().anyMatch(claim -> claim.blocksSeatAt(now) && !claim.isHeldBy(userId))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, SEAT_TAKEN);
+            throw Problems.conflict("seat_taken", SEAT_TAKEN);
         }
 
         // Re-selecting replaces the caller's whole hold on this trip, and any
@@ -83,7 +82,7 @@ public class SeatHoldService {
             // out of scope, and a lost race would surface as a 500.
             claims.flush();
         } catch (DataIntegrityViolationException exception) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, SEAT_TAKEN, exception);
+            throw Problems.conflict("seat_taken", SEAT_TAKEN, exception);
         }
         return SeatHoldResponse.from(holdId, trip.getId(), expiresAt, held);
     }
@@ -94,7 +93,7 @@ public class SeatHoldService {
         // Someone else's hold answers exactly as a hold that never existed, so the
         // endpoint cannot be used to find out which hold ids are live.
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Hold not found.");
+            throw Problems.notFound("hold_not_found", "Hold not found.");
         }
         // Bulk delete for the same reason as the reclaim above: deleting managed
         // entities row-count-checks, so two simultaneous releases of one hold give
@@ -104,20 +103,20 @@ public class SeatHoldService {
 
     private void assertBookable(Trip trip, OffsetDateTime now) {
         if (trip.getStatus() != TripStatus.ACTIVE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This trip is no longer available.");
+            throw Problems.conflict("trip_not_available", "This trip is no longer available.");
         }
         if (!trip.getDepartureAt().isAfter(now)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This trip has already departed.");
+            throw Problems.conflict("trip_departed", "This trip has already departed.");
         }
     }
 
     private List<TripSeat> seatsOf(Trip trip, List<UUID> seatIds) {
         if (seatIds.size() > properties.maxSeatsPerHold()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw Problems.badRequest("too_many_seats",
                     "You can hold at most " + properties.maxSeatsPerHold() + " seats at a time.");
         }
         if (seatIds.stream().distinct().count() != seatIds.size()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Each seat can only be selected once.");
+            throw Problems.badRequest("duplicate_seat", "Each seat can only be selected once.");
         }
         Map<UUID, TripSeat> seatsOfTrip = trip.getSeats().stream()
                 .collect(Collectors.toMap(TripSeat::getId, Function.identity()));
@@ -125,7 +124,7 @@ public class SeatHoldService {
                 .map(seatId -> {
                     TripSeat seat = seatsOfTrip.get(seatId);
                     if (seat == null) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        throw Problems.badRequest("seat_not_on_trip",
                                 "Those seats do not belong to this trip.");
                     }
                     return seat;
