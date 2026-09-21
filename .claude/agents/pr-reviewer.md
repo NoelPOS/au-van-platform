@@ -43,18 +43,21 @@ Any one of these is `REQUEST_CHANGES`:
   formatting; or the pull-request body contains "Generated with Claude Code" or
   any other tool attribution.
 - The pull-request body is missing its linked issue or its verification record.
-- `docs/project-status.md` was not updated, or documentation contradicts the
-  code.
+- Documentation in the diff contradicts the code. Do **not** reject a pull
+  request for leaving `docs/project-status.md` alone — the orchestrator owns
+  that file and implementers are barred from editing it.
 - The diff changes `.githooks/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` without
   the linked issue asking for it. The loop does not get to edit its own rules to
   unblock itself.
 - The pull-request body claims something the diff does not support. Check the
   numbers: commit counts, test counts, which mechanisms the code actually
   contains. This is the single most common defect on this project.
-- A test that would still pass if the mechanism it names were deleted. Where it
-  is cheap, copy the module to a scratch directory outside the repository,
-  delete the guard, and run the suite. Report which test caught it, or that
-  none did.
+- A test that would still pass if the mechanism it names were deleted. The
+  implementer is required to report which test caught which deletion; check
+  that report exists, that it names a specific test per guard, and that the
+  test it names could plausibly fail that way. Where a claim looks wrong, say
+  so and why — you have no write tools, so you reason about it rather than
+  running it.
 
 ## Also look for
 

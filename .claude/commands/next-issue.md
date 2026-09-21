@@ -31,8 +31,9 @@ gh pr list --state open
 gh project item-list 1 --owner NoelPOS --format json --limit 50
 ```
 
-Take the next issue from the ordered backlog in `docs/project-status.md`. If a
-pull request is already open, finish that one instead of starting new work.
+Take the next issue from the ordered backlog in `docs/project-status.md`. An
+open pull request does not block a new track, provided the surfaces are
+disjoint as described above; when they overlap, finish the open one first.
 
 ## 2. Plan
 
@@ -47,9 +48,16 @@ Post the plan: `gh issue comment <n> --body-file <plan>`.
 
 ## 3. Implement
 
+Give this track its own worktree, so a concurrent track's `git checkout` cannot
+move your branch out from under you:
+
 ```sh
-git checkout -b <type>/<kebab-description>
+git worktree add -b <type>/<kebab-description> ../auvan-<short-name> main
+cd ../auvan-<short-name>
 ```
+
+Work there for the whole cycle, and remove it with `git worktree remove` once
+the pull request has merged.
 
 Run the `implementer` agent. It writes code, tests, and docs, commits with
 subject-only Conventional Commits, and runs the full local gate.
@@ -89,7 +97,21 @@ git status --porcelain
 ```
 
 Non-empty means the reviewer mutated the tree — abort the cycle and report it.
-`VERDICT: REQUEST_CHANGES` → **Failure handling**.
+`VERDICT: REQUEST_CHANGES` → **Failure handling**, which carries one narrow
+exception to this gate: when the only findings left are inaccuracies in the
+pull-request description, correct them, verify each claim mechanically, and
+merge without a further round.
+
+## 6b. Record the review
+
+Post the verdict and its findings on the pull request:
+
+```sh
+gh pr comment <n> --body "<verdict and findings>"
+```
+
+Reviews that live only in an agent transcript leave no trail. Every claim the
+loop makes about having been reviewed must be checkable from GitHub.
 
 ## 7. Merge
 
