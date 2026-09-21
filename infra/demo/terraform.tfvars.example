@@ -1,8 +1,9 @@
 # Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
 #
 # Every value below is the module default; the file exists to show what is
-# adjustable. Narrowing load_balancer_ingress_cidrs to your own address is the
-# one change worth making before a real demo.
+# adjustable. load_balancer_ingress_cidrs is open, which is only tolerable
+# while this module creates no load balancer -- see its description in
+# variables.tf for how #11b must narrow it.
 aws_region   = "ap-southeast-1"
 project_name = "au-van"
 environment  = "demo"
