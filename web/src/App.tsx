@@ -4,6 +4,7 @@ import { createLiffSession } from "./auth/liff-session";
 import { configuredLiffId } from "./auth/liff-config";
 import type { AuthSession } from "./auth/session";
 import { Button } from "./components/ui/Button";
+import { StudentBookingPage } from "./booking/StudentBookingPage";
 import { AdminInventoryPage } from "./inventory/AdminInventoryPage";
 
 type HealthState = "checking" | "available" | "unavailable";
@@ -48,17 +49,21 @@ function App() {
     return <AdminInventoryPage session={session} />;
   }
 
+  if (session?.user.role === "STUDENT") {
+    return <StudentBookingPage session={session} />;
+  }
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-28">
       <p className="text-xs font-bold uppercase tracking-widest text-brand">
         AU-Van platform
       </p>
       <h1 className="my-4 text-5xl font-bold tracking-tight text-ink">
-        Admin portal
+        Van bookings
       </h1>
       <p className="max-w-xl text-lg leading-7 text-muted">
-        Sign in with your approved LINE account to manage routes, vans, seat
-        layouts, and scheduled trips.
+        Sign in with LINE to book a seat on the next van. Approved staff
+        accounts land in the transport inventory instead.
       </p>
       {!session &&
         (!configuredLiffId() ? (
@@ -78,11 +83,6 @@ function App() {
           role="alert"
         >
           {signInError}
-        </p>
-      )}
-      {session?.user.role === "STUDENT" && (
-        <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-          Your account is signed in but does not have administrator access.
         </p>
       )}
       <section
