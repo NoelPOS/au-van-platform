@@ -51,11 +51,11 @@ public class WaitlistEntry {
     @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
 
-    /** Written by the promotion sweep (#69); null everywhere else. */
+    /** The hold the promotion sweep created for this student; null until then. */
     @Column(name = "promotion_hold_id")
     private UUID promotionHoldId;
 
-    /** Written by the promotion sweep (#69); null everywhere else. */
+    /** When that hold stops being theirs; null until they are promoted. */
     @Column(name = "promotion_expires_at")
     private OffsetDateTime promotionExpiresAt;
 
@@ -89,6 +89,55 @@ public class WaitlistEntry {
      */
     public boolean isQueued() {
         return status == WaitlistStatus.WAITING || status == WaitlistStatus.PROMOTED;
+    }
+
+    /** Whether this entry is still in line for a seat, which only the sweep may change. */
+    public boolean isWaiting() {
+        return status == WaitlistStatus.WAITING;
+    }
+
+    /**
+     * Whether this is a promotion whose window has run out. The sweep resolves
+     * exactly these, and it decides from the row it locked rather than from the
+     * candidate list, which may name an entry the student has meanwhile left or
+     * another sweeper has already resolved.
+     */
+    public boolean hasLapsedAt(OffsetDateTime moment) {
+        return status == WaitlistStatus.PROMOTED && !promotionExpiresAt.isAfter(moment);
+    }
+
+    /**
+     * The seats this student was waiting for are theirs to take, under a hold
+     * of their own that expires at {@code promotionExpiresAt}.
+     *
+     * <p>One chance: ADR-011 rejected returning an unresponsive student to the
+     * queue, because one of them would otherwise cycle a seat until departure.
+     * A student who does nothing before the window runs out ends {@code
+     * EXPIRED} and the seat goes to the next in line.
+     */
+    public void promote(UUID holdId, OffsetDateTime expiresAt, OffsetDateTime now) {
+        this.status = WaitlistStatus.PROMOTED;
+        this.promotionHoldId = holdId;
+        this.promotionExpiresAt = expiresAt;
+        this.updatedAt = now;
+    }
+
+    /**
+     * The student booked the seats they were offered. Terminal.
+     *
+     * <p>The promotion's columns are kept rather than cleared: they are the
+     * record of which hold became the booking, and nothing reads them once the
+     * entry has ended.
+     */
+    public void fulfil(OffsetDateTime now) {
+        this.status = WaitlistStatus.FULFILLED;
+        this.updatedAt = now;
+    }
+
+    /** The promotion window ran out with the seats untaken. Terminal. */
+    public void expire(OffsetDateTime now) {
+        this.status = WaitlistStatus.EXPIRED;
+        this.updatedAt = now;
     }
 
     /**

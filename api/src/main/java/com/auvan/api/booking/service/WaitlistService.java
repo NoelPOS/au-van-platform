@@ -24,21 +24,25 @@ import java.util.UUID;
  *
  * <p>Promotion is not here and is not a hook on anything this class does: it is
  * a scheduled sweep, because the commonest way a seat comes free is a hold that
- * simply lapsed with no code running at all (ADR-006, ADR-011). Issue #69 adds
- * it; nothing on this branch promotes anybody.
+ * simply lapsed with no code running at all (ADR-006, ADR-011).
+ * {@link WaitlistPromotionService} is that sweep. The one thing this class owes
+ * it is {@link #leave}: a student who walks away from a promotion has to give
+ * the seats back.
  */
 @Service
 public class WaitlistService {
     private final WaitlistEntryRepository entries;
     private final TripRepository trips;
     private final SeatClaimRepository claims;
+    private final SeatAvailabilityService availability;
     private final BookingProperties properties;
 
     public WaitlistService(WaitlistEntryRepository entries, TripRepository trips, SeatClaimRepository claims,
-                           BookingProperties properties) {
+                           SeatAvailabilityService availability, BookingProperties properties) {
         this.entries = entries;
         this.trips = trips;
         this.claims = claims;
+        this.availability = availability;
         this.properties = properties;
     }
 
@@ -113,9 +117,16 @@ public class WaitlistService {
     }
 
     /**
-     * Leaves the queue. Idempotent: an entry that has already ended stays
-     * ended, and the students behind an entry that has just withdrawn move up on
-     * their next read, because a position is derived rather than stored.
+     * Leaves the queue, giving back the seats a promotion may have just handed
+     * over. Idempotent: an entry that has already ended stays ended, and the
+     * students behind an entry that has just withdrawn move up on their next
+     * read, because a position is derived rather than stored.
+     *
+     * <p>The row is locked first and everything below decides from what the
+     * lock returned, because leaving races the promotion sweep: a promotion
+     * that committed a moment ago left this student holding seats under
+     * {@code promotionHoldId}, and withdrawing without releasing them would
+     * leave a hold standing behind an entry that says the student walked away.
      */
     @Transactional
     public void leave(UUID userId, UUID entryId) {
@@ -123,9 +134,32 @@ public class WaitlistService {
         // someone else's entry answers exactly as one that never existed and the
         // endpoint cannot be used to discover live entry ids — the same idiom
         // SeatHoldService.release uses for a hold.
-        WaitlistEntry entry = entries.findByIdAndUserId(entryId, userId)
+        WaitlistEntry entry = entries.lockByIdAndUserId(entryId, userId)
                 .orElseThrow(() -> Problems.notFound("waitlist_entry_not_found", "Waitlist entry not found."));
+        UUID promotionHoldId = entry.getPromotionHoldId();
         entry.withdraw(OffsetDateTime.now());
+        if (promotionHoldId != null) {
+            release(promotionHoldId);
+        }
+    }
+
+    /**
+     * Releases a promotion's hold, so the seat goes back to the trip rather
+     * than staying with a student who has left the queue.
+     *
+     * <p>{@code deleteByIdIn} refuses a claim that carries a booking, which is
+     * the case that matters here: a student who took the seat, booked it, and
+     * then left the queue keeps what they paid for. The flush is load-bearing —
+     * the delete clears the persistence context, and the withdrawal above would
+     * go with it in silence.
+     */
+    private void release(UUID promotionHoldId) {
+        List<UUID> held = claims.findByHoldId(promotionHoldId).stream().map(SeatClaim::getId).toList();
+        if (held.isEmpty()) {
+            return;
+        }
+        entries.flush();
+        claims.deleteByIdIn(held);
     }
 
     /** The caller's own queued entries, each with the place it currently holds. */
@@ -154,19 +188,15 @@ public class WaitlistService {
     }
 
     /**
-     * Whether any seat on the trip is unclaimed right now, decided by
-     * {@link SeatClaim#blocksSeatAt} — the one definition of "free", and the
-     * same one {@code SeatAvailabilityService} reads the seat map with. A second,
-     * slightly different predicate here would let somebody queue for a trip they
-     * could simply book. Issue #69 extracts the derivation so the promoter and
-     * the seat map cannot drift; this branch reuses the predicate rather than
-     * touching that class.
+     * Whether any seat on the trip is unclaimed right now, through the one
+     * derivation of "free" there is: the same
+     * {@link SeatAvailabilityService#freeSeatsOf} the promotion sweep promotes
+     * onto and the seat map draws itself from. A second, slightly different
+     * predicate here would let somebody queue for a trip they could simply
+     * book, or queue them behind a seat the sweep thinks is taken.
      */
     private boolean hasFreeSeatsOn(Trip trip, OffsetDateTime now) {
-        long claimed = claims.findByTripIdIn(List.of(trip.getId())).stream()
-                .filter(claim -> claim.blocksSeatAt(now))
-                .count();
-        return claimed < trip.getSeats().size();
+        return !availability.freeSeatsOf(trip, now).isEmpty();
     }
 
     /**
