@@ -58,6 +58,29 @@ booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
 
+outbox:
+  # How many due rows one poll takes. Small: a poll holds no lock and the next
+  # one is seconds away, so there is nothing to gain from a long batch.
+  batch-size: 50
+  # The legacy application's own REMINDER_MAX_ATTEMPTS. Five attempts at the
+  # backoff below span about eight minutes, which is deliberately far inside
+  # LINE's twenty-four-hour retry-key window: a row still retrying after that
+  # window could produce a second message the student actually sees (ADR-010).
+  max-attempts: 5
+  backoff-base: PT30S
+  backoff-cap: PT1H
+  # How long a claim holds a row. A worker that dies mid-send leaves the row
+  # claimed; this is how long the message waits before another worker may take
+  # it, and it must stay comfortably longer than one send takes.
+  lease: PT2M
+  dispatch:
+    # Every instance may poll. Nothing coordinates them and nothing needs to:
+    # the conditional-UPDATE claim decides who gets a row, which is why this
+    # work needs no Redis lock (ADR-010) and why management.health.redis.enabled
+    # below stays false.
+    enabled: true
+    poll-interval: PT5S
+
 payment-proof:
   # A private bucket; nothing here is ever handed to a browser (ADR-009).
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}

@@ -48,6 +48,25 @@ booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
 
+outbox:
+  # Mirrors the main configuration; this file replaces it rather than merging
+  # with it, so a key added to one has to be added to the other.
+  batch-size: 50
+  max-attempts: 5
+  backoff-base: PT30S
+  backoff-cap: PT1H
+  lease: PT2M
+  dispatch:
+    # False, and this is the one value that deliberately differs from the main
+    # configuration. Every @SpringBootTest boots the full context, so a live
+    # poller would dispatch in the background while the booking and
+    # payment-proof concurrency tests are mid-assertion. Tests call
+    # OutboxDispatcher.dispatchBatch() directly;
+    # OutboxSchedulingIntegrationTests turns this back on in isolation to prove
+    # the scheduled path is really wired.
+    enabled: false
+    poll-interval: PT5S
+
 payment-proof:
   # Mirrors the main configuration; this file replaces it rather than merging
   # with it. No endpoint and no credentials: the tests substitute an in-memory
