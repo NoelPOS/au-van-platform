@@ -101,9 +101,9 @@ jobs:
             exit 1
           fi
           status=0
-          for dir in $modules; do
+          while IFS= read -r dir; do
             echo "--- $dir"
             terraform -chdir="$dir" init -backend=false -input=false || status=1
             terraform -chdir="$dir" validate || status=1
-          done
+          done <<< "$modules"
           exit $status
