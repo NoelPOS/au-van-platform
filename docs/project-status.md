@@ -8,7 +8,7 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 
 ## Repository state
 
-- Default branch: `main`, protected: "Web checks" and "API checks" must pass, branches must be up to date, and the rule applies to administrators.
+- Default branch: `main`, protected: "Web checks", "API checks", and "Commit checks" must pass, branches must be up to date, and the rule applies to administrators.
 - Last merged implementation commit: `c47e18a` (`chore(web): proxy local API for LIFF tunnel testing`)
 - Active issue: [#22 Establish agent-driven delivery configuration](https://github.com/NoelPOS/au-van-platform/issues/22)
 - Active branch: `chore/delivery-agent-configuration`

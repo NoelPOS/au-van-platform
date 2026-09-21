@@ -52,9 +52,9 @@ gh project item-edit --project-id PVT_kwHOCYR5w84BiaZt \
 
 ## Repository facts that affect tooling
 
-- `main` is protected: "Web checks" and "API checks" must pass, branches must be
-  up to date, and the rule applies to administrators. There is no way to merge
-  around a red build.
+- `main` is protected: "Web checks", "API checks", and "Commit checks" must pass,
+  branches must be up to date, and the rule applies to administrators. There is
+  no way to merge around a red build.
 - Auto-merge is disabled on the repository, so `gh pr merge --auto` fails. Merge
   with `gh pr merge --rebase` once the gates pass.
 - Merged branches are kept. Do not pass `--delete-branch`.
