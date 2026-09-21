@@ -24,6 +24,10 @@ auth:
   admin-bootstrap:
     line-subject: ${ADMIN_BOOTSTRAP_LINE_SUBJECT:}
 
+booking:
+  hold-ttl: PT5M
+  max-seats-per-hold: 4
+
 management:
   endpoints:
     web:
