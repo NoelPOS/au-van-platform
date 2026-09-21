@@ -5,6 +5,11 @@ spring:
     url: jdbc:h2:mem:au_van;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
+  jpa:
+    hibernate:
+      # Flyway owns the schema. validate makes a mapping that disagrees with a
+      # migration fail at startup instead of being silently regenerated.
+      ddl-auto: validate
   data:
     redis:
       host: localhost

@@ -5,6 +5,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/au_van}
     username: ${SPRING_DATASOURCE_USERNAME:au_van}
     password: ${POSTGRES_PASSWORD}
+  jpa:
+    hibernate:
+      # Flyway owns the schema. validate makes a mapping that disagrees with a
+      # migration fail at startup instead of being silently regenerated.
+      ddl-auto: validate
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
