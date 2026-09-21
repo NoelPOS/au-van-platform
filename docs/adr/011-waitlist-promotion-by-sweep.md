@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -74,7 +74,7 @@ ADR-010 put every asynchronous side effect in `outbox_events`, written in the sa
 
 ### Delivery
 
-This decision is implemented across three issues, because a new domain concept, a sweep with two distinct races, the outbox handoff, a student surface and an admin surface are not one reviewable diff. Issue #68 lands the table, the entity, the repository, joining, leaving, reading a place, the `booking.waitlist` configuration, and the student surface. Issue #69 lands the promotion sweep and its notifications. Issue #70 lands the administrator's view. The status above stays `Proposed` until all three have landed.
+This decision is implemented across three issues, because a new domain concept, a sweep with two distinct races, the outbox handoff, a student surface and an admin surface are not one reviewable diff. Issue #68 lands the table, the entity, the repository, joining, leaving, reading a place, the `booking.waitlist` configuration, and the student surface. Issue #69 lands the promotion sweep and its notifications. Issue #70 lands the administrator's view. All three have landed: #68 and #70 are on `main`, and #69 is the pull request carrying this sentence, the last of the three — so the status above is `Accepted` with its merge.
 
 ## Consequences
 
