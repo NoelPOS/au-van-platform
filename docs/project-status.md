@@ -2,14 +2,14 @@
 
 ## Current milestone
 
-**Milestone 2 - Core booking, complete**
+**Milestone 3 - Payments and automation, in progress**
 
-A student can sign in with LINE, list bookable trips, hold seats behind a database constraint, confirm the hold into a booking exactly once, read their own bookings, and cancel one — end to end, through the web UI, from any origin the API is configured to accept, not only the local dev server. The admin trip form now offers only statuses the API can accept. Milestone 3 (payments and automation) has not started.
+Milestone 2 (core booking) is complete. [#7](https://github.com/NoelPOS/au-van-platform/issues/7) (review payment proofs and confirm bookings) was split into two focused sub-issues: [#51](https://github.com/NoelPOS/au-van-platform/issues/51) (accept and store payment-proof submissions) is merged — a student can submit one payment-proof image for an eligible booking, stored in a private bucket and reachable only through the authenticated API, and booking creation's initial status is now `PENDING_PAYMENT` rather than immediately `CONFIRMED`. [#52](https://github.com/NoelPOS/au-van-platform/issues/52) (admin review: approve or reject) is the next step; #7 itself stays open until #52 lands, matching how #5 stayed open through #18/#19.
 
 ## Repository state
 
 - Default branch: `main`, protected: "Web checks", "API checks", and "Commit checks" must pass, branches must be up to date, and the rule applies to administrators. "Infrastructure checks" and "Container checks" also run on every pull request but are deliberately not yet required; each is promoted once it has been green on real pull requests.
-- Last merged implementation commit: `dad8104` (`fix(inventory): align trip status enum with the api`)
+- Last merged implementation commit: `434349f` (`fix(booking): lock the booking row during payment-proof submission`)
 - No track currently in review.
 - This file is owned by the orchestrator. Implementers do not edit it, because every concurrent track would otherwise conflict on it. It is landed as its own `docs/` pull request after each merge.
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
@@ -25,6 +25,7 @@ A student can sign in with LINE, list bookable trips, hold seats behind a databa
 - Hold and book seats in one `seat_claims` table, with lazy hold expiry and no Redis.
 - Write the AWS target topology in Terraform, statically checked and never applied by an agent.
 - Make booking creation exactly-once with a stored-response idempotency record and a row lock on the hold's claims ([ADR-008](adr/008-exactly-once-booking-creation.md)).
+- Store payment-proof images in a private, API-brokered object store (no presigned URL, no credential ever reaches the browser), and extend `BookingStatus` itself rather than a parallel payment table ([ADR-009](adr/009-payment-proof-storage-and-review-gate.md)).
 
 ## Current blockers
 
@@ -38,18 +39,18 @@ Three limitations are known and deliberately deferred.
 
 ## Next step
 
-Milestone 3 starting at [#7](https://github.com/NoelPOS/au-van-platform/issues/7).
+[#52](https://github.com/NoelPOS/au-van-platform/issues/52), admin review of payment proofs — depends on #51's storage and status work, both merged.
 
 ## Ordered backlog
 
 The issue tracker is the durable implementation queue. Refine an issue when it becomes the next ready item; do not expand its scope without updating the issue and, when relevant, an ADR.
 
-1. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
+1. [#52 Admin review of payment proofs](https://github.com/NoelPOS/au-van-platform/issues/52)
 2. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
 3. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
 4. [#10 Add end-to-end, concurrency, CI/CD, and demo deployment coverage](https://github.com/NoelPOS/au-van-platform/issues/10)
 5. [#11 Provision AWS-target infrastructure as code](https://github.com/NoelPOS/au-van-platform/issues/11)
 
-Filed while building the above, none blocking: [#36](https://github.com/NoelPOS/au-van-platform/issues/36) and [#42](https://github.com/NoelPOS/au-van-platform/issues/42) (permission entries the loop needs, each the owner's to approve on its own), [#37](https://github.com/NoelPOS/au-van-platform/issues/37) (the commit guard accepts a trailer hidden in a comment), [#38](https://github.com/NoelPOS/au-van-platform/issues/38) (Terraform lock files, which need the binary), [#40](https://github.com/NoelPOS/au-van-platform/issues/40) (Node 20 is end-of-life), and [#43](https://github.com/NoelPOS/au-van-platform/issues/43) (`git -C` bypasses every git deny rule).
+Filed while building the above, none blocking: [#36](https://github.com/NoelPOS/au-van-platform/issues/36) and [#42](https://github.com/NoelPOS/au-van-platform/issues/42) (permission entries the loop needs, each the owner's to approve on its own), [#38](https://github.com/NoelPOS/au-van-platform/issues/38) (Terraform lock files, which need the binary), and [#43](https://github.com/NoelPOS/au-van-platform/issues/43) (`git -C` bypasses every git deny rule).
 
-Completed: [#5](https://github.com/NoelPOS/au-van-platform/issues/5), [#6](https://github.com/NoelPOS/au-van-platform/issues/6), [#18](https://github.com/NoelPOS/au-van-platform/issues/18), [#19](https://github.com/NoelPOS/au-van-platform/issues/19), [#22](https://github.com/NoelPOS/au-van-platform/issues/22), [#24](https://github.com/NoelPOS/au-van-platform/issues/24), [#25](https://github.com/NoelPOS/au-van-platform/issues/25), [#26](https://github.com/NoelPOS/au-van-platform/issues/26), [#27](https://github.com/NoelPOS/au-van-platform/issues/27), [#29](https://github.com/NoelPOS/au-van-platform/issues/29), [#31](https://github.com/NoelPOS/au-van-platform/issues/31), [#32](https://github.com/NoelPOS/au-van-platform/issues/32), [#34](https://github.com/NoelPOS/au-van-platform/issues/34), [#41](https://github.com/NoelPOS/au-van-platform/issues/41), [#39](https://github.com/NoelPOS/au-van-platform/issues/39) — the transport inventory API and administration UI, the agent-driven delivery configuration and its hardening, seat holds, idempotent booking creation, the LIFF booking flow, the Flyway repair, the Terraform foundation, the container images, the CORS origin fix that lets the booking flow be reached from outside the local dev server, and the admin trip status enum fix that closes Milestone 2.
+Completed: [#5](https://github.com/NoelPOS/au-van-platform/issues/5), [#6](https://github.com/NoelPOS/au-van-platform/issues/6), [#18](https://github.com/NoelPOS/au-van-platform/issues/18), [#19](https://github.com/NoelPOS/au-van-platform/issues/19), [#22](https://github.com/NoelPOS/au-van-platform/issues/22), [#24](https://github.com/NoelPOS/au-van-platform/issues/24), [#25](https://github.com/NoelPOS/au-van-platform/issues/25), [#26](https://github.com/NoelPOS/au-van-platform/issues/26), [#27](https://github.com/NoelPOS/au-van-platform/issues/27), [#29](https://github.com/NoelPOS/au-van-platform/issues/29), [#31](https://github.com/NoelPOS/au-van-platform/issues/31), [#32](https://github.com/NoelPOS/au-van-platform/issues/32), [#34](https://github.com/NoelPOS/au-van-platform/issues/34), [#41](https://github.com/NoelPOS/au-van-platform/issues/41), [#39](https://github.com/NoelPOS/au-van-platform/issues/39), [#37](https://github.com/NoelPOS/au-van-platform/issues/37), [#40](https://github.com/NoelPOS/au-van-platform/issues/40), [#51](https://github.com/NoelPOS/au-van-platform/issues/51) — the transport inventory API and administration UI, the agent-driven delivery configuration and its hardening, seat holds, idempotent booking creation, the LIFF booking flow, the Flyway repair, the Terraform foundation, the container images, the CORS origin fix, the admin trip status enum fix that closes Milestone 2, the commit-msg guard's comment-trailer fix, the Node 22 toolchain move, and payment-proof submission and storage.
