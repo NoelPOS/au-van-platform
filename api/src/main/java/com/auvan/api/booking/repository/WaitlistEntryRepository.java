@@ -22,12 +22,24 @@ public interface WaitlistEntryRepository extends JpaRepository<WaitlistEntry, UU
     Optional<WaitlistEntry> findByTripIdAndUserId(UUID tripId, UUID userId);
 
     /**
-     * Scoped by owner rather than filtered afterwards, so another student's
+     * The caller's own entry with its row locked until the transaction ends.
+     *
+     * <p>Scoped by owner rather than filtered afterwards, so another student's
      * entry is indistinguishable from one that does not exist — the same rule
      * {@link BookingRepository#findByIdAndUserId} states, and what makes
      * leaving someone else's entry answer exactly as leaving an imaginary one.
+     *
+     * <p>Locking, and for the reason {@link BookingRepository#lockByIdAndUserId}
+     * gives for a cancellation: leaving is a read-then-write on {@code status}
+     * racing the promotion sweep, and the seats a promotion has just given this
+     * student have to be released with the entry rather than left behind it.
+     * Reading the entry first and locking it afterwards would not do — the
+     * second read is answered from the persistence context and hands back the
+     * pre-lock instance.
      */
-    Optional<WaitlistEntry> findByIdAndUserId(UUID id, UUID userId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select entry from WaitlistEntry entry where entry.id = :id and entry.userId = :userId")
+    Optional<WaitlistEntry> lockByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
 
     /**
      * The caller's queued entries across every trip, so the student surface
