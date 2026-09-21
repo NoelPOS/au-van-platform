@@ -324,6 +324,42 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
     }
 
     /**
+     * The window the withdrawal used to miss. A reminder comes due the moment
+     * its {@code next_attempt_at} passes, but no worker holds it until the next
+     * poll claims it, so for up to one {@code poll-interval} it sits
+     * {@code PENDING} and due. Cancelling in that window has to withdraw it —
+     * otherwise the very next poll delivers "your trip departs in 1 hour" for a
+     * booking cancelled seconds earlier, which is the failure
+     * {@code cancelScheduled} exists to prevent.
+     *
+     * <p>Put {@code and event.nextAttemptAt > :now} back into
+     * {@code OutboxEventRepository.cancelScheduled} and this reddens: the row
+     * stays {@code PENDING} and the dispatch below puts the reminder on the
+     * wire. Nothing else in the suite notices that clause either way.
+     */
+    @Test
+    void aReminderAlreadyDueButNotYetClaimedIsStillWithdrawnByCancellation() {
+        UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofDays(3)), "key-due-cancel");
+        OutboxEvent reminder = reminderOfType(OutboxEventType.DEPARTURE_REMINDER_1H);
+        drainDueNotifications();
+        // Due, and still nobody's: exactly the state a poll interval leaves it in.
+        dueAt(reminder.getId(), OffsetDateTime.now().minusSeconds(1));
+        assertThat(events.findById(reminder.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
+
+        bookingService.cancel(student, bookingId);
+
+        assertThat(events.findById(reminder.getId()).orElseThrow()).satisfies(withdrawn -> {
+            assertThat(withdrawn.getStatus()).isEqualTo(OutboxStatus.DEAD);
+            assertThat(withdrawn.getLastError()).contains("no longer eligible");
+        });
+
+        // And the poll that would have claimed it finds nothing to send.
+        dispatcher.dispatchBatch();
+        assertThat(sender.messages()).noneSatisfy(message ->
+                assertThat(message.text()).contains("departs in"));
+    }
+
+    /**
      * The same withdrawal on the expiry path. Today a booking cannot both carry
      * a reminder and be expirable — reminders are scheduled at approval, which
      * leaves the booking {@code CONFIRMED}, and the sweep only takes the three
@@ -384,8 +420,8 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
 
     /**
      * A reminder that has already gone is not resurrected as a dead letter, and
-     * one another worker holds is left for the claim that holds it. Only unsent,
-     * still-future rows are withdrawn.
+     * one another worker holds is left for the claim that holds it. Only
+     * {@code PENDING} rows are withdrawn, whatever their due time.
      */
     @Test
     void aReminderThatHasAlreadyBeenSentIsNotTouchedByTheWithdrawal() {

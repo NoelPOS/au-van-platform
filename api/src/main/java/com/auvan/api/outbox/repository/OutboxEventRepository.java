@@ -127,21 +127,29 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
     boolean existsByDedupeKey(String dedupeKey);
 
     /**
-     * Kills a booking's unsent future reminders, because the booking is no
-     * longer going anywhere.
+     * Kills a booking's unsent reminders, because the booking is no longer
+     * going anywhere.
      *
      * <p>Without this a student who cancelled yesterday still gets a cheerful
      * "your trip departs in an hour" — the legacy application's
      * {@code cancelForBooking} ({@code src/services/reminder.service.ts:107-118}),
      * ported.
      *
-     * <p>Three clauses, each load-bearing. {@code dedupeKey is not null} is what
+     * <p>Two clauses, each load-bearing. {@code dedupeKey is not null} is what
      * makes this touch <em>only</em> reminders: the cancellation's own
      * {@code BOOKING_CANCELLED} row is written in this same transaction and must
-     * still be delivered. {@code status = PENDING} leaves a row another worker
-     * is mid-send on alone, to be resolved by the claim that holds it.
-     * {@code nextAttemptAt > :now} is what makes it "unsent and still in the
-     * future" rather than "everything ever scheduled".
+     * still be delivered. {@code status = PENDING} is what makes it "unsent":
+     * it excludes {@code SENT} and {@code DEAD}, and it leaves the
+     * {@code IN_FLIGHT} row another worker is mid-send on alone, to be resolved
+     * by the claim that holds it.
+     *
+     * <p>There is deliberately <em>no</em> due-time clause. A reminder that has
+     * come due but that no worker has claimed yet is still {@code PENDING}, and
+     * it is exactly the row that most needs withdrawing — restricting to
+     * {@code nextAttemptAt > :now} left a window one poll interval wide in which
+     * a booking cancelled moments earlier still got its "your trip departs in
+     * 1 hour". {@code PENDING} against {@code IN_FLIGHT} is the same distinction
+     * {@link #claim} already draws, and it is the whole condition needed here.
      */
     @Transactional
     @Modifying
@@ -153,7 +161,6 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             where event.aggregateId = :aggregateId
               and event.dedupeKey is not null
               and event.status = com.auvan.api.outbox.entity.OutboxStatus.PENDING
-              and event.nextAttemptAt > :now
             """)
     int cancelScheduled(@Param("aggregateId") UUID aggregateId, @Param("now") OffsetDateTime now,
                         @Param("reason") String reason);
