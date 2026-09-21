@@ -24,6 +24,39 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: api
+    env_file: .env
+    environment:
+      # The service names, not localhost: inside the compose network the
+      # defaults in application.yml point the API at its own container.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATA_REDIS_HOST: redis
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Started alongside, not waited on. No application code uses Redis yet
+      # (ADR-003, ADR-007) and its health indicator is disabled, so making the
+      # API's startup depend on it would claim a coupling that does not exist.
+      redis:
+        condition: service_started
+
+  web:
+    build:
+      context: web
+    # 8081, because the API already publishes 8080 and `npm run dev` already
+    # takes 5173. This is the production build served the way it is deployed:
+    # the SPA and /api on one origin.
+    ports:
+      - '8081:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   redis-data:
