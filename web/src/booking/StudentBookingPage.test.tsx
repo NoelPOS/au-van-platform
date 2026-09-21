@@ -621,13 +621,19 @@ describe("StudentBookingPage", () => {
   });
 
   it("sends the student back to seat selection when the hold expired before confirmation", async () => {
+    let seatsRequested = 0;
     stubApi({
+      seats: () => {
+        seatsRequested += 1;
+        return json(seatMap());
+      },
       createBooking: () =>
         json({ detail: "This seat hold has expired.", code: "hold_expired" }, 409),
     });
 
     renderPage();
     await reachPassengerDetails();
+    const beforeFailure = seatsRequested;
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
     expect(
@@ -636,6 +642,12 @@ describe("StudentBookingPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
+    // Nothing else refreshes the map on the way back: the poll is only
+    // rescheduled, so the student would pick from the map the expired hold
+    // was taken against.
+    await vi.waitFor(() =>
+      expect(seatsRequested).toBeGreaterThan(beforeFailure),
+    );
   });
 
   it("points an already-used hold at my bookings rather than the seat map", async () => {
@@ -906,5 +918,35 @@ describe("StudentBookingPage", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it("lets the student take back seats their own failed release left held", async () => {
+    // "Change seats" releases the hold without waiting on it, so a failed
+    // release drops the student onto a map where their own seats read
+    // HELD_BY_YOU. The map only shows that state once the release has
+    // invalidated it, and those seats have to stay selectable.
+    let seatsRequested = 0;
+    stubApi({
+      release: () => json({ detail: "The hold could not be released." }, 500),
+      seats: () => {
+        seatsRequested += 1;
+        return json(seatMap(seatsRequested < 3 ? "AVAILABLE" : "HELD_BY_YOU"));
+      },
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Change seats" }));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Seat A1, held by you" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Seat A1, selected", pressed: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Hold these seats" }),
+    ).toBeEnabled();
   });
 });
