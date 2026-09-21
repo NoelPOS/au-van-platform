@@ -89,11 +89,30 @@ Everything a committed transaction owes the outside world is one row in `outbox_
 - The row is written **in the same transaction as the state change it describes**, by a recorder that joins the caller's transaction and never opens its own. A rolled-back booking leaves no row; a committed one leaves exactly one. There is no second system to reconcile with.
 - A dispatch claims a row with one conditional `UPDATE` whose `WHERE` carries the current `status` and `next_attempt_at`, and the affected-row count is the answer. That is the only thing that stops two workers sending one message, and the only thing that stops a `SENT` or `DEAD` row being sent again.
 - The claim pushes `next_attempt_at` forward by a lease and increments `attempts`, so a worker that dies mid-send leaves a row that becomes due again on its own and has still spent an attempt. No separate sweeper exists or is needed.
-- `status` is `PENDING`, `IN_FLIGHT`, `SENT`, or `DEAD`. The first two are claimable; the last two are terminal. A row that fails `outbox.max-attempts` times lands `DEAD` with `last_error` set and is never retried again.
+- `status` is `PENDING`, `IN_FLIGHT`, `SENT`, or `DEAD`. The first two are claimable; the last two are terminal. A row that fails `outbox.max-attempts` times lands `DEAD` with `last_error` set and is never retried again. So does one whose failure can never succeed, on its first attempt — see delivery below.
 - `payload` is `VARCHAR(2000)` of JSON — facts about the booking, not message text, so rewording a message does not have to be migrated into rows written before it. The width is deliberate; ADR-010 gives the arithmetic.
-- `dedupe_key` is unique and nullable: null for a state-change event, which legitimately repeats, and set for a scheduled reminder in #63, where the constraint is what makes scheduling idempotent.
+- `dedupe_key` is unique and nullable: null for a state-change event, which legitimately repeats, and set for a departure reminder, where the constraint is what makes scheduling idempotent. It is therefore also the column that identifies a row as a reminder, which is what the withdrawal below selects on.
 - There are **no foreign keys** on this table. A queue row must not block the deletion of the booking or the user it names, and the dispatcher must tolerate an aggregate that has since gone.
 - The index is `(status, next_attempt_at)`, which is exactly the dispatcher's predicate.
+
+### Delivery to LINE
+
+A dispatched row becomes one push to the student's LINE account, through the LINE Messaging API. The channel is configured by `notification.line.*` and is a **different LINE channel** from the Login channel `auth.line.channel-id` names; README.md records why that distinction can break delivery in a way no code here can detect.
+
+- Each send carries the outbox row's id as `X-Line-Retry-Key`. LINE deduplicates on it for twenty-four hours, and the id does not change across retries, which is what makes an at-least-once transport at most one message a student sees. The configured backoff, cap, and attempt ceiling multiply out to minutes, so the whole schedule finishes far inside that window; changing any of them means re-checking it.
+- A `409` from LINE is **success**, not failure: it means a request under this retry key was already accepted, so the message arrived on an earlier attempt whose answer this worker never saw.
+- A `5xx`, a `429`, or no answer at all is transient, and the row backs off and is retried. Every other `4xx` is permanent and the row goes `DEAD` on the attempt that produced it. `404` is the one that occurs in practice — an unknown user id, or a student who has never added the official account as a friend — and it answers identically forever, so retrying it would cost `outbox.max-attempts` futile sends for every notification that student is ever owed.
+- With no channel access token configured, a send fails as transient and the row retries; the application still starts. With `notification.line.enabled` false there is no sender at all, and the handler records the omission and resolves the row. That is how the test suite runs with no channel and no credential.
+
+### Departure reminders
+
+A reminder is not a second mechanism. It is an `outbox_events` row whose `next_attempt_at` is in the future and whose `dedupe_key` is set — which is why ADR-010 dropped the planned `reminder_jobs` table rather than writing the claim, the backoff, and the dead-letter rule a second time. The timings are ported from the legacy application, the only place a validated rule for them exists.
+
+- Two offsets, `DEPARTURE_REMINDER_24H` and `DEPARTURE_REMINDER_1H`, each due at the trip's `departure_at` minus its offset. The legacy's third mode, a daily batch at 01:00 UTC, is not ported: it exists to make one Vercel cron slot cover every booking, a constraint this API does not have.
+- They are scheduled when a payment proof is **approved**, inside that approval's own transaction, so an approval that rolls back schedules nothing.
+- A reminder whose moment has already passed is **not queued at all**. A row due in the past is a row due now, so queueing the twenty-four hour reminder for a booking approved twelve hours before departure would fire it immediately, announcing notice the student has not got.
+- `dedupe_key` is `"<bookingId>:<type>"`, the legacy's `unique (bookingId, type)` written as one column. The unique constraint is what makes scheduling idempotent.
+- Cancelling a booking marks its unsent, still-future reminders `DEAD`; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on.
 
 ## Critical constraints to design
 
