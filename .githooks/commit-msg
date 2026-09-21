@@ -40,7 +40,12 @@ fail() {
 # The patterns are deliberately broad. The attribution this project must keep
 # out is emitted as "Generated with [Claude Code](https://claude.com/claude-code)",
 # so a narrow literal match misses it the moment the wording or markup shifts.
-if printf '%s\n' "$authored" | grep -Eqi '^[[:space:]]*[A-Za-z][A-Za-z0-9-]*-[Bb]y:'; then
+#
+# The trailer anchor skips a leading '#' because "authored" keeps comments on
+# purpose: without it, "# Co-Authored-By: …" is a line the guard holds on to and
+# then cannot read. A diff cannot reach here to trip it — `git commit -v` puts
+# the diff below the scissors line, which is already gone from "authored".
+if printf '%s\n' "$authored" | grep -Eqi '^[[:space:]]*#*[[:space:]]*[A-Za-z][A-Za-z0-9-]*-[Bb]y:'; then
     fail "commit messages carry no attribution trailer."
 fi
 
