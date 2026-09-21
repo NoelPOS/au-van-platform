@@ -84,7 +84,7 @@ Every booking carries its own deadline and a sweep releases the seats of the one
 
 ## The waitlist
 
-A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. A seat that comes free is offered to whoever has waited longest. ADR-011 records the decision. Joining, leaving, reading a place and the promotion sweep are implemented; the administrator's view of the queue is issue #70.
+A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. A seat that comes free is offered to whoever has waited longest. ADR-011 records the decision. Joining, leaving, reading a place, the promotion sweep, and the administrator's read-only view of the queue in `OperationsViewService` are all implemented.
 
 - One row per `(trip_id, user_id)`, enforced by a plain `waitlist_entries_trip_user_unique`. Not a partial index on the active statuses: ADR-006 rejected partial indexes because H2 does not support them, so the suite would stop exercising the one constraint this shape rests on.
 - `status` is `WAITING`, `PROMOTED`, `FULFILLED`, `WITHDRAWN`, or `EXPIRED`. The first two are the queued states — the only ones that occupy a place — and the other three are terminal. `WAITING` and `WITHDRAWN` are the student's own doing; the promotion sweep writes the other three, each from behind the entry's row lock.
