@@ -20,11 +20,15 @@ fail() {
 
 # Attribution is checked on every message, with no exemptions. A subject that
 # merely looks git-generated must not be a way past this.
-if printf '%s\n' "$body" | grep -qi '^co-authored-by:'; then
-    fail "commit messages carry no Co-Authored-By trailer."
+#
+# The patterns are deliberately broad. The attribution this project must keep
+# out is emitted as "Generated with [Claude Code](https://claude.com/claude-code)",
+# so a narrow literal match misses it the moment the wording or markup shifts.
+if printf '%s\n' "$body" | grep -Eqi '^[A-Za-z][A-Za-z0-9-]*-[Bb]y:'; then
+    fail "commit messages carry no attribution trailer."
 fi
 
-if printf '%s\n' "$body" | grep -qi 'generated with claude\|co-authored-by: claude'; then
+if printf '%s\n' "$body" | grep -Eqi 'claude code|anthropic|generated (with|by|using) claude'; then
     fail "commit messages carry no tool attribution."
 fi
 
