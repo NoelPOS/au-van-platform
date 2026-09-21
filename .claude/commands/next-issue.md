@@ -59,7 +59,12 @@ gh pr checks <n> --watch
 
 ## 6. Review gate
 
-Run the `pr-reviewer` agent. Then confirm it left nothing behind:
+Run the `pr-reviewer` agent and read its final `VERDICT:` line from its output.
+Do not look for a GitHub review state — the reviewing account is also the author
+here, so `gh pr review --approve` returns 422; the reviewer posts its findings
+with `gh pr comment` instead.
+
+Then confirm it left nothing behind:
 
 ```sh
 git status --porcelain
@@ -102,7 +107,9 @@ Counters are per issue and reset on merge.
   reviewer. A conflict in booking or payment logic → **Blocked** immediately;
   never guess at merge semantics for seats or money.
 - **`main` goes red after a merge.** Highest priority. Open a `Bug:` issue and
-  fix forward; if that does not work in one cycle, revert the merge.
+  fix forward; if that does not work in one cycle, revert the merge with
+  `git revert --no-commit <sha>` followed by a hand-written
+  `revert(scope): …` subject, so the commit convention still holds.
 - **Caps.** Six corrective iterations, or two hours on one issue → **Blocked**.
 
 Never bypass the commit hook, never merge on a red or pending check, and never

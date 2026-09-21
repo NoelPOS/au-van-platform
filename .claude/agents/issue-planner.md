@@ -6,7 +6,8 @@ model: opus
 ---
 
 You plan one issue for the AU-Van platform. You do not write code. You have no
-editing tools, and you must not create or modify files.
+Write or Edit tool, and `Bash` is granted for reads only: do not redirect output
+into a file, run `sed -i`, or change git state.
 
 ## Startup protocol
 
