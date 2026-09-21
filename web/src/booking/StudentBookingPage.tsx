@@ -1,0 +1,335 @@
+import { useRef, useState, type FormEvent } from "react";
+import type { AuthSession } from "../auth/session";
+import { ApiError } from "./booking-api";
+import {
+  useAvailableTrips,
+  useCreateBooking,
+  useHoldSeats,
+  useMyBookings,
+  useReleaseHold,
+  useSeatMap,
+} from "./hooks";
+import { ConfirmationSection } from "./sections/ConfirmationSection";
+import { MyBookingsSection } from "./sections/MyBookingsSection";
+import { PassengerDetailsSection } from "./sections/PassengerDetailsSection";
+import { SeatSelectionSection } from "./sections/SeatSelectionSection";
+import { TripListSection } from "./sections/TripListSection";
+import type { AvailableTrip, Booking, SeatHold } from "./types";
+
+type Step = "trips" | "seats" | "details" | "confirmed";
+type Notice = { tone: "error" | "status"; message: string };
+
+/** Mirrors the API's `booking.max-seats-per-hold`; its 400 is the backstop. */
+const maxSeatsPerHold = 4;
+
+function messageOf(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Something went wrong. Try again.";
+}
+
+function isUnauthorized(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
+}
+
+export function StudentBookingPage({ session }: { session: AuthSession }) {
+  const [step, setStep] = useState<Step>("trips");
+  const [trip, setTrip] = useState<AvailableTrip | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [hold, setHold] = useState<SeatHold | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  // One idempotency key per booking attempt, deliberately kept across a failed
+  // attempt so a retry cannot create a second booking.
+  const keyRef = useRef<string | null>(null);
+
+  const trips = useAvailableTrips(session);
+  const bookings = useMyBookings(session);
+  const seatMap = useSeatMap(
+    session,
+    trip?.id ?? null,
+    step === "seats" && hold === null,
+  );
+  const holdSeats = useHoldSeats(session);
+  const releaseHold = useReleaseHold(session);
+  const createBooking = useCreateBooking(session);
+
+  const seats = seatMap.data?.seats ?? [];
+  // The poll can never fight the selection: availability is derived from the
+  // latest map on every render and never written back into `selected`.
+  const takeable = new Set(
+    seats
+      .filter((seat) => seat.state === "AVAILABLE" || seat.state === "HELD_BY_YOU")
+      .map((seat) => seat.id),
+  );
+  const effective = seatMap.data
+    ? selected.filter((seatId) => takeable.has(seatId))
+    : selected;
+  const lostSeatLabels = seats
+    .filter((seat) => selected.includes(seat.id) && !takeable.has(seat.id))
+    .map((seat) => seat.label);
+
+  if (
+    [trips.error, bookings.error, seatMap.error, holdSeats.error, createBooking.error].some(
+      isUnauthorized,
+    )
+  ) {
+    return (
+      <main className="mx-auto max-w-xl px-6 py-16">
+        <h1 className="text-2xl font-bold text-ink">Sign in again</h1>
+        <p className="mt-3 text-muted" role="alert">
+          Your sign-in has expired. Close and reopen this page from LINE to
+          continue booking.
+        </p>
+      </main>
+    );
+  }
+
+  function backToTrips(message: string) {
+    setStep("trips");
+    setTrip(null);
+    setSelected([]);
+    setHold(null);
+    keyRef.current = null;
+    setNotice({ tone: "error", message });
+    void trips.refetch();
+  }
+
+  function backToSeats(message: string) {
+    setStep("seats");
+    setSelected([]);
+    setHold(null);
+    keyRef.current = null;
+    setNotice({ tone: "error", message });
+    void seatMap.refetch();
+  }
+
+  function chooseTrip(next: AvailableTrip) {
+    setTrip(next);
+    setSelected([]);
+    setHold(null);
+    keyRef.current = null;
+    setNotice(null);
+    setStep("seats");
+  }
+
+  function toggleSeat(seatId: string) {
+    // Built from the pruned selection, so a seat lost to the poll drops out
+    // for good on the next interaction.
+    if (effective.includes(seatId)) {
+      setNotice(null);
+      setSelected(effective.filter((id) => id !== seatId));
+      return;
+    }
+    if (effective.length === maxSeatsPerHold) {
+      setNotice({
+        tone: "status",
+        message: `You can hold at most ${maxSeatsPerHold} seats at a time.`,
+      });
+      return;
+    }
+    setNotice(null);
+    setSelected([...effective, seatId]);
+  }
+
+  async function holdSelectedSeats() {
+    if (!trip || effective.length === 0) return;
+    setNotice(null);
+    try {
+      const created = await holdSeats.mutateAsync({
+        tripId: trip.id,
+        seatIds: effective,
+      });
+      setHold(created);
+      setSelected(created.seats.map((seat) => seat.seatId));
+      keyRef.current = null;
+      setStep("details");
+    } catch (error) {
+      onHoldFailure(error);
+    }
+  }
+
+  function onHoldFailure(error: unknown) {
+    const code = error instanceof ApiError ? error.code : null;
+    const status = error instanceof ApiError ? error.status : 0;
+    if (status === 401) return;
+    if (code === "trip_not_available")
+      return backToTrips("That trip is no longer available. Choose another.");
+    if (code === "trip_departed")
+      return backToTrips("That trip has already departed. Choose another.");
+    if (status === 404)
+      return backToTrips("That trip is no longer available. Choose another.");
+    // A seat was taken first: the map has been refreshed and the selection is
+    // pruned from it, so the student only has to pick again.
+    setNotice({ tone: "error", message: messageOf(error) });
+  }
+
+  function expireHold() {
+    setHold(null);
+    setSelected([]);
+    keyRef.current = null;
+    setStep("seats");
+    setNotice({
+      tone: "status",
+      message: "Your seat hold expired. Choose your seats again.",
+    });
+    void seatMap.refetch();
+  }
+
+  function changeSeats() {
+    if (hold && trip)
+      releaseHold.mutate({ holdId: hold.holdId, tripId: trip.id });
+    setHold(null);
+    setSelected([]);
+    keyRef.current = null;
+    setNotice(null);
+    setStep("seats");
+  }
+
+  async function confirmBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!hold) return;
+    const form = new FormData(event.currentTarget);
+    keyRef.current ??= crypto.randomUUID();
+    setNotice(null);
+    try {
+      const booking = await createBooking.mutateAsync({
+        idempotencyKey: keyRef.current,
+        input: {
+          holdId: hold.holdId,
+          passengerName: String(form.get("passengerName")).trim(),
+          passengerPhone: String(form.get("passengerPhone")).trim(),
+        },
+      });
+      keyRef.current = null;
+      setHold(null);
+      setSelected([]);
+      setConfirmed(booking);
+      setStep("confirmed");
+    } catch (error) {
+      onBookingFailure(error);
+    }
+  }
+
+  function onBookingFailure(error: unknown) {
+    const code = error instanceof ApiError ? error.code : null;
+    const status = error instanceof ApiError ? error.status : 0;
+    if (status === 401) return;
+    if (code === "hold_expired")
+      return backToSeats(
+        "Your seat hold expired before the booking was confirmed. Choose your seats again.",
+      );
+    if (code === "hold_already_used")
+      return backToSeats(
+        "Those seats have already been booked. Choose your seats again.",
+      );
+    if (code === "hold_not_found")
+      return backToSeats(
+        "That seat hold is no longer available. Choose your seats again.",
+      );
+    if (code === "trip_not_available")
+      return backToTrips("That trip is no longer available. Choose another.");
+    if (code === "trip_departed")
+      return backToTrips("That trip has already departed. Choose another.");
+    if (code === "idempotency_key_reused") {
+      keyRef.current = null;
+      return setNotice({
+        tone: "error",
+        message: "That booking attempt could not be completed. Try again.",
+      });
+    }
+    if (status === 400)
+      return setNotice({
+        tone: "error",
+        message: "Check the passenger name and phone number, then try again.",
+      });
+    // Anything else keeps the hold and the idempotency key: this is the retry
+    // case, and retrying cannot create a second booking.
+    setNotice({ tone: "error", message: messageOf(error) });
+  }
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-5 px-6 py-10">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-widest text-brand">
+          AU-Van
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">
+          Book a seat
+        </h1>
+        <p className="mt-2 text-muted">
+          Signed in as {session.user.displayName ?? "student"}.
+        </p>
+      </header>
+      {notice && (
+        <p
+          className={`rounded-xl px-4 py-3 text-sm ${notice.tone === "error" ? "bg-red-50 text-red-700" : "bg-brand-soft text-brand"}`}
+          role={notice.tone === "error" ? "alert" : "status"}
+        >
+          {notice.message}
+        </p>
+      )}
+      {step === "trips" && (
+        <TripListSection
+          error={trips.error}
+          loading={trips.isPending}
+          onRetry={() => void trips.refetch()}
+          onSelect={chooseTrip}
+          trips={trips.data ?? []}
+        />
+      )}
+      {step === "seats" && trip && (
+        <SeatSelectionSection
+          error={seatMap.error}
+          holding={holdSeats.isPending}
+          loading={seatMap.isPending}
+          lostSeatLabels={lostSeatLabels}
+          maxSeats={maxSeatsPerHold}
+          onBack={() => {
+            setTrip(null);
+            setSelected([]);
+            setNotice(null);
+            setStep("trips");
+          }}
+          onHold={() => void holdSelectedSeats()}
+          onToggle={toggleSeat}
+          seats={seats}
+          selected={effective}
+          trip={trip}
+        />
+      )}
+      {step === "details" && trip && hold && (
+        <PassengerDetailsSection
+          hold={hold}
+          onChangeSeats={changeSeats}
+          onEdit={() => {
+            // A new payload needs a new key, or the API rejects the retry as a
+            // key reused with different content.
+            keyRef.current = null;
+          }}
+          onExpire={expireHold}
+          onSubmit={(event) => void confirmBooking(event)}
+          submitting={createBooking.isPending}
+          trip={trip}
+        />
+      )}
+      {step === "confirmed" && confirmed && (
+        <ConfirmationSection
+          booking={confirmed}
+          onDone={() => {
+            setConfirmed(null);
+            setTrip(null);
+            setStep("trips");
+          }}
+        />
+      )}
+      {(step === "trips" || step === "confirmed") && (
+        <MyBookingsSection
+          bookings={bookings.data ?? []}
+          error={bookings.error}
+          loading={bookings.isPending}
+        />
+      )}
+    </main>
+  );
+}
