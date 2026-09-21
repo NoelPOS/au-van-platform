@@ -33,7 +33,9 @@ const otherTrip = {
 const booking = {
   id: "booking-1",
   reference: "AUV-260921-7KQ2M4XR",
-  status: "CONFIRMED",
+  // A new booking is PENDING_PAYMENT: ADR-009 made the payment review the
+  // only path to CONFIRMED.
+  status: "PENDING_PAYMENT",
   trip: {
     id: "trip-1",
     origin: "AU",
@@ -102,6 +104,7 @@ type Routes = {
   release?: () => Response;
   bookings?: () => Response;
   createBooking?: (init: RequestInit) => Response;
+  paymentProof?: (init: RequestInit) => Response;
 };
 
 function stubApi(routes: Routes = {}) {
@@ -113,6 +116,11 @@ function stubApi(routes: Routes = {}) {
       return routes.release?.() ?? new Response(null, { status: 204 });
     if (url === "/api/v1/seat-holds")
       return routes.hold?.() ?? json(hold(), 201);
+    if (url.endsWith("/payment-proof"))
+      return (
+        routes.paymentProof?.(init ?? {}) ??
+        json({ ...booking, status: "PAYMENT_UNDER_REVIEW" })
+      );
     if (url === "/api/v1/bookings" && method === "POST")
       return (
         routes.createBooking?.(init ?? {}) ?? json(booking, 201)
@@ -190,7 +198,7 @@ describe("StudentBookingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    expect(screen.getByText("Booking confirmed")).toBeInTheDocument();
+    expect(screen.getByText("Seats reserved")).toBeInTheDocument();
     const created = fetcher.mock.calls.filter(
       ([url, init]) =>
         url === "/api/v1/bookings" &&
@@ -220,7 +228,7 @@ describe("StudentBookingPage", () => {
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    expect(await screen.findByText("Booking confirmed")).toBeInTheDocument();
+    expect(await screen.findByText("Seats reserved")).toBeInTheDocument();
     // Only My bookings renders the seats-and-fare line, so this is the list
     // rather than the confirmation panel beside it.
     expect(
@@ -262,14 +270,14 @@ describe("StudentBookingPage", () => {
     renderPage();
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
-    await screen.findByText("Booking confirmed");
+    await screen.findByText("Seats reserved");
 
     fireEvent.click(screen.getByRole("button", { name: "Back to trips" }));
 
     expect(
       await screen.findByRole("button", { name: /Mega Bangna/ }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Booking confirmed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Seats reserved")).not.toBeInTheDocument();
   });
 
   it("names each seat state so it is not carried by colour alone", async () => {
@@ -899,11 +907,101 @@ describe("StudentBookingPage", () => {
     renderPage();
 
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    // A confirmed booking is a success, not the failure colour the badge
-    // falls back to for anything it does not recognise.
-    expect(screen.getByText("CONFIRMED")).toHaveClass("text-emerald-700");
+    // Waiting for payment is neither the success colour nor the failure one
+    // the badge falls back to for anything it does not recognise.
+    expect(screen.getByText("PENDING_PAYMENT")).toHaveClass("text-amber-800");
     expect(screen.getByText(/^AU → Mega Bangna · /)).toBeInTheDocument();
     expect(screen.getByText("Seat A1 · 35.00 THB")).toBeInTheDocument();
+  });
+
+  it("sends a payment slip as multipart and lets the browser set the boundary", async () => {
+    // The shared request() helper forces application/json, which would
+    // mis-type the upload; this call has to go around it.
+    let uploaded = 0;
+    const fetcher = stubApi({
+      bookings: () =>
+        json([uploaded === 0 ? booking : { ...booking, status: "PAYMENT_UNDER_REVIEW" }]),
+      paymentProof: () => {
+        uploaded += 1;
+        return json({ ...booking, status: "PAYMENT_UNDER_REVIEW" });
+      },
+    });
+    const slip = new File(["slip-bytes"], "slip.jpg", { type: "image/jpeg" });
+
+    renderPage();
+    fireEvent.change(await screen.findByLabelText("Upload your payment slip"), {
+      target: { files: [slip] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send payment proof" }));
+
+    expect(
+      await screen.findByText(
+        "Payment proof received. Staff confirm the booking once they have checked it.",
+      ),
+    ).toBeInTheDocument();
+    const call = fetcher.mock.calls.find(([url]) =>
+      String(url).endsWith("/payment-proof"),
+    );
+    expect(call?.[0]).toBe("/api/v1/bookings/booking-1/payment-proof");
+    const init = call?.[1] as RequestInit;
+    expect(init.method).toBe("POST");
+    const headers = new Headers(init.headers);
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("Authorization")).toBe("Bearer student-token");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("file")).toBe(slip);
+    // The list is refetched, so the student sees the new state rather than
+    // the upload form they just used.
+    expect(
+      await screen.findByText(
+        "Your payment proof is with an administrator. This booking is confirmed once they approve it.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("reports the reason a payment slip was refused and keeps the form", async () => {
+    stubApi({
+      bookings: () => json([booking]),
+      paymentProof: () =>
+        json(
+          {
+            detail: "A payment proof must be a JPEG, PNG, or WebP image.",
+            code: "payment_proof_type_not_supported",
+          },
+          400,
+        ),
+    });
+
+    renderPage();
+    fireEvent.change(await screen.findByLabelText("Upload your payment slip"), {
+      target: { files: [new File(["x"], "slip.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send payment proof" }));
+
+    expect(
+      await screen.findByText(
+        "A payment proof must be a JPEG, PNG, or WebP image.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Send payment proof" }),
+    ).toBeInTheDocument();
+  });
+
+  it("paints an approved booking as a success and a cancelled one as a failure", async () => {
+    stubApi({
+      bookings: () =>
+        json([
+          { ...booking, status: "CONFIRMED" },
+          { ...booking, id: "booking-2", reference: "AUV-260921-CANCELLED", status: "CANCELLED" },
+        ]),
+      trips: () => json([]),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("CONFIRMED")).toHaveClass("text-emerald-700");
+    expect(screen.getByText("CANCELLED")).toHaveClass("text-red-700");
   });
 
   it("never serves a cached seat map to a student who comes back to a trip", async () => {

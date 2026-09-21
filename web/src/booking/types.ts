@@ -1,5 +1,14 @@
 export type SeatState = "AVAILABLE" | "HELD" | "HELD_BY_YOU" | "BOOKED";
-export type BookingStatus = "CONFIRMED" | "CANCELLED";
+/**
+ * A booking now starts at `PENDING_PAYMENT` and only an approved payment proof
+ * reaches `CONFIRMED` (ADR-009). The rejected state a student can resubmit
+ * from arrives with the admin review in #52.
+ */
+export type BookingStatus =
+  | "PENDING_PAYMENT"
+  | "PAYMENT_UNDER_REVIEW"
+  | "CONFIRMED"
+  | "CANCELLED";
 
 export type AvailableTrip = {
   id: string;
