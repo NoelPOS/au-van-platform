@@ -8,13 +8,13 @@ AU-Van is a LINE-integrated booking system for Assumption University van service
 
 1. Discuss and record scope or architecture decisions before implementation.
 2. Track each implementation slice in a GitHub issue with acceptance criteria.
-3. Use one focused branch and pull request per issue.
+3. Use one focused branch and pull request per issue. Independent issues may run concurrently; give each concurrent track its own branch and its own git worktree.
 4. Run the required automated checks before merging.
 5. Update relevant documentation when behaviour or an architectural decision changes.
 
 ## Required startup protocol
 
-Before planning or changing the project, read `AGENTS.md`, `README.md`, `docs/project-status.md`, and any ADRs relevant to the work. Then inspect Git status and the open GitHub issues and pull requests. Work only on the next ready issue unless the user explicitly chooses a different priority.
+Before planning or changing the project, read `AGENTS.md`, `README.md`, `docs/project-status.md`, and any ADRs relevant to the work. Then inspect Git status and the open GitHub issues and pull requests. Start from the next ready issue unless the user explicitly chooses a different priority. Several ready issues may run as concurrent tracks when their file surfaces are disjoint; `.claude/commands/next-issue.md` holds the disjointness test and the rules that keep concurrent tracks from colliding. Serialise tracks whose surfaces overlap.
 
 ## Naming and review conventions
 
