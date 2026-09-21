@@ -33,6 +33,7 @@ import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.outbox.RecordingLineMessageSender;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.entity.OutboxStatus;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
 import com.auvan.api.outbox.service.OutboxDispatcher;
 import org.junit.jupiter.api.AfterEach;
@@ -287,13 +288,26 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
     void aPromotionWritesAnOutboxRowForThePromotedStudentThatRendersAMessage() {
         UUID first = promoteFirstStudentOntoSeatZero();
 
+        OutboxEvent recorded = outboxOfType(OutboxEventType.WAITLIST_PROMOTED).getFirst();
         assertThat(outboxOfType(OutboxEventType.WAITLIST_PROMOTED)).singleElement().satisfies(event -> {
             assertThat(event.getAggregateId()).isEqualTo(first);
             assertThat(event.getRecipientUserId()).isEqualTo(studentA);
             assertThat(event.getDedupeKey()).isNull();
+            assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
         });
 
+        // Aged a minute back before dispatching, the way OutboxIntegrationTests
+        // does. A row recorded at now and claimed at now compares a stored
+        // timestamp against a fresh one, and the column keeps fewer decimal
+        // places than the clock produces: the round trip can read back as
+        // later, the claim matches nothing, and the dispatch is a silent no-op
+        // on one platform and not the other.
+        dueAt(recorded.getId(), OffsetDateTime.now().minusMinutes(1));
+
+        // The count is the assertion that a claim really happened: a claim that
+        // matched no row returns zero and would otherwise pass as green.
         assertThat(dispatcher.dispatchBatch()).isOne();
+        assertThat(events.findById(recorded.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
         assertThat(sender.messages()).singleElement().satisfies(message -> {
             assertThat(message.to()).isEqualTo("Uwait-a");
             assertThat(message.text()).contains("AU-Van waitlist")
@@ -591,6 +605,15 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
     private void lapsePromotion(UUID entryId) {
         jdbc.update("update waitlist_entries set promotion_expires_at = ? where id = ?",
                 OffsetDateTime.now().minusMinutes(1), entryId);
+    }
+
+    /**
+     * Ages an outbox row by writing {@code next_attempt_at} directly, exactly
+     * as {@code OutboxIntegrationTests.dueAt} does and for the same reason:
+     * nothing injects a {@code Clock}.
+     */
+    private void dueAt(UUID eventId, OffsetDateTime when) {
+        jdbc.update("update outbox_events set next_attempt_at = ? where id = ?", when, eventId);
     }
 
     private void joinedAt(UUID entryId, OffsetDateTime moment) {
