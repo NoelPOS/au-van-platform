@@ -118,8 +118,13 @@ unreachable by the existing denies, which is strictly worse than today.
 Work on that branch for the whole cycle, and remove the worktree with
 `git worktree remove` once the pull request has merged.
 
-Run the `implementer` agent. It writes code, tests, and docs, commits with
-subject-only Conventional Commits, and runs the full local gate.
+Run the `implementer` agent, and **give it `.worktrees/<short-name>` in its
+prompt**. It does not read this file — it reads `AGENTS.md`, `CLAUDE.md`,
+`docs/project-status.md` and its plan — so the path reaches it only because you
+pass it down. `implementer.md` carries the same addressing rules for the
+commands it runs itself. It writes code, tests, and docs, commits with
+subject-only Conventional Commits, and runs the full local gate in that
+worktree.
 
 ## 4. Open the pull request
 
