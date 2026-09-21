@@ -31,6 +31,23 @@ const otherTrip = {
   departureAt: "2026-10-01T03:00:00Z",
 };
 
+/** A trip nobody can book, which is the only kind the waitlist appears on. */
+const fullTrip = {
+  ...trip,
+  id: "trip-full",
+  destination: "Future Park",
+  availableSeats: 0,
+};
+
+const waitlistEntry = {
+  id: "waitlist-1",
+  tripId: "trip-full",
+  seatsWanted: 1,
+  status: "WAITING",
+  position: 2,
+  joinedAt: "2026-09-21T10:00:00Z",
+};
+
 const booking = {
   id: "booking-1",
   reference: "AUV-260921-7KQ2M4XR",
@@ -155,6 +172,9 @@ type Routes = {
   bookings?: () => Response;
   createBooking?: (init: RequestInit) => Response;
   paymentProof?: (init: RequestInit) => Response;
+  waitlist?: () => Response;
+  joinWaitlist?: () => Response;
+  leaveWaitlist?: () => Response;
 };
 
 function stubApi(routes: Routes = {}) {
@@ -162,6 +182,11 @@ function stubApi(routes: Routes = {}) {
     const url = String(input);
     const method = init?.method ?? "GET";
     if (url.endsWith("/seats")) return routes.seats?.() ?? json(seatMap());
+    if (url.endsWith("/leave"))
+      return routes.leaveWaitlist?.() ?? new Response(null, { status: 204 });
+    if (url === "/api/v1/waitlist" && method === "POST")
+      return routes.joinWaitlist?.() ?? json(waitlistEntry, 201);
+    if (url === "/api/v1/waitlist") return routes.waitlist?.() ?? json([]);
     if (url.includes("/release"))
       return routes.release?.() ?? new Response(null, { status: 204 });
     if (url === "/api/v1/seat-holds")
@@ -1232,5 +1257,145 @@ describe("StudentBookingPage", () => {
     expect(
       screen.getByRole("button", { name: "Hold these seats" }),
     ).toBeEnabled();
+  });
+});
+
+describe("StudentBookingPage waitlist", () => {
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("offers the waitlist only on a trip with no seats left", async () => {
+    stubApi({ trips: () => json([trip, fullTrip]) });
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Join waitlist" }),
+    ).toBeInTheDocument();
+    // The bookable trip is still a button that opens the seat map, and it
+    // carries no waitlist control of its own.
+    expect(
+      screen.getByRole("button", { name: /3 of 4 seats free/ }),
+    ).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Join waitlist" })).toHaveLength(
+      1,
+    );
+  });
+
+  it("joins the waitlist and reports the place the API gave back", async () => {
+    const fetcher = stubApi({ trips: () => json([fullTrip]) });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Join waitlist" }));
+
+    expect(
+      await screen.findByText(
+        "You are number 2 on the waitlist for AU → Future Park.",
+      ),
+    ).toBeInTheDocument();
+    const joined = fetcher.mock.calls.filter(
+      ([url, init]) =>
+        url === "/api/v1/waitlist" &&
+        (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(joined).toHaveLength(1);
+    expect(JSON.parse(String((joined[0][1] as RequestInit).body))).toEqual({
+      tripId: "trip-full",
+      seatsWanted: 1,
+    });
+  });
+
+  it("shows the student's place and a way out once they are queued", async () => {
+    stubApi({
+      trips: () => json([fullTrip]),
+      waitlist: () => json([waitlistEntry]),
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText("You are number 2 on the waitlist."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Join waitlist" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Leave waitlist" }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the waitlist through POST /leave, never DELETE", async () => {
+    // The API's CORS policy allows no DELETE, so a DELETE here would pass this
+    // suite and fail only in a real browser.
+    let queued = true;
+    const fetcher = stubApi({
+      trips: () => json([fullTrip]),
+      waitlist: () => json(queued ? [waitlistEntry] : []),
+      leaveWaitlist: () => {
+        queued = false;
+        return new Response(null, { status: 204 });
+      },
+    });
+
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Leave waitlist" }),
+    );
+
+    expect(
+      await screen.findByText("You have left the waitlist."),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Join waitlist" }),
+    ).toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.map(([url, init]) => [
+        url,
+        (init as RequestInit | undefined)?.method ?? "GET",
+      ]),
+    ).toContainEqual(["/api/v1/waitlist/waitlist-1/leave", "POST"]);
+  });
+
+  it("sends the student back to booking when the trip has a seat again", async () => {
+    stubApi({
+      trips: () => json([fullTrip]),
+      joinWaitlist: () =>
+        json(
+          {
+            detail:
+              "This trip still has seats. Book one instead of joining the waitlist.",
+            code: "waitlist_not_needed",
+          },
+          409,
+        ),
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Join waitlist" }));
+
+    expect(
+      await screen.findByText("That trip has a seat free again. Book it instead."),
+    ).toBeInTheDocument();
+  });
+
+  it("reports a failed join without pretending the student is queued", async () => {
+    stubApi({
+      trips: () => json([fullTrip]),
+      joinWaitlist: () =>
+        json({ detail: "The waitlist is unavailable." }, 500),
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Join waitlist" }));
+
+    expect(
+      await screen.findByText("The waitlist is unavailable."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Join waitlist" }),
+    ).toBeInTheDocument();
   });
 });
