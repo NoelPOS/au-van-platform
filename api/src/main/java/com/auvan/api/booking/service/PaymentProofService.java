@@ -26,6 +26,11 @@ import java.util.UUID;
  * proof row, no status change, no history entry — which is what the issue asks
  * for. The opposite order would risk the failure the admin review in #52 has no
  * answer for: a proof row whose image was never stored.
+ *
+ * <p>The transaction opens by locking the booking's row, so two submissions in
+ * flight against one booking resolve to one winner and one {@code 409} rather
+ * than to two proofs. ADR-008 established that pattern for confirmation, which
+ * has the same shape: a state check that decides a write no constraint guards.
  */
 @Service
 public class PaymentProofService {
@@ -46,8 +51,16 @@ public class PaymentProofService {
     public BookingResponse submit(UUID userId, UUID bookingId, MultipartFile file) {
         OffsetDateTime now = OffsetDateTime.now();
         // Another student's booking answers exactly as one that does not exist,
-        // the same way BookingService.load does.
-        Booking booking = bookings.findByIdAndUserId(bookingId, userId)
+        // the same way BookingService.load does. Owner and lock come from the
+        // one statement, so a non-owner matches nothing and locks nothing.
+        //
+        // The lock is the first thing this method does, and everything below
+        // decides from the booking it returned. Without it the status check two
+        // lines down is a read-then-write under READ_COMMITTED: two submissions
+        // in flight at once both read PENDING_PAYMENT, both pass, and the
+        // booking ends up with two proofs. payment_proofs constrains only
+        // object_key, which carries a fresh UUID, so nothing else refuses.
+        Booking booking = bookings.lockByIdAndUserId(bookingId, userId)
                 .orElseThrow(() -> Problems.notFound("booking_not_found", "Booking not found."));
         if (!booking.isAwaitingPaymentProof()) {
             throw Problems.conflict("booking_not_awaiting_payment",
