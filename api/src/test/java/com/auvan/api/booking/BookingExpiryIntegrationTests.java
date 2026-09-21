@@ -44,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -405,6 +406,44 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(bookings.findById(bookingId).orElseThrow().getPaymentDeadlineAt())
                 .isCloseTo(OffsetDateTime.now().plusHours(2), within(1, ChronoUnit.MINUTES));
+    }
+
+    // The V8 backfill
+
+    /**
+     * The backfill, run against rows that look like the ones {@code V8} found.
+     * Flyway applies it to an empty database in this suite, which proves only
+     * that it parses, and a backfill that matched nothing would leave every
+     * booking that existed before this feature with a {@code NULL} deadline —
+     * never expiring, which is the gap the whole issue exists to close.
+     *
+     * <p>The statement is read out of the migration rather than restated here,
+     * so the two cannot drift apart.
+     */
+    @Test
+    void theV8BackfillGivesAPreExistingNonTerminalBookingADeadlineAndLeavesTerminalOnesNull() throws Exception {
+        UUID waiting = createBooking("key-backfill-waiting");
+        UUID confirmed = createBooking("key-backfill-confirmed", trip.getSeats().get(1));
+        paymentProofs.submit(student, confirmed, jpeg("the-slip"));
+        review.approve(administrator, proofs.findAll().getFirst().getId(), null);
+        // Both as they would have been before V8 ran.
+        jdbc.update("update bookings set payment_deadline_at = null");
+
+        jdbc.update(backfillStatementOfV8());
+
+        assertThat(bookings.findById(waiting).orElseThrow().getPaymentDeadlineAt())
+                .isCloseTo(OffsetDateTime.now().plusHours(2), within(1, ChronoUnit.MINUTES));
+        assertThat(bookings.findById(confirmed).orElseThrow().getPaymentDeadlineAt()).isNull();
+    }
+
+    /** The one {@code UPDATE} in {@code V8}, taken from the migration itself. */
+    private static String backfillStatementOfV8() throws Exception {
+        String migration = new String(new ClassPathResource(
+                "db/migration/V8__add_booking_payment_deadline.sql").getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8);
+        int start = migration.indexOf("UPDATE bookings");
+        assertThat(start).isNotNegative();
+        return migration.substring(start, migration.indexOf(';', start) + 1);
     }
 
     // The scheduling gate
