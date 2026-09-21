@@ -204,6 +204,30 @@ describe("StudentBookingPage", () => {
     });
   });
 
+  it("lists the new booking in my bookings on the confirmation step", async () => {
+    // The confirmation step renders My bookings, so a list still showing the
+    // pre-booking state is visibly wrong: the booking has to be invalidated
+    // into it.
+    let bookingsRequested = 0;
+    stubApi({
+      bookings: () => {
+        bookingsRequested += 1;
+        return json(bookingsRequested === 1 ? [] : [booking]);
+      },
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    expect(await screen.findByText("Booking confirmed")).toBeInTheDocument();
+    // Only My bookings renders the seats-and-fare line, so this is the list
+    // rather than the confirmation panel beside it.
+    expect(
+      await screen.findByText("Seat A1 · 35.00 THB"),
+    ).toBeInTheDocument();
+  });
+
   it("trims the passenger name and phone before sending them", async () => {
     const fetcher = stubApi();
 
