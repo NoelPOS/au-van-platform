@@ -19,6 +19,17 @@ function rejectionReason(booking: Booking): string | null {
   );
 }
 
+/**
+ * Why a cancelled booking is cancelled. An expiry and the student's own
+ * cancellation both leave the status `CANCELLED`, so the history is the only
+ * thing that tells them apart — and an expiry is the one they did not ask for.
+ */
+function expiryReason(booking: Booking): string | null {
+  return (
+    booking.events.findLast((event) => event.type === "EXPIRED")?.detail ?? null
+  );
+}
+
 export function MyBookingsSection({
   bookings,
   loading,
@@ -62,12 +73,24 @@ export function MyBookingsSection({
             <p className="mt-1 text-sm text-muted">
               {`Seat ${booking.seats.map((seat) => seat.label).join(", ")} · ${formatFare(booking.totalFare)}`}
             </p>
+            {booking.status === "CANCELLED" && expiryReason(booking) && (
+              <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                {`${expiryReason(booking)} Book again if seats are still free.`}
+              </p>
+            )}
             {booking.status === "PAYMENT_REJECTED" && (
               <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
                 {rejectionReason(booking) ??
                   "Your payment slip was not accepted. Please send another one."}
               </p>
             )}
+            {(booking.status === "PENDING_PAYMENT" ||
+              booking.status === "PAYMENT_REJECTED") &&
+              booking.paymentDeadlineAt && (
+                <p className="mt-3 text-sm text-muted">
+                  {`Send your payment slip by ${formatDeparture(booking.paymentDeadlineAt)} or these seats are released.`}
+                </p>
+              )}
             {(booking.status === "PENDING_PAYMENT" ||
               booking.status === "PAYMENT_REJECTED") && (
               <PaymentProofForm

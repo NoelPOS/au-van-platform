@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AuthSession } from "../auth/session";
+import { formatDeparture } from "./format";
 import { StudentBookingPage } from "./StudentBookingPage";
 import type { SeatState } from "./types";
 
@@ -54,7 +55,32 @@ const booking = {
       createdAt: "2026-09-21T10:01:12Z",
     },
   ],
+  // The payment window, two hours after this booking was made (ADR-010).
+  paymentDeadlineAt: "2026-09-21T12:01:12Z",
   createdAt: "2026-09-21T10:01:12Z",
+};
+
+/**
+ * What the sweep leaves behind: the status is CANCELLED, the same as a booking
+ * the student cancelled themselves, and only the EXPIRED event says otherwise.
+ * A terminal booking carries no deadline.
+ */
+const expiredBooking = {
+  ...booking,
+  id: "booking-expired",
+  reference: "AUV-260921-EXPIRED1",
+  status: "CANCELLED",
+  paymentDeadlineAt: null,
+  events: [
+    ...booking.events,
+    {
+      type: "EXPIRED",
+      detail: "Expired unpaid and released seats A1.",
+      // Nobody asked for this, so there is no actor.
+      actorUserId: null,
+      createdAt: "2026-09-21T12:01:12Z",
+    },
+  ],
 };
 
 /** What the student sees after an administrator has sent the slip back. */
@@ -1058,6 +1084,57 @@ describe("StudentBookingPage", () => {
 
     expect(await screen.findByText("CONFIRMED")).toHaveClass("text-emerald-700");
     expect(screen.getByText("CANCELLED")).toHaveClass("text-red-700");
+  });
+
+  it("tells a student when their unpaid booking loses its seats", async () => {
+    stubApi({ bookings: () => json([booking]), trips: () => json([]) });
+
+    renderPage();
+
+    // Built with the same formatter the page uses: the assertion is about
+    // which instant is shown — the deadline, not the departure — and must not
+    // depend on the timezone the suite happens to run in.
+    expect(
+      await screen.findByText(
+        `Send your payment slip by ${formatDeparture(booking.paymentDeadlineAt)} or these seats are released.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(new RegExp(formatDeparture(trip.departureAt) + " or")),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says a cancelled booking expired rather than leaving the student guessing", async () => {
+    stubApi({ bookings: () => json([expiredBooking]), trips: () => json([]) });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(
+        "Expired unpaid and released seats A1. Book again if seats are still free.",
+      ),
+    ).toBeInTheDocument();
+    // The seats are gone, so there is nothing left to send a slip for.
+    expect(
+      screen.queryByLabelText("Upload your payment slip"),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * A booking the student cancelled themselves has no EXPIRED event, so it must
+   * not be told it ran out of time.
+   */
+  it("does not claim a booking the student cancelled themselves expired", async () => {
+    stubApi({
+      bookings: () =>
+        json([{ ...booking, status: "CANCELLED", paymentDeadlineAt: null }]),
+      trips: () => json([]),
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("CANCELLED")).toBeInTheDocument();
+    expect(screen.queryByText(/Expired unpaid/)).not.toBeInTheDocument();
   });
 
   it("never serves a cached seat map to a student who comes back to a trip", async () => {
