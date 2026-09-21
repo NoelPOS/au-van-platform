@@ -154,13 +154,17 @@ Do not look for a GitHub review state — the reviewing account is also the auth
 here, so `gh pr review --approve` returns 422; the reviewer posts its findings
 with `gh pr comment` instead.
 
-Then confirm it left nothing behind:
+Then confirm it left nothing behind. **Check both trees** — one Bash call each:
 
 ```sh
 git status --porcelain
+cd .worktrees/<short-name> && git status --porcelain
 ```
 
-Non-empty means the reviewer mutated the tree — abort the cycle and report it.
+Either one non-empty means the reviewer mutated a tree — abort the cycle and
+report it. The root check alone is not enough: `.gitignore` excludes
+`.worktrees/`, so an edit to the track's own files leaves the root output empty
+and only the second command reports it.
 `VERDICT: REQUEST_CHANGES` → **Failure handling**. This gate has no exception:
 nothing merges until a reviewer run returns `VERDICT: APPROVE`.
 
