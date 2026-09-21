@@ -128,11 +128,19 @@ worktree.
 
 ## 4. Open the pull request
 
+`gh pr create` defaults `--head` to the *current* branch, and the root tree
+stays on `main` — git refuses to check a branch out in two worktrees at once, so
+the root tree can never hold the track branch. Name the head explicitly, or the
+command aborts on every issue.
+
 ```sh
 git push -u origin <branch>
-gh pr create --base main --title "<type(scope): outcome>" --body-file <body>
+gh pr create --base main --head <branch> \
+  --title "<type(scope): outcome>" --body-file <body>
 gh project item-add 1 --owner NoelPOS --url <pr-url>
 ```
+
+The push needs no worktree: a ref is shared across all of them.
 
 Fill `.github/pull_request_template.md`, including `Closes #<n>`. **No tool
 attribution in the body.** Set the board item to **In review** (`811cdd56`).
