@@ -373,6 +373,40 @@ describe("StudentBookingPage", () => {
     expect(keys[2]).not.toBe(keys[1]);
   });
 
+  it("mints a new idempotency key once the server has rejected the old one", async () => {
+    const keys: string[] = [];
+    stubApi({
+      createBooking: (init) => {
+        keys.push(new Headers(init.headers).get("Idempotency-Key") ?? "");
+        return keys.length === 1
+          ? json(
+              {
+                detail: "This idempotency key was used with different content.",
+                code: "idempotency_key_reused",
+              },
+              409,
+            )
+          : json(booking, 201);
+      },
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    expect(
+      await screen.findByText(
+        "That booking attempt could not be completed. Try again.",
+      ),
+    ).toBeInTheDocument();
+
+    // Without a fresh key the student retries under the rejected one forever.
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).not.toBe(keys[0]);
+    expect(keys[1]).not.toBe("");
+  });
+
   it("sends the student back to seat selection when the hold expired before confirmation", async () => {
     stubApi({
       createBooking: () =>
