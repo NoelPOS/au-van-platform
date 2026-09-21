@@ -218,8 +218,13 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
      * over the ones the plan assumed. LINE honours {@code X-Line-Retry-Key} for
      * twenty-four hours and treats anything later as a fresh request, so a row
      * still retrying past that window can put a second message in front of a
-     * student. Raise {@code outbox.backoff-cap} or {@code outbox.max-attempts}
-     * far enough and this reddens instead of shipping that risk in silence.
+     * student. Raise {@code outbox.max-attempts} far enough — {@code 40} does
+     * it — and this reddens instead of shipping that risk in silence;
+     * {@code outbox.backoff-base} is the other knob it detects, because both
+     * add to the window. {@code outbox.backoff-cap} is not: the term is
+     * {@code min(base * 2^k, cap)}, so the cap can only ever <em>shorten</em>
+     * the window, and raising it can never push the total past twenty-four
+     * hours.
      */
     @Test
     void theWholeRetryScheduleFinishesFarInsideLinesTwentyFourHourRetryKeyWindow() {
