@@ -88,9 +88,11 @@ notification:
     # main configuration: with no implementation of LineMessageSender the suite
     # needs no LINE channel and no credential, exactly as the in-memory
     # PaymentProofStorage lets it run with no bucket. Tests that need a sender
-    # register one — RecordingLineMessageSender for the dispatch paths, and
-    # LineMessagingIntegrationTests builds the real LineMessageSenderImpl
-    # against a MockRestServiceServer so no request ever leaves the machine.
+    # register one — RecordingLineMessageSender for the dispatch paths, while
+    # LineMessageSenderImplTests and LineDeliveryIntegrationTests build the real
+    # LineMessageSenderImpl against a MockRestServiceServer so no request ever
+    # leaves the machine. LineMessagingWiringIntegrationTests is the one class
+    # that turns this back on, to prove the sender is really autoconfigured.
     enabled: false
     api-base-url: https://api.line.me
     channel-access-token:
