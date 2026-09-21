@@ -90,7 +90,7 @@ function json(body: unknown, status = 200) {
 
 type Routes = {
   trips?: () => Response;
-  seats?: () => Response;
+  seats?: () => Response | Promise<Response>;
   hold?: () => Response;
   release?: () => Response;
   bookings?: () => Response;
@@ -248,6 +248,27 @@ describe("StudentBookingPage", () => {
     expect(
       screen.getByRole("button", { name: "Seat A1, selected" }),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Seat A1, selected" }));
+    expect(
+      screen.getByRole("button", { name: "Seat A1, available" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a loading state while the seat map is being fetched", async () => {
+    let releaseSeats: (response: Response) => void = () => {};
+    stubApi({
+      seats: () =>
+        new Promise<Response>((resolve) => {
+          releaseSeats = resolve;
+        }),
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Mega Bangna/ }));
+
+    expect(await screen.findByText("Loading seats…")).toBeInTheDocument();
+    releaseSeats(json(seatMap()));
   });
 
   it("explains a lost seat race and refreshes the map instead of failing silently", async () => {
@@ -412,8 +433,13 @@ describe("StudentBookingPage", () => {
 
   it("shows the hold countdown and returns to seat selection when it expires", async () => {
     vi.useFakeTimers();
+    let seatsRequested = 0;
     stubApi({
       hold: () => json(hold(new Date(Date.now() + 60_000).toISOString()), 201),
+      seats: () => {
+        seatsRequested += 1;
+        return json(seatMap());
+      },
     });
 
     renderPage();
@@ -428,6 +454,7 @@ describe("StudentBookingPage", () => {
     await tick(30_000);
     expect(screen.getByRole("timer")).toHaveTextContent("Seats held for 0:30");
 
+    const beforeExpiry = seatsRequested;
     await tick(30_000);
 
     expect(
@@ -436,6 +463,8 @@ describe("StudentBookingPage", () => {
     expect(
       screen.getByRole("group", { name: "Seat map" }),
     ).toBeInTheDocument();
+    // The map the student comes back to is the one the hold was released into.
+    expect(seatsRequested).toBeGreaterThan(beforeExpiry);
   });
 
   it("reuses one idempotency key across a retry and mints a new one when the form changes", async () => {
@@ -501,6 +530,46 @@ describe("StudentBookingPage", () => {
     expect(keys[1]).not.toBe("");
   });
 
+  it("mints a new idempotency key for a booking made against a new hold", async () => {
+    const keys: string[] = [];
+    stubApi({
+      createBooking: (init) => {
+        keys.push(new Headers(init.headers).get("Idempotency-Key") ?? "");
+        return keys.length === 1
+          ? json({ detail: "The service is unavailable." }, 503)
+          : json(booking, 201);
+      },
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    expect(
+      await screen.findByText("The service is unavailable."),
+    ).toBeInTheDocument();
+
+    // The abandoned attempt's key must not travel onto a different hold: the
+    // payload would differ and the server would reject a retry the student
+    // cannot act on.
+    fireEvent.click(screen.getByRole("button", { name: "Change seats" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Seat A1, available" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    await screen.findByRole("button", { name: "Confirm booking" });
+    fireEvent.change(screen.getByLabelText("Full name"), {
+      target: { value: "Somchai P." },
+    });
+    fireEvent.change(screen.getByLabelText("Phone number"), {
+      target: { value: "0812345678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
   it("sends the student back to seat selection when the hold expired before confirmation", async () => {
     stubApi({
       createBooking: () =>
@@ -522,8 +591,14 @@ describe("StudentBookingPage", () => {
   it("points an already-used hold at my bookings rather than the seat map", async () => {
     // The 201 the student never saw is a real booking, so the message has to
     // land somewhere that shows it.
+    let bookingsRequested = 0;
     stubApi({
-      bookings: () => json([booking]),
+      // Empty on first load: only the refetch can put the hidden booking on
+      // screen, so the message and the list agree.
+      bookings: () => {
+        bookingsRequested += 1;
+        return json(bookingsRequested === 1 ? [] : [booking]);
+      },
       createBooking: () =>
         json(
           { detail: "This hold is already booked.", code: "hold_already_used" },
@@ -541,7 +616,9 @@ describe("StudentBookingPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("My bookings")).toBeInTheDocument();
-    expect(screen.getByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    expect(
+      await screen.findByText("AUV-260921-7KQ2M4XR"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("group", { name: "Seat map" }),
     ).not.toBeInTheDocument();
