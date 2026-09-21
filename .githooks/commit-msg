@@ -36,7 +36,7 @@ if [ "$(printf '%s\n' "$body" | wc -l | tr -d ' ')" -gt 1 ]; then
     fail "commit messages are a single subject line with no body."
 fi
 
-if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?!?: [a-z].*[^.]$'; then
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?!?: ([a-z]|[a-z].*[^.])$'; then
     fail "subject must be Conventional Commits, lower-case, no trailing period: 'type(scope): imperative outcome'."
 fi
 
