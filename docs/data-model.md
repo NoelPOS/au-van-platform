@@ -112,7 +112,7 @@ A reminder is not a second mechanism. It is an `outbox_events` row whose `next_a
 - They are scheduled when a payment proof is **approved**, inside that approval's own transaction, so an approval that rolls back schedules nothing.
 - A reminder whose moment has already passed is **not queued at all**. A row due in the past is a row due now, so queueing the twenty-four hour reminder for a booking approved twelve hours before departure would fire it immediately, announcing notice the student has not got.
 - `dedupe_key` is `"<bookingId>:<type>"`, the legacy's `unique (bookingId, type)` written as one column. The unique constraint is what makes scheduling idempotent.
-- Cancelling a booking marks its unsent, still-future reminders `DEAD`; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on.
+- Cancelling a booking marks its unsent (`PENDING`) reminders `DEAD` whatever their due time — a reminder that has come due but that no worker has claimed yet is exactly the one that must not go out; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on.
 
 ## Critical constraints to design
 
