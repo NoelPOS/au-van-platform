@@ -40,7 +40,11 @@ Booking and payment changes may generate notifications, reminders, expiry proces
 - The trigger is an in-process `@Scheduled` poller gated on `outbox.dispatch.enabled`. It is only a trigger: an SQS consumer or a separate worker process can call the same dispatch entry point unchanged, which is what "SQS-compatible" means here. No Redis is involved, and ADR-010 records that as a decision rather than an omission.
 - LINE delivery goes through the `LineMessageSender` port. Its Messaging API implementation and the departure reminders are #63; until then a recorded event is resolved without being delivered.
 
-Booking expiry and seat release, the other half of ADR-010, are #62.
+Booking expiry and seat release, the other half of ADR-010, are implemented too.
+
+- Every booking carries `payment_deadline_at`, written only by the transitions that own it: `min(now + booking.payment-window, departureAt - booking.departure-cutoff)` at creation and on rejection, the departure bound alone while a proof is under review, and cleared once the booking is terminal. The two windows are **new product rules** with no equivalent in the legacy application.
+- A scheduled sweep, gated on `booking.expiry.enabled` exactly as the dispatcher is, reads candidate **ids**, locks each booking, and decides only from what the lock returned. An expiry cancels the booking, appends an `EXPIRED` history entry with no actor, deletes its `seat_claims`, and records one outbox row — all in one transaction per booking, so a booking that loses its race neither rolls back nor blocks the batch.
+- The same sweep prunes `idempotency_keys` past their retention window, which ADR-008 left owing.
 
 ## Boundaries
 

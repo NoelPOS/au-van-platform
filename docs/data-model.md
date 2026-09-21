@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat.
 
 ## Schema ownership
 
@@ -22,7 +22,7 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `trips` | `V2` | A scheduled route departure, vehicle, status, and snapshot of fare/duration |
 | `trip_seats` | `V2` | Labelled row/column seat snapshot created with a trip |
 | `seat_claims` | `V3` | One claimed seat, held for a few minutes or attached to a booking |
-| `bookings` | `V3`, `V4` | Student booking, passenger details, price, lifecycle state, and customer-facing reference |
+| `bookings` | `V3`, `V4`, `V8` | Student booking, passenger details, price, lifecycle state, customer-facing reference, and payment deadline |
 | `booking_seats` | `V3` | Which seats a booking bought, kept after cancellation frees the claims |
 | `booking_events` | `V3` | Append-only history of a booking's state changes |
 | `idempotency_keys` | `V3`, `V4` | The response a critical client write already produced, for replay on retry |
@@ -67,7 +67,20 @@ A booking is created `PENDING_PAYMENT` and only an approved payment proof reache
 - A decision locks the booking's row first and is made only from what the lock returned, the same discipline ADR-008 established for confirmation. Approval moves the booking to `CONFIRMED`, rejection to `PAYMENT_REJECTED`, from which the student may submit another proof.
 - The submission is one transaction, and the image is written to storage before any row. A storage failure therefore leaves no proof row, no status change, and no history entry.
 - `booking_events` carries `PAYMENT_PROOF_SUBMITTED`, `PAYMENT_APPROVED`, and `PAYMENT_REJECTED`, so the audit trail stays in the one append-only table rather than growing a parallel one. A rejection's note is the event's detail, which is how the student is told what to fix.
-- `seat_claims` are not released while a booking waits for payment or for review, so a seat can be held indefinitely until #62's expiry processing bounds it. ADR-009 records that as an accepted consequence and ADR-010 decides the bound.
+- `seat_claims` are not released while a booking waits for payment or for review, so the only thing that ever frees them is `bookings.payment_deadline_at` running out. ADR-009 accepted the unbounded hold as a consequence and ADR-010 decided the bound; the "Unpaid bookings expire" section below is the bound as implemented.
+
+## Unpaid bookings expire
+
+Every booking carries its own deadline and a sweep releases the seats of the ones that pass it. ADR-010 records the decision.
+
+- `bookings.payment_deadline_at` is nullable, and `NULL` means "never expires" — the right answer for every `CONFIRMED` or `CANCELLED` row. Only the transitions that own it write it: creation and rejection set `min(now + booking.payment-window, departureAt - booking.departure-cutoff)`, a submitted proof moves it to the departure bound alone, and confirming, cancelling, or expiring clears it.
+- The window is measured from an explicit column rather than from `updated_at`, so no future write can silently reset a student's payment clock. It is a **new product rule**, not one ported from the legacy application, which never expires an unpaid booking at all. The defaults are two hours and one hour before departure.
+- A booking under review is bounded by departure rather than by a timer, so a slow reviewer never costs a student their booking while the seat is still worth recycling.
+- The sweep's predicate is `status IN ('PENDING_PAYMENT','PAYMENT_UNDER_REVIEW','PAYMENT_REJECTED') AND payment_deadline_at <= now`, with no join, and `bookings_payment_deadline_idx` is exactly that predicate.
+- It selects **ids only**, then locks each booking with `BookingRepository.lockById` and decides from what the lock returned. A candidate read is a hint: loading the entities would put them in the persistence context and every later read would hand the pre-lock instance back, so a booking confirmed in between would still look expirable and its paid seat would be freed.
+- Expiry produces `CANCELLED`, not a new status, plus a `booking_events` row of type `EXPIRED` with a null `actor_user_id` — the column is nullable for exactly this kind of system-driven transition. The seats are released with `deleteByBookingId`, which is the only delete that will free a claim carrying a `booking_id`.
+- An expired booking's payment proof stays `SUBMITTED`, because `payment_proofs_review_recorded` requires a reviewer on anything else and the sweep has none. The review queue excludes proofs whose booking is `CANCELLED` instead, so an administrator is never left with a row they cannot clear.
+- The same sweep prunes `idempotency_keys` past `booking.idempotency-key-retention`, which ADR-008 named as this work's to do. The window has to stay longer than any client's retry horizon: a key dropped early stops replaying and the retry writes a second booking.
 
 ## Asynchronous work
 
