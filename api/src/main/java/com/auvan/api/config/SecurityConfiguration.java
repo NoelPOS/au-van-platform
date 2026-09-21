@@ -69,7 +69,10 @@ public class SecurityConfiguration {
         var configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // Idempotency-Key is not a CORS-safelisted header, so without it here the
+        // browser's preflight refuses every booking confirmation. The Vite dev
+        // proxy makes local development same-origin, which hides this entirely.
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
         return source;
