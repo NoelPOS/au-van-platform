@@ -68,9 +68,11 @@ path:line — the problem — the required change
 Cite evidence for every finding. No vague praise, no "consider maybe". If you
 have no findings, say so plainly rather than inventing minor ones.
 
-End with exactly one line, nothing after it:
+End the text you return with exactly one line, nothing after it:
 
 `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+
+That constraint is on your returned text, not on what you do afterwards.
 
 Then post your findings and verdict as a comment:
 
