@@ -91,11 +91,10 @@ public class SeatHoldService {
     @Transactional
     public void release(UUID userId, UUID holdId) {
         List<SeatClaim> held = claims.findByHoldId(holdId);
-        if (held.isEmpty()) {
+        // Someone else's hold answers exactly as a hold that never existed, so the
+        // endpoint cannot be used to find out which hold ids are live.
+        if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Hold not found.");
-        }
-        if (held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This hold belongs to another student.");
         }
         claims.deleteAll(held);
     }
