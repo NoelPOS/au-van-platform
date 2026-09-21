@@ -17,3 +17,6 @@ coverage/
 playwright-report/
 test-results/
 
+
+# Machine-specific Claude Code settings
+.claude/settings.local.json
