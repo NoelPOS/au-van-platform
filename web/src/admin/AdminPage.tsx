@@ -1,18 +1,20 @@
 import { useState } from "react";
 import type { AuthSession } from "../auth/session";
 import { AdminInventoryPage } from "../inventory/AdminInventoryPage";
+import { AdminOperationsPage } from "../operations/AdminOperationsPage";
 import { AdminPaymentReviewPage } from "../payments/AdminPaymentReviewPage";
 
-type Destination = "inventory" | "payments";
+type Destination = "inventory" | "payments" | "operations";
 
 const destinations: { id: Destination; label: string }[] = [
   { id: "inventory", label: "Transport inventory" },
   { id: "payments", label: "Payment review" },
+  { id: "operations", label: "Operations" },
 ];
 
 /**
  * Everything an administrator can reach. Local state rather than a router:
- * there are two destinations and no routing dependency in this application,
+ * there are three destinations and no routing dependency in this application,
  * the same way `InventoryTabs` already switches between its four sections.
  */
 export function AdminPage({ session }: { session: AuthSession }) {
@@ -36,10 +38,12 @@ export function AdminPage({ session }: { session: AuthSession }) {
           ))}
         </div>
       </nav>
-      {destination === "inventory" ? (
-        <AdminInventoryPage session={session} />
-      ) : (
+      {destination === "inventory" && <AdminInventoryPage session={session} />}
+      {destination === "payments" && (
         <AdminPaymentReviewPage session={session} />
+      )}
+      {destination === "operations" && (
+        <AdminOperationsPage session={session} />
       )}
     </>
   );
