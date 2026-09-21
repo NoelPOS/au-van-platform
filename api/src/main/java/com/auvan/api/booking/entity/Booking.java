@@ -122,16 +122,33 @@ public class Booking {
     }
 
     /**
-     * Only a booking still waiting for payment accepts a proof. #52 adds the
-     * rejected state a student may resubmit from; until then this is the one
-     * status a submission is allowed against.
+     * Only a booking still waiting for payment accepts a proof, and a rejected
+     * one still is: ADR-009 made rejection a state the student resubmits from
+     * rather than a dead end, and this method is the whole of that gate. A
+     * booking already in front of an administrator is not waiting for anything.
      */
     public boolean isAwaitingPaymentProof() {
-        return status == BookingStatus.PENDING_PAYMENT;
+        return status == BookingStatus.PENDING_PAYMENT || status == BookingStatus.PAYMENT_REJECTED;
+    }
+
+    /** Only a booking an administrator is actually looking at can be decided. */
+    public boolean isUnderPaymentReview() {
+        return status == BookingStatus.PAYMENT_UNDER_REVIEW;
     }
 
     public void markPaymentUnderReview(OffsetDateTime now) {
         this.status = BookingStatus.PAYMENT_UNDER_REVIEW;
+        this.updatedAt = now;
+    }
+
+    public void confirm(OffsetDateTime now) {
+        this.status = BookingStatus.CONFIRMED;
+        this.updatedAt = now;
+    }
+
+    /** The seats stay claimed: the student may submit another proof (ADR-009). */
+    public void markPaymentRejected(OffsetDateTime now) {
+        this.status = BookingStatus.PAYMENT_REJECTED;
         this.updatedAt = now;
     }
 

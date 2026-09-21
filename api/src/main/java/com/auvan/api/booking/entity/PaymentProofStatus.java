@@ -1,8 +1,9 @@
 package com.auvan.api.booking.entity;
 
 /**
- * Where a submitted proof stands. Submission is all this slice can produce;
- * the administrator's decision that reaches the other two arrives with #52.
+ * Where a submitted proof stands. A proof is {@code SUBMITTED} until an
+ * administrator decides, and the decision is final: a rejected proof stays
+ * rejected, and a resubmission is a new row.
  */
 public enum PaymentProofStatus {
     SUBMITTED,

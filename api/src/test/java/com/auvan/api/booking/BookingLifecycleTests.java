@@ -2,6 +2,8 @@ package com.auvan.api.booking;
 
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingStatus;
+import com.auvan.api.booking.entity.PaymentProof;
+import com.auvan.api.booking.entity.PaymentProofStatus;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
@@ -40,8 +42,9 @@ class BookingLifecycleTests {
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
         assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(3));
-        // The second submission #52 allows arrives from a rejection, not from
-        // a booking already sitting in front of an administrator.
+        assertThat(booking.isUnderPaymentReview()).isTrue();
+        // A resubmission arrives from a rejection, not from a booking already
+        // sitting in front of an administrator.
         assertThat(booking.isAwaitingPaymentProof()).isFalse();
     }
 
@@ -52,6 +55,71 @@ class BookingLifecycleTests {
         booking.cancel(NOW.plusMinutes(1));
 
         assertThat(booking.isAwaitingPaymentProof()).isFalse();
+        assertThat(booking.isUnderPaymentReview()).isFalse();
+    }
+
+    @Test
+    void anApprovedPaymentConfirmsTheBooking() {
+        Booking booking = newBooking();
+        booking.markPaymentUnderReview(NOW.plusMinutes(3));
+
+        booking.confirm(NOW.plusMinutes(9));
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(9));
+        assertThat(booking.isUnderPaymentReview()).isFalse();
+    }
+
+    /**
+     * Rejection is not a dead end (ADR-009): the booking keeps its seats and
+     * accepts another proof, which is the whole of the resubmission gate.
+     */
+    @Test
+    void aRejectedBookingAcceptsAnotherProof() {
+        Booking booking = newBooking();
+        booking.markPaymentUnderReview(NOW.plusMinutes(3));
+
+        booking.markPaymentRejected(NOW.plusMinutes(9));
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_REJECTED);
+        assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(9));
+        assertThat(booking.isAwaitingPaymentProof()).isTrue();
+        assertThat(booking.isUnderPaymentReview()).isFalse();
+    }
+
+    @Test
+    void anApprovedProofRecordsWhoDecidedItAndWhen() {
+        UUID administrator = UUID.randomUUID();
+        PaymentProof proof = newProof();
+
+        proof.approve(administrator, null, NOW.plusMinutes(9));
+
+        assertThat(proof.getStatus()).isEqualTo(PaymentProofStatus.APPROVED);
+        assertThat(proof.getReviewedByUserId()).isEqualTo(administrator);
+        assertThat(proof.getReviewedAt()).isEqualTo(NOW.plusMinutes(9));
+        assertThat(proof.getReviewNote()).isNull();
+        assertThat(proof.isSubmitted()).isFalse();
+    }
+
+    @Test
+    void aRejectedProofKeepsTheReasonItWasRejectedFor() {
+        UUID administrator = UUID.randomUUID();
+        PaymentProof proof = newProof();
+
+        proof.reject(administrator, "The slip is too blurred to read.", NOW.plusMinutes(9));
+
+        assertThat(proof.getStatus()).isEqualTo(PaymentProofStatus.REJECTED);
+        assertThat(proof.getReviewedByUserId()).isEqualTo(administrator);
+        assertThat(proof.getReviewedAt()).isEqualTo(NOW.plusMinutes(9));
+        assertThat(proof.getReviewNote()).isEqualTo("The slip is too blurred to read.");
+        assertThat(proof.isSubmitted()).isFalse();
+    }
+
+    private static PaymentProof newProof() {
+        PaymentProof proof = new PaymentProof(newBooking(), UUID.randomUUID(),
+                "payment-proofs/booking/slip.jpg", "image/jpeg", 12, NOW.plusMinutes(3));
+        assertThat(proof.isSubmitted()).isTrue();
+        return proof;
     }
 
     private static Booking newBooking() {

@@ -55,6 +55,15 @@ public class PaymentProof {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "reviewed_by_user_id")
+    private UUID reviewedByUserId;
+
+    @Column(name = "reviewed_at")
+    private OffsetDateTime reviewedAt;
+
+    @Column(name = "review_note", length = 500)
+    private String reviewNote;
+
     protected PaymentProof() { }
 
     public PaymentProof(Booking booking, UUID submittedByUserId, String objectKey, String contentType,
@@ -76,4 +85,29 @@ public class PaymentProof {
     public long getSizeBytes() { return sizeBytes; }
     public PaymentProofStatus getStatus() { return status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
+    public UUID getReviewedByUserId() { return reviewedByUserId; }
+    public OffsetDateTime getReviewedAt() { return reviewedAt; }
+    public String getReviewNote() { return reviewNote; }
+
+    /** A decided proof cannot be decided again; only this state may be reviewed. */
+    public boolean isSubmitted() {
+        return status == PaymentProofStatus.SUBMITTED;
+    }
+
+    public void approve(UUID reviewerId, String note, OffsetDateTime now) {
+        decide(PaymentProofStatus.APPROVED, reviewerId, note, now);
+    }
+
+    public void reject(UUID reviewerId, String note, OffsetDateTime now) {
+        decide(PaymentProofStatus.REJECTED, reviewerId, note, now);
+    }
+
+    private void decide(PaymentProofStatus decision, UUID reviewerId, String note, OffsetDateTime now) {
+        // Reviewer and timestamp move together with the status, because
+        // payment_proofs_review_recorded refuses a decided row without them.
+        this.status = decision;
+        this.reviewedByUserId = reviewerId;
+        this.reviewedAt = now;
+        this.reviewNote = note;
+    }
 }
