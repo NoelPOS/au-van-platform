@@ -93,8 +93,10 @@ schema changes.
   `.env.example` only, with an empty value.
 - Commit credentials, connection strings, tokens, payment slips, or production
   data.
-- Edit `AGENTS.md`, `CLAUDE.md`, `.claude/`, or `.githooks/`. If a rule blocks
-  you, stop and report it rather than changing the rule.
+- Edit `.githooks/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` without the linked
+  issue asking for it. The loop does not get to edit its own rules to unblock
+  itself: if a rule blocks you and the issue did not ask for that change, stop
+  and report it rather than changing the rule.
 - Run deploys, provisioning, or any command that costs money or touches real
   infrastructure. For infrastructure issues, produce code and validate it
   statically (`terraform validate`, `terraform fmt -check`).
