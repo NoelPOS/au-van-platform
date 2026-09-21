@@ -83,16 +83,27 @@ jobs:
       - uses: actions/checkout@v5
       - uses: hashicorp/setup-terraform@v3
         with:
+          # Pinned so a run today and a run in six months check the same
+          # thing. Must stay at or above the `required_version` the modules
+          # declare in their `versions.tf`.
+          terraform_version: 1.9.8
           terraform_wrapper: false
       - name: Check formatting
         run: terraform fmt -check -recursive infra
-      - name: Validate the budget module
-        working-directory: infra/budget
+      - name: Validate every module
         run: |
-          terraform init -backend=false -input=false
-          terraform validate
-      - name: Validate the demo module
-        working-directory: infra/demo
-        run: |
-          terraform init -backend=false -input=false
-          terraform validate
+          # Discovered rather than listed, so a module added under infra/ is
+          # validated the moment it lands, the same way `fmt -check
+          # -recursive` already picks it up.
+          modules=$(find infra -name '*.tf' -exec dirname {} \; | sort -u)
+          if [ -z "$modules" ]; then
+            echo "No Terraform module found under infra/." >&2
+            exit 1
+          fi
+          status=0
+          for dir in $modules; do
+            echo "--- $dir"
+            terraform -chdir="$dir" init -backend=false -input=false || status=1
+            terraform -chdir="$dir" validate || status=1
+          done
+          exit $status
