@@ -957,6 +957,9 @@ describe("StudentBookingPage", () => {
         "Your payment proof is with an administrator. This booking is confirmed once they approve it.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Upload your payment slip"),
+    ).not.toBeInTheDocument();
   });
 
   it("reports the reason a payment slip was refused and keeps the form", async () => {
