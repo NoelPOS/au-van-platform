@@ -24,12 +24,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,26 +44,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doAnswer;
 
 /**
  * Concurrency cover for seat holds. This class must not be {@code @Transactional}:
  * a test-managed transaction would put every thread on one connection and there
  * would be no race left to observe.
  *
- * <p>Read these two tests together. The racing test shows that eight students
- * claiming one seat at the same instant leave exactly one claim behind, but it
- * cannot say which guard stopped the losers — the optimistic read in
- * {@link SeatHoldService} catches whichever threads arrive after the winner has
- * committed, and only the rest reach the unique index. The second test pins that
- * backstop directly and deterministically.
+ * <p>The racing test shows that eight students claiming one seat at the same
+ * instant leave exactly one claim behind, but it cannot say which guard stopped
+ * the losers: the optimistic read in {@link SeatHoldService} catches whichever
+ * threads arrive after the winner has committed, and in practice that is most of
+ * them. The three tests after it therefore stub one repository lookup each, so
+ * that the interleaving a race only sometimes produces happens every time — the
+ * rival landing after the check, two students reclaiming the same expired claim,
+ * and the bare constraint itself.
  *
- * <p>Both run on H2, so neither proves PostgreSQL's behaviour, and the racing
- * test cannot pin the losers' HTTP status either: H2 surfaces unique-key
- * contention as a constraint violation or as a lock timeout depending on
- * timing, and only the first becomes a 409. The sequential test in
- * {@code SeatHoldIntegrationTests} is what pins the 409 and its wording.
- * Concurrency coverage against real PostgreSQL belongs to issue #10; putting
- * Testcontainers here would put Docker on the critical path of every build.
+ * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour, and the
+ * racing test cannot pin the losers' HTTP status either: H2 surfaces unique-key
+ * contention as a constraint violation or as a lock timeout depending on timing,
+ * and only the first becomes a 409. Concurrency coverage against real PostgreSQL
+ * belongs to issue #10; putting Testcontainers here would put Docker on the
+ * critical path of every build.
  */
 @SpringBootTest
 class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
@@ -66,8 +74,13 @@ class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private SeatHoldService seatHoldService;
 
-    @Autowired
+    // A spy, not a mock: every call runs for real unless a test stubs the one
+    // lookup whose timing it needs to control.
+    @MockitoSpyBean
     private SeatClaimRepository claims;
+
+    @Autowired
+    private TransactionTemplate transactions;
 
     @Autowired
     private AppUserRepository users;
@@ -116,6 +129,7 @@ class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch finished = new CountDownLatch(CONTENDERS);
         AtomicInteger succeeded = new AtomicInteger();
+        Queue<Exception> losses = new ConcurrentLinkedQueue<>();
 
         try (ExecutorService pool = Executors.newFixedThreadPool(CONTENDERS)) {
             for (int index = 0; index < CONTENDERS; index++) {
@@ -132,9 +146,7 @@ class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
                         seatHoldService.hold(student, new CreateSeatHoldRequest(trip.getId(), List.of(contendedSeat)));
                         succeeded.incrementAndGet();
                     } catch (Exception expectedForLosers) {
-                        // Losers fail either on the optimistic read or on the unique
-                        // index, and the exception differs between the two, so the
-                        // assertions below count winners and rows instead.
+                        losses.add(expectedForLosers);
                     } finally {
                         finished.countDown();
                     }
@@ -149,6 +161,81 @@ class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
         assertThat(claims.findBySeatIdIn(List.of(contendedSeat)))
                 .singleElement()
                 .satisfies(claim -> assertThat(claim.getTripSeat().getId()).isEqualTo(contendedSeat));
+        // Losers stopped by either guard must have been told the same thing. A loser
+        // that H2 failed some other way is not a ResponseStatusException at all, and
+        // is out of this test's reach; the stubbed test below covers that branch.
+        assertThat(losses).hasSize(CONTENDERS - 1);
+        assertThat(losses)
+                .filteredOn(ResponseStatusException.class::isInstance)
+                .allSatisfy(loss -> assertThat(((ResponseStatusException) loss).getStatusCode())
+                        .isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    /**
+     * Reaches the one branch a race cannot be relied on to reach: the rival claim
+     * lands after the optimistic read has already found the seat free, so only the
+     * unique index can stop the insert. Stubbing the read is what makes the timing
+     * certain instead of lucky.
+     */
+    @Test
+    void aClaimThatLandsAfterTheCheckIsCaughtByTheConstraintAndReportedAsAConflict() {
+        TripSeat seat = seats.getFirst();
+        UUID latecomer = students.get(0);
+        UUID rival = students.get(1);
+        // The rival commits while the check is in flight. Returning an empty list is
+        // exactly what the real query would have returned a moment earlier, so the
+        // service proceeds on a true-but-already-stale reading of the seat.
+        doAnswer(invocation -> {
+            claimSeatOnAnotherThread(rival, seat);
+            return List.of();
+        }).when(claims).findBySeatIdIn(List.of(seat.getId()));
+
+        assertThatThrownBy(() -> seatHoldService.hold(latecomer,
+                new CreateSeatHoldRequest(trip.getId(), List.of(seat.getId()))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, conflict -> {
+                    assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(conflict.getReason()).contains("refresh");
+                });
+
+        assertThat(claims.findByTripIdIn(List.of(trip.getId())))
+                .singleElement()
+                .satisfies(claim -> assertThat(claim.getUserId()).isEqualTo(rival));
+    }
+
+    /**
+     * A seat freed by expiry is the contended case, because every student watching
+     * the seat map sees it come free at the same moment. Both readers then try to
+     * delete the same expired row. The loser must be told to refresh, not handed a
+     * 500: deleting it as a managed entity would make Hibernate's row-count check
+     * raise a {@code StaleStateException}, which is not a
+     * {@code DataIntegrityViolationException} and escapes the handler.
+     */
+    @Test
+    void losingTheRaceToReclaimAnExpiredClaimIsAConflictRatherThanACrash() {
+        TripSeat seat = seats.getFirst();
+        UUID latecomer = students.get(0);
+        UUID rival = students.get(1);
+        SeatClaim expired = claims.saveAndFlush(
+                new SeatClaim(seat, students.get(2), UUID.randomUUID(), OffsetDateTime.now().minusMinutes(1)));
+
+        // The latecomer has already read the expired claim for real by the time this
+        // runs, so it is holding a managed entity whose row the rival is about to
+        // delete out from under it.
+        doAnswer(invocation -> {
+            reclaimOnAnotherThread(rival, seat, expired.getId());
+            return List.of();
+        }).when(claims).findHoldsOnTripBy(trip.getId(), latecomer);
+
+        assertThatThrownBy(() -> seatHoldService.hold(latecomer,
+                new CreateSeatHoldRequest(trip.getId(), List.of(seat.getId()))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, conflict -> {
+                    assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(conflict.getReason()).contains("refresh");
+                });
+
+        assertThat(claims.findByTripIdIn(List.of(trip.getId())))
+                .singleElement()
+                .satisfies(claim -> assertThat(claim.getUserId()).isEqualTo(rival));
     }
 
     @Test
@@ -160,6 +247,25 @@ class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
         assertThatThrownBy(() -> claims.saveAndFlush(
                 new SeatClaim(seat, students.get(1), UUID.randomUUID(), expiresAt)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /** Reclaims an expired claim and takes its seat, from outside the caller's transaction. */
+    private void reclaimOnAnotherThread(UUID student, TripSeat seat, UUID expiredClaimId) throws Exception {
+        try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
+            pool.submit(() -> transactions.executeWithoutResult(status -> {
+                claims.deleteByIdIn(List.of(expiredClaimId));
+                claims.save(new SeatClaim(seat, student, UUID.randomUUID(), OffsetDateTime.now().plusMinutes(5)));
+            })).get(10, TimeUnit.SECONDS);
+        }
+    }
+
+    /** Commits a rival claim from outside the caller's transaction, and waits for it. */
+    private void claimSeatOnAnotherThread(UUID student, TripSeat seat) throws Exception {
+        try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
+            pool.submit(() -> transactions.executeWithoutResult(status -> claims.save(
+                            new SeatClaim(seat, student, UUID.randomUUID(), OffsetDateTime.now().plusMinutes(5)))))
+                    .get(10, TimeUnit.SECONDS);
+        }
     }
 
     /** Holds and immediately releases a seat of this thread's own, leaving no claim behind. */
