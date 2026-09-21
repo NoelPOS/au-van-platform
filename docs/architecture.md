@@ -50,3 +50,4 @@ Booking and payment changes may generate notifications, reminders, expiry proces
 - [ADR-005: Verify LINE Identity Server-Side and Issue Short-Lived AU-Van JWTs](adr/005-line-identity-exchange-and-short-lived-jwt.md)
 - [ADR-006: Hold and Book Seats in One `seat_claims` Table with Lazy Expiry](adr/006-seat-claims-single-table-and-lazy-hold-expiry.md)
 - [ADR-007: Use Terraform for the AWS Target Infrastructure](adr/007-terraform-for-aws-target-infrastructure.md)
+- [ADR-008: Create a Booking Exactly Once, from a Locked Hold and a Stored Response](adr/008-exactly-once-booking-creation.md)
