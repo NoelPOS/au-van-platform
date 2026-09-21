@@ -21,12 +21,14 @@ import com.auvan.api.inventory.repository.VehicleRepository;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -76,6 +78,9 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private TransactionTemplate transactions;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -89,6 +94,7 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
     @BeforeEach
     void setUp() throws Exception {
         claims.deleteAll();
+        deleteBookings();
         trips.deleteAll();
         vehicles.deleteAll();
         seatLayouts.deleteAll();
@@ -98,6 +104,14 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         trip = createTrip("VAN-01", OffsetDateTime.now().plusDays(1), TripStatus.ACTIVE);
         seats = trip.getSeats();
         studentToken = tokenFor("student-token", "Ustudent");
+    }
+
+    // Bookings outlive this class's own cleanup, and a leftover row would block
+    // the trips.deleteAll() that every other integration test starts with.
+    @AfterEach
+    void clearBookings() {
+        claims.deleteAll();
+        deleteBookings();
     }
 
     // Success paths
@@ -409,20 +423,43 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
 
     /**
      * Attaches a booking to the seat's claim, which no endpoint in this issue can
-     * do. The booking id is arbitrary because nothing maps the {@code bookings}
-     * table yet; once #25 adds the entity, and #27 makes {@code V3} the schema
-     * that actually runs, this needs a real booking row for the foreign key.
+     * do. {@code V3} gives {@code seat_claims.booking_id} a foreign key to
+     * {@code bookings}, so the claim has to point at a row that exists.
      */
     private void bookTheClaimOn(TripSeat seat, OffsetDateTime expiresAt) {
+        UUID bookingId = insertBooking();
         transactions.executeWithoutResult(status -> entityManager.createQuery("""
                         update SeatClaim claim
                         set claim.bookingId = :bookingId, claim.expiresAt = :expiresAt
                         where claim.tripSeat.id = :seatId
                         """)
-                .setParameter("bookingId", UUID.randomUUID())
+                .setParameter("bookingId", bookingId)
                 .setParameter("expiresAt", expiresAt)
                 .setParameter("seatId", seat.getId())
                 .executeUpdate());
+    }
+
+    /**
+     * There is no {@code Booking} entity until #25, so the row the foreign key
+     * needs goes in with plain SQL rather than through a repository.
+     */
+    private UUID insertBooking() {
+        UUID bookingId = UUID.randomUUID();
+        UUID userId = users.findByLineSubject("Ustudent").orElseThrow().getId();
+        OffsetDateTime now = OffsetDateTime.now();
+        jdbc.update("""
+                        insert into bookings (id, trip_id, user_id, passenger_name, passenger_phone,
+                                              total_fare, status, created_at, updated_at)
+                        values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                bookingId, trip.getId(), userId, "Test Student", "0800000000",
+                new BigDecimal("35.00"), "CONFIRMED", now, now);
+        return bookingId;
+    }
+
+    /** Nothing maps {@code bookings}, so no repository {@code deleteAll} reaches it. */
+    private void deleteBookings() {
+        jdbc.update("delete from bookings");
     }
 
     /** Writes a claim that expired a minute ago, which no API call can produce. */
