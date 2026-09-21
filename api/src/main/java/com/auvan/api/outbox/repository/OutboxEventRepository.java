@@ -115,6 +115,28 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
     int markDead(@Param("id") UUID id, @Param("now") OffsetDateTime now, @Param("error") String error);
 
     /**
+     * The dead letters, most recently given up on first — what
+     * {@link #markDead} above means by "somebody can find it", and #70's half
+     * of #9's operational visibility.
+     *
+     * <p>{@code status = DEAD} is the whole of the selection and it is
+     * load-bearing: a {@code PENDING} row is merely waiting its turn and an
+     * {@code IN_FLIGHT} one is being sent right now, and reporting either as a
+     * dead letter would send an operator after work that is going to arrive on
+     * its own. Widen this and the screen stops meaning anything.
+     *
+     * <p>Paged rather than unbounded. A dependency that is down dead-letters
+     * every row it touches once the attempt budget is spent, and an operator
+     * needs the most recent ones, not all of them.
+     */
+    @Query("""
+            select event from OutboxEvent event
+            where event.status = com.auvan.api.outbox.entity.OutboxStatus.DEAD
+            order by event.processedAt desc, event.createdAt desc
+            """)
+    List<OutboxEvent> findDead(Pageable pageable);
+
+    /**
      * Whether this reminder has already been scheduled.
      *
      * <p>The durable guarantee is the {@code UNIQUE (dedupe_key)} constraint;

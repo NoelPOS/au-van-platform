@@ -23,6 +23,21 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     Optional<Booking> findByIdAndUserId(UUID id, UUID userId);
 
     /**
+     * Every booking on one trip, for the administrator's operational view.
+     *
+     * <p>The trip scope is the whole of the query and it is load-bearing:
+     * without it this reports the booking counts of the entire system under one
+     * trip's heading, which no status column would ever contradict.
+     *
+     * <p>Rows rather than a {@code group by} count, because the operational
+     * view wants the tally of every status including the empty ones, and a
+     * trip's bookings are bounded by its seats — counting five statuses in the
+     * service is plainer to read than a projection that has to be padded back
+     * out afterwards.
+     */
+    List<Booking> findByTripId(UUID tripId);
+
+    /**
      * The same owner-scoped lookup, with the booking's row locked until the
      * transaction ends. Scoped by owner for the same reason and in the same
      * statement, so a non-owner matches nothing and locks nothing.
