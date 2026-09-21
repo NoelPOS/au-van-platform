@@ -1,3 +1,5 @@
+# This file replaces the main application.yml outright in tests; it is not
+# merged with it. New configuration has to be added to both files.
 spring:
   datasource:
     url: jdbc:h2:mem:au_van;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
@@ -7,6 +9,9 @@ spring:
     redis:
       host: localhost
       port: 0
+  mvc:
+    problemdetails:
+      enabled: true
 
 auth:
   jwt:
