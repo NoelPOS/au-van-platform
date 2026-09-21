@@ -11,12 +11,19 @@ export type BookingStatus =
   | "CONFIRMED"
   | "CANCELLED";
 
+/**
+ * `EXPIRED` is the sweep releasing an unpaid booking's seats. The booking's
+ * status is `CANCELLED` either way — ADR-010 declined to add a status for a
+ * state that is operationally identical — so this event is the only thing that
+ * says the student did not cancel it themselves.
+ */
 export type BookingEventType =
   | "CREATED"
   | "PAYMENT_PROOF_SUBMITTED"
   | "PAYMENT_APPROVED"
   | "PAYMENT_REJECTED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "EXPIRED";
 
 /**
  * One entry in a booking's history. `actorUserId` is whoever caused it, which
@@ -88,5 +95,11 @@ export type Booking = {
   totalFare: number;
   seats: HeldSeat[];
   events: BookingEvent[];
+  /**
+   * When these seats are released if the booking is still unpaid, and null for
+   * one that never expires — every confirmed or cancelled booking, and any row
+   * written before the deadline existed.
+   */
+  paymentDeadlineAt: string | null;
   createdAt: string;
 };
