@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.dto.PaymentProofResponse;
 import com.auvan.api.booking.entity.Booking;
@@ -42,13 +43,16 @@ public class PaymentProofReviewService {
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
     private final OutboxRecorder outbox;
+    private final BookingProperties properties;
 
     public PaymentProofReviewService(BookingRepository bookings, PaymentProofRepository proofs,
-                                     PaymentProofStorage storage, OutboxRecorder outbox) {
+                                     PaymentProofStorage storage, OutboxRecorder outbox,
+                                     BookingProperties properties) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
         this.outbox = outbox;
+        this.properties = properties;
     }
 
     /** Everything still waiting for a decision, oldest first. */
@@ -92,7 +96,11 @@ public class PaymentProofReviewService {
         // The note is the whole point of rejecting: the student may resubmit,
         // and without a reason they will send the same blurred slip again.
         reviewed.booking().recordEvent(BookingEventType.PAYMENT_REJECTED, reviewNote, adminId, now);
-        reviewed.booking().markPaymentRejected(now);
+        // A fresh window, measured from now. The student has been told to send
+        // a better slip, and the deadline they were under while the first one
+        // sat in a queue would give them no time at all to send one.
+        reviewed.booking().markPaymentRejected(
+                properties.paymentDeadlineFor(reviewed.booking().getTrip().getDepartureAt(), now), now);
         recordForStudent(OutboxEventType.PAYMENT_REJECTED, reviewed.booking(), reviewNote, now);
         return BookingResponse.from(reviewed.booking());
     }

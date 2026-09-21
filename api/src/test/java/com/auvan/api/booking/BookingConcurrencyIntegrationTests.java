@@ -374,7 +374,8 @@ class BookingConcurrencyIntegrationTests extends AuthenticationTestSupport {
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
             pool.submit(() -> transactions.executeWithoutResult(status -> bookings.save(new Booking(
                             trip, rival, reference, "Rival Student", "0800000000",
-                            new BigDecimal("35.00"), OffsetDateTime.now()))))
+                            new BigDecimal("35.00"), OffsetDateTime.now().plusHours(2),
+                            OffsetDateTime.now()))))
                     .get(30, TimeUnit.SECONDS);
         }
     }

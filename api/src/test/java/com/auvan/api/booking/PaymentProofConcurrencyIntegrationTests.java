@@ -137,7 +137,8 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         student = users.save(new AppUser("Ustudent", "Student")).getId();
         administrator = users.save(new AppUser("Uadmin", "Administrator")).getId();
         Booking booking = new Booking(trip, student, "AUV-250101-PROOFRAC", "Somchai P.",
-                "0812345678", new BigDecimal("35.00"), OffsetDateTime.now());
+                "0812345678", new BigDecimal("35.00"), OffsetDateTime.now().plusHours(2),
+                OffsetDateTime.now());
         TripSeat seat = trip.getSeats().getFirst();
         booking.addSeat(seat);
         bookingId = bookings.save(booking).getId();

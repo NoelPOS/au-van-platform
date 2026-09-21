@@ -47,6 +47,21 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
+  # Mirrors the main configuration; this file replaces it rather than merging
+  # with it, so a key added to one has to be added to the other.
+  payment-window: PT2H
+  departure-cutoff: PT1H
+  idempotency-key-retention: PT24H
+  expiry:
+    # False, and this is the one value here that deliberately differs from the
+    # main configuration, for the reason outbox.dispatch.enabled below gives: a
+    # live sweep would cancel the booking and payment-proof concurrency tests'
+    # own fixtures mid-assertion. Tests call BookingExpiryService.sweep()
+    # directly; BookingExpirySchedulingIntegrationTests turns this back on in
+    # isolation to prove the scheduled path is really wired.
+    enabled: false
+    poll-interval: PT1M
+    batch-size: 50
 
 outbox:
   # Mirrors the main configuration; this file replaces it rather than merging

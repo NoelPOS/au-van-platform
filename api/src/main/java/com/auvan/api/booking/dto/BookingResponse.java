@@ -31,7 +31,15 @@ public record BookingResponse(
         List<BookedSeat> seats,
         List<BookingEventResponse> events,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt) {
+        OffsetDateTime updatedAt,
+        /*
+         * When these seats are released if the booking is still unpaid, and
+         * null for one that never expires. Additive, and deliberately part of
+         * the response rather than left implicit: expiry is the first thing in
+         * this system that takes something away without the student acting, so
+         * the deadline has to be something they can see (ADR-010).
+         */
+        OffsetDateTime paymentDeadlineAt) {
 
     public static BookingResponse from(Booking booking) {
         return new BookingResponse(
@@ -45,7 +53,8 @@ public record BookingResponse(
                 booking.getSeats().stream().map(BookedSeat::from).toList(),
                 booking.getEvents().stream().map(BookingEventResponse::from).toList(),
                 booking.getCreatedAt(),
-                booking.getUpdatedAt());
+                booking.getUpdatedAt(),
+                booking.getPaymentDeadlineAt());
     }
 
     public record BookedTrip(UUID id, String origin, String destination, OffsetDateTime departureAt) {

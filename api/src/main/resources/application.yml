@@ -57,6 +57,30 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
+  # A NEW product rule, not one ported from the legacy application, which
+  # creates an unpaid booking and never expires it (ADR-010). Two hours is long
+  # enough for a bank transfer and short enough to recycle a seat; an hour
+  # before departure is the point past which an unpaid seat helps nobody. A
+  # booking gets min(now + payment-window, departureAt - departure-cutoff), and
+  # only the departure bound once its proof is with an administrator.
+  payment-window: PT2H
+  departure-cutoff: PT1H
+  # How long a stored idempotency response stays replayable. It has to stay
+  # comfortably longer than any client's retry horizon: a key pruned while a
+  # retry could still arrive stops replaying and writes a second booking.
+  # ADR-008 accepted that this table grows and named the expiry sweep as the
+  # home for the prune.
+  idempotency-key-retention: PT24H
+  expiry:
+    # Every instance may sweep. Nothing coordinates them and nothing needs to:
+    # each booking's row lock decides who expires it, which is why this work
+    # needs no Redis lock (ADR-010).
+    enabled: true
+    # A minute is well inside any window a student would notice and costs one
+    # indexed query against a table that is empty of overdue rows most of the
+    # time.
+    poll-interval: PT1M
+    batch-size: 50
 
 outbox:
   # How many due rows one poll takes. Small: a poll holds no lock and the next

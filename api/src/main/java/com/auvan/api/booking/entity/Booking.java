@@ -65,6 +65,16 @@ public class Booking {
     @Column(nullable = false, length = 32)
     private BookingStatus status;
 
+    /**
+     * When this booking stops holding its seats if it is still unpaid, or
+     * {@code null} for one that never expires. Only the transitions below write
+     * it, which is the whole of ADR-010's rule: nothing else may touch it, and
+     * in particular it is deliberately not derived from {@link #updatedAt},
+     * where any future write would silently reset a student's payment clock.
+     */
+    @Column(name = "payment_deadline_at")
+    private OffsetDateTime paymentDeadlineAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -80,8 +90,14 @@ public class Booking {
 
     protected Booking() { }
 
+    /**
+     * @param paymentDeadlineAt when these seats are released if the booking is
+     *                          still unpaid. A booking created close to
+     *                          departure legitimately gets one that has already
+     *                          passed, and is expired by the next sweep.
+     */
     public Booking(Trip trip, UUID userId, String reference, String passengerName, String passengerPhone,
-                   BigDecimal totalFare, OffsetDateTime now) {
+                   BigDecimal totalFare, OffsetDateTime paymentDeadlineAt, OffsetDateTime now) {
         this.trip = trip;
         this.userId = userId;
         this.reference = reference;
@@ -91,6 +107,7 @@ public class Booking {
         // Seats are secured, money is not. ADR-009 made the payment review the
         // only path to CONFIRMED, so creation can no longer produce one.
         this.status = BookingStatus.PENDING_PAYMENT;
+        this.paymentDeadlineAt = paymentDeadlineAt;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -103,6 +120,7 @@ public class Booking {
     public String getPassengerPhone() { return passengerPhone; }
     public BigDecimal getTotalFare() { return totalFare; }
     public BookingStatus getStatus() { return status; }
+    public OffsetDateTime getPaymentDeadlineAt() { return paymentDeadlineAt; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public List<BookingSeat> getSeats() { return List.copyOf(seats); }
@@ -136,24 +154,69 @@ public class Booking {
         return status == BookingStatus.PAYMENT_UNDER_REVIEW;
     }
 
-    public void markPaymentUnderReview(OffsetDateTime now) {
+    /**
+     * Whether the sweep may expire this booking, decided from the two facts
+     * {@code BookingRepository.findExpirable} selects on. It exists so that the
+     * check made <em>behind the lock</em> is the same rule the candidate query
+     * applied, rather than a second wording of it that can drift.
+     *
+     * <p>A null deadline is never expirable: that is what {@code NULL} means on
+     * the column, and it is the right answer for every terminal row.
+     */
+    public boolean isExpirable(OffsetDateTime now) {
+        return (status == BookingStatus.PENDING_PAYMENT
+                || status == BookingStatus.PAYMENT_UNDER_REVIEW
+                || status == BookingStatus.PAYMENT_REJECTED)
+                && paymentDeadlineAt != null && !paymentDeadlineAt.isAfter(now);
+    }
+
+    /**
+     * @param paymentDeadlineAt bounded by departure rather than by a fresh
+     *                          timer, so a slow reviewer never costs a student
+     *                          their booking while the seat is still worth
+     *                          recycling (ADR-010)
+     */
+    public void markPaymentUnderReview(OffsetDateTime paymentDeadlineAt, OffsetDateTime now) {
         this.status = BookingStatus.PAYMENT_UNDER_REVIEW;
+        this.paymentDeadlineAt = paymentDeadlineAt;
         this.updatedAt = now;
     }
 
+    /** Terminal, so the deadline goes: a confirmed booking never expires. */
     public void confirm(OffsetDateTime now) {
         this.status = BookingStatus.CONFIRMED;
+        this.paymentDeadlineAt = null;
         this.updatedAt = now;
     }
 
-    /** The seats stay claimed: the student may submit another proof (ADR-009). */
-    public void markPaymentRejected(OffsetDateTime now) {
+    /**
+     * The seats stay claimed: the student may submit another proof (ADR-009).
+     *
+     * @param paymentDeadlineAt a fresh window, because a student who is told to
+     *                          send a better slip needs time to send one
+     */
+    public void markPaymentRejected(OffsetDateTime paymentDeadlineAt, OffsetDateTime now) {
         this.status = BookingStatus.PAYMENT_REJECTED;
+        this.paymentDeadlineAt = paymentDeadlineAt;
         this.updatedAt = now;
     }
 
     public void cancel(OffsetDateTime now) {
         this.status = BookingStatus.CANCELLED;
+        this.paymentDeadlineAt = null;
         this.updatedAt = now;
+    }
+
+    /**
+     * The same terminal state as {@link #cancel}, under the name of what
+     * actually happened. ADR-010 rejected a separate {@code EXPIRED} status —
+     * the seats are released and the booking is over either way, and a new
+     * status would be a public contract change for no operational difference —
+     * but the call site still has to read as an expiry rather than as a
+     * cancellation nobody asked for. The {@code why} lives in the history, as a
+     * {@link BookingEventType#EXPIRED} event with no actor.
+     */
+    public void expire(OffsetDateTime now) {
+        cancel(now);
     }
 }
