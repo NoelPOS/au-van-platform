@@ -8,9 +8,13 @@ Run one complete delivery cycle for the next ready AU-Van issue.
 
 Several issues may run at once when their file surfaces are disjoint. Check
 before starting: two tracks must not both touch the same package, the same
-migration sequence, or the same workflow file. Typical safe pairings are an API
-issue with an infrastructure issue, or an API issue with a web issue whose
-endpoints already exist on `main`.
+migration sequence, the same workflow file, or any of the shared root
+surfaces — `AGENTS.md`, `CLAUDE.md`, `.claude/`, and `docs/`. Those last four
+are what the test used to miss: two rule-level tracks are almost never
+disjoint, and PR #30 and PR #35 ran concurrently with both modifying
+`CLAUDE.md`. Typical safe pairings are an API issue with an infrastructure
+issue, or an API issue with a web issue whose endpoints already exist on
+`main`.
 
 Two rules keep them from colliding:
 
