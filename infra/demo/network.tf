@@ -67,7 +67,7 @@ resource "aws_route_table_association" "public" {
 # would refuse the cycle.
 
 resource "aws_security_group" "load_balancer" {
-  name        = "${local.name_prefix}-alb"
+  name_prefix = "${local.name_prefix}-alb-"
   description = "Public entry point. The only group reachable from the internet."
   vpc_id      = aws_vpc.main.id
 
@@ -97,7 +97,7 @@ resource "aws_vpc_security_group_egress_rule" "load_balancer_to_task" {
 }
 
 resource "aws_security_group" "task" {
-  name        = "${local.name_prefix}-task"
+  name_prefix = "${local.name_prefix}-task-"
   description = "Application task. Reachable only from the load balancer."
   vpc_id      = aws_vpc.main.id
 
@@ -127,7 +127,7 @@ resource "aws_vpc_security_group_egress_rule" "task_outbound" {
 # No egress rule, deliberately: a database that cannot start a connection of
 # its own is one fewer path out of the network.
 resource "aws_security_group" "database" {
-  name        = "${local.name_prefix}-db"
+  name_prefix = "${local.name_prefix}-db-"
   description = "PostgreSQL. Reachable only from the task, and reaches nothing."
   vpc_id      = aws_vpc.main.id
 
