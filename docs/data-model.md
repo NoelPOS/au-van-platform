@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed.
 
 ## Schema ownership
 
@@ -30,8 +30,8 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `outbox_events` | `V7` | Outbound work a committed transaction owes, with its claim, retry, and delivery state |
 | `notifications` | dropped | Delivery intent and result; ADR-010 folded both into `outbox_events` |
 | `reminder_jobs` | dropped | Scheduled reminders; ADR-010 made one a future-dated `outbox_events` row |
+| `waitlist_entries` | `V9` | One student's place in the queue for a trip whose seats are all claimed |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
-| `waitlist_entries` | planned | Optional queue for full timeslots and promotion processing |
 
 ## Seat claims
 
@@ -81,6 +81,22 @@ Every booking carries its own deadline and a sweep releases the seats of the one
 - Expiry produces `CANCELLED`, not a new status, plus a `booking_events` row of type `EXPIRED` with a null `actor_user_id` — the column is nullable for exactly this kind of system-driven transition. The seats are released with `deleteByBookingId`, which is the only delete that will free a claim carrying a `booking_id`.
 - An expired booking's payment proof stays `SUBMITTED`, because `payment_proofs_review_recorded` requires a reviewer on anything else and the sweep has none. The review queue excludes proofs whose booking is `CANCELLED` instead, so an administrator is never left with a row they cannot clear.
 - The same sweep prunes `idempotency_keys` past `booking.idempotency-key-retention`, which ADR-008 named as this work's to do. The window has to stay longer than any client's retry horizon: a key dropped early stops replaying and the retry writes a second booking.
+
+## The waitlist
+
+A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. ADR-011 records the decision. Joining, leaving and reading a place are implemented; the promotion sweep that gives a freed seat to the student at the front is issue #69, and the administrator's view of the queue is issue #70.
+
+- One row per `(trip_id, user_id)`, enforced by a plain `waitlist_entries_trip_user_unique`. Not a partial index on the active statuses: ADR-006 rejected partial indexes because H2 does not support them, so the suite would stop exercising the one constraint this shape rests on.
+- `status` is `WAITING`, `PROMOTED`, `FULFILLED`, `WITHDRAWN`, or `EXPIRED`. The first two are the queued states — the only ones that occupy a place — and the other three are terminal. Only `WAITING` and `WITHDRAWN` are reachable until the promotion sweep lands.
+- **Position is derived, never stored.** The ordering is `ORDER BY joined_at, id` over the queued entries alone, so a student who leaves stops occupying a place for everyone behind them with nothing to update. A maintained `position` integer would have to rewrite every row behind a leaver, and one that had drifted from reality would be invisible — the same reasoning that leaves `seat_claims` without a status column.
+- Joining is idempotent. A repeated join returns the entry that already exists, with the place it already had; tapping the button twice must not cost a student their place.
+- Leaving and re-joining **reuses the same row with a fresh `joined_at`**, so it costs the student their place. That is the only behaviour one row per student per trip permits, and ADR-011 accepts it as the price of refusing a partial index.
+- Joining is refused for a trip that still has a free seat (`waitlist_not_needed`), for a trip that is not `ACTIVE` or has departed, and for more seats than `booking.max-seats-per-hold`. "Free" is `SeatClaim.blocksSeatAt`, the same predicate the seat map derives its state from, so a lapsed hold makes a trip bookable and therefore not queueable.
+- Student reads and writes are **scoped by owner in the query**, never filtered after loading, so someone else's entry answers exactly as one that does not exist — `BookingRepository.findByIdAndUserId`'s rule, and `SeatHoldService.release`'s `hold_not_found` idiom.
+- Leaving is `POST /api/v1/waitlist/{id}/leave`. It is not a `DELETE` because `SecurityConfiguration`'s CORS `allowedMethods` has none, and a `DELETE` would pass every test here and fail only in a real browser.
+- `trip_id` has a foreign key to `trips`; `user_id` is a plain UUID on the mapping with the same `app_users` foreign key `bookings.user_id` carries.
+- `promotion_hold_id` and `promotion_expires_at` are the sweep's columns and are null on every row written today. `waitlist_entries_candidate_idx` is `(trip_id, status, joined_at)`, the candidate query, and `waitlist_entries_promotion_idx` is `(status, promotion_expires_at)`, the lapse sweep's predicate.
+- A join writes no `outbox_events` row and needs no `Idempotency-Key`: nothing is delivered and no money is committed. The unique constraint is the whole of its idempotency.
 
 ## Asynchronous work
 

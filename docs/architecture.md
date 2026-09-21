@@ -32,7 +32,7 @@ PostgreSQL is authoritative for confirmed seat inventory, bookings, payment stat
 
 ## Asynchronous work
 
-Booking and payment changes may generate notifications, reminders, expiry processing, and waitlist promotion. These side effects must be retryable and observable. ADR-010 records how, and the outbox half of it is implemented.
+Booking and payment changes may generate notifications, reminders, expiry processing, and waitlist promotion. These side effects must be retryable and observable. ADR-010 records how for the first three, and the outbox half of it is implemented. ADR-011 records how for waitlist promotion; the queue itself is implemented and **promotion is not yet** — issue #69 adds the sweep.
 
 - Every booking or payment transition that owes outbound work writes an `outbox_events` row **in the same transaction as the state change**. The recorder joins the caller's transaction and never opens one of its own, so the work and the record of it cannot diverge.
 - A dispatcher claims a due row with one conditional `UPDATE`, sends outside any transaction, and records the outcome in a second one. The claim pushes the row's `next_attempt_at` forward by a lease, so a worker that dies mid-send leaves a row that simply becomes due again — SQS's visibility-timeout model, expressed in one table.
@@ -46,6 +46,12 @@ Booking expiry and seat release, the other half of ADR-010, are implemented too.
 - Every booking carries `payment_deadline_at`, written only by the transitions that own it: `min(now + booking.payment-window, departureAt - booking.departure-cutoff)` at creation and on rejection, the departure bound alone while a proof is under review, and cleared once the booking is terminal. The two windows are **new product rules** with no equivalent in the legacy application.
 - A scheduled sweep, gated on `booking.expiry.enabled` exactly as the dispatcher is, reads candidate **ids**, locks each booking, and decides only from what the lock returned. An expiry cancels the booking, appends an `EXPIRED` history entry with no actor, deletes its `seat_claims`, and records one outbox row — all in one transaction per booking, so a booking that loses its race neither rolls back nor blocks the batch.
 - The same sweep prunes `idempotency_keys` past their retention window, which ADR-008 left owing.
+
+A student who cannot book a full trip can now queue for it. ADR-011 records the decision; the queue is implemented and the promotion is not.
+
+- `waitlist_entries` holds one row per student per trip, ordered by when they joined, with the position derived on every read rather than stored. Joining a trip that still has a free seat is refused, so the queue only ever holds students who could not simply book.
+- Promotion is a **scheduled sweep**, not a hook on the places that free a seat. Three of those places run code and a fourth runs none at all — ADR-006 made hold expiry lazy, and an abandoned hold is the commonest way a seat comes free. One sweep covers all four; issue #69 implements it, gated on `booking.waitlist.enabled` exactly as the expiry sweep and the dispatcher are, and `booking.waitlist.promotion-window` bounds what a promoted student gets.
+- Nothing on the waitlist path writes an `outbox_events` row yet, because nothing is promoted yet. The two notification types arrive with the sweep.
 
 ## Boundaries
 
@@ -66,3 +72,4 @@ Booking expiry and seat release, the other half of ADR-010, are implemented too.
 - [ADR-008: Create a Booking Exactly Once, from a Locked Hold and a Stored Response](adr/008-exactly-once-booking-creation.md)
 - [ADR-009: Payment-Proof Object Storage and the Payment-Review Gate on Booking Confirmation](adr/009-payment-proof-storage-and-review-gate.md)
 - [ADR-010: Deliver Asynchronous Work from a Transactional Outbox in PostgreSQL, and Give Every Unpaid Booking a Deadline](adr/010-transactional-outbox-and-booking-deadline.md)
+- [ADR-011: Promote a Waitlisted Student by Sweep, into a Time-Bounded Seat Hold](adr/011-waitlist-promotion-by-sweep.md) (proposed)
