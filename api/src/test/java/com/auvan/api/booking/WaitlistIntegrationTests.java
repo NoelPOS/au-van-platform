@@ -5,11 +5,13 @@ import com.auvan.api.auth.client.LineTokenVerifier;
 import com.auvan.api.auth.client.VerifiedLineIdentity;
 import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.auth.repository.AppUserRepository;
+import com.auvan.api.booking.dto.JoinWaitlistRequest;
 import com.auvan.api.booking.entity.SeatClaim;
 import com.auvan.api.booking.entity.WaitlistEntry;
 import com.auvan.api.booking.entity.WaitlistStatus;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.booking.repository.WaitlistEntryRepository;
+import com.auvan.api.booking.service.WaitlistService;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
@@ -29,20 +31,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -78,8 +85,14 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private SeatClaimRepository claims;
 
-    @Autowired
+    // A spy, not a mock: every call runs for real unless a test stubs the one
+    // lookup whose timing it needs to control, exactly as
+    // {@code SeatHoldConcurrencyIntegrationTests} treats {@code SeatClaimRepository}.
+    @MockitoSpyBean
     private WaitlistEntryRepository waitlist;
+
+    @Autowired
+    private WaitlistService waitlistService;
 
     @MockitoBean
     private LineTokenVerifier lineTokenVerifier;
@@ -337,6 +350,37 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
 
         assertThatThrownBy(() -> waitlist.saveAndFlush(new WaitlistEntry(fullTrip, student, 1, now)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * Two tabs joining at once both miss the lookup and both insert. The unique
+     * constraint decides, and the loser has to be told to refresh rather than
+     * handed a 500 saying the join failed when they are in fact queued — the
+     * rule {@code SeatHoldConcurrencyIntegrationTests} states for a seat. One
+     * refresh is enough, because the join is idempotent: the next one finds the
+     * winner's row and returns the place the student already holds.
+     *
+     * <p>No second thread and no barrier, for the reason that class gives: the
+     * rival row is committed first and the lookup is stubbed to answer exactly
+     * what it truly would have answered a moment earlier, so the interleaving a
+     * real race only sometimes produces happens every time.
+     */
+    @Test
+    void aJoinThatLosesTheRaceToInsertIsAConflictRatherThanACrash() {
+        UUID student = users.findByLineSubject("Ustudent").orElseThrow().getId();
+        WaitlistEntry rival = waitlist.saveAndFlush(new WaitlistEntry(fullTrip, student, 2, OffsetDateTime.now()));
+        doReturn(Optional.empty()).when(waitlist).findByTripIdAndUserId(fullTrip.getId(), student);
+
+        assertThatThrownBy(() -> waitlistService.join(student, new JoinWaitlistRequest(fullTrip.getId(), 1)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, conflict -> {
+                    assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(conflict.getReason()).contains("refresh");
+                });
+
+        // The winner's row stands alone: the loser's insert was refused by the
+        // constraint, not applied beside it.
+        assertThat(waitlist.findAll()).singleElement()
+                .satisfies(entry -> assertThat(entry.getId()).isEqualTo(rival.getId()));
     }
 
     @Test

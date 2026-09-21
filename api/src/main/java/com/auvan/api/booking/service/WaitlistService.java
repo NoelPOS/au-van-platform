@@ -11,6 +11,7 @@ import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,16 +62,54 @@ public class WaitlistService {
 
         WaitlistEntry entry = entries.findByTripIdAndUserId(trip.getId(), userId).orElse(null);
         if (entry == null) {
-            entry = entries.save(new WaitlistEntry(trip, userId, request.seatsWanted(), now));
+            entry = insert(trip, userId, request.seatsWanted(), now);
         } else if (!entry.isQueued()) {
             entry.rejoin(request.seatsWanted(), now);
         }
-        // No explicit flush before the queue is read back. Hibernate's default
-        // AUTO flush mode writes the pending insert or update before a query
-        // that touches the same table, so the position below already counts this
-        // entry. An explicit flush here would be a mechanism no test defends —
-        // removing it turns nothing red, which is the definition of decorative.
+        // No explicit flush before the queue is read back. The one in insert()
+        // is there to make its catch reachable, not to order this read:
+        // Hibernate's default AUTO flush mode writes the pending insert or
+        // update before a query that touches the same table, so the position
+        // below already counts this entry. An explicit flush here would be a
+        // mechanism no test defends — removing it turns nothing red, which is
+        // the definition of decorative.
         return respond(entry);
+    }
+
+    /**
+     * Inserts the caller's row, or tells them to refresh if someone inserted it
+     * for them first.
+     *
+     * <p>Two tabs joining at once both miss the lookup above and both insert.
+     * {@code waitlist_entries_trip_user_unique} decides that, and the loser's
+     * failure has to become a 409 here, because nothing downstream will: there
+     * is no advice for {@link DataIntegrityViolationException} in this
+     * application, so left alone it reaches the student as a 500 saying the
+     * join failed when in fact they are queued. This is the rule
+     * {@code SeatHoldService.hold} already follows for {@code seat_claims} —
+     * the loser is told to refresh, not handed a crash.
+     *
+     * <p>The explicit {@code flush} is what makes the catch reachable at all.
+     * {@code @UuidGenerator} is not an identity generator, so without it the
+     * insert defers to the next flush — the one the position read-back
+     * triggers, or the one at commit — both outside this {@code try}.
+     *
+     * <p>Refreshing is all the loser has to do, because the join is idempotent:
+     * their next one finds the winner's row and returns the place they already
+     * hold. That read is deliberately not done here. A flush that failed leaves
+     * its insert pending in the persistence context, so the next flush in this
+     * transaction re-issues it and fails again; answering from a session that
+     * can no longer be used would trade this 500 for a less obvious one.
+     */
+    private WaitlistEntry insert(Trip trip, UUID userId, int seatsWanted, OffsetDateTime now) {
+        try {
+            WaitlistEntry inserted = entries.save(new WaitlistEntry(trip, userId, seatsWanted, now));
+            entries.flush();
+            return inserted;
+        } catch (DataIntegrityViolationException exception) {
+            throw Problems.conflict("waitlist_join_raced",
+                    "You are already on this waitlist. Please refresh to see your place.", exception);
+        }
     }
 
     /**
