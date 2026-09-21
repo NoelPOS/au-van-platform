@@ -97,10 +97,8 @@ git status --porcelain
 ```
 
 Non-empty means the reviewer mutated the tree — abort the cycle and report it.
-`VERDICT: REQUEST_CHANGES` → **Failure handling**, which carries one narrow
-exception to this gate: when the only findings left are inaccuracies in the
-pull-request description, correct them, verify each claim mechanically, and
-merge without a further round.
+`VERDICT: REQUEST_CHANGES` → **Failure handling**. This gate has no exception:
+nothing merges until a reviewer run returns `VERDICT: APPROVE`.
 
 ## 6b. Confirm the review is on the pull request
 
@@ -144,14 +142,16 @@ Counters are per issue and reset on merge.
   Real failure → the implementer fixes it on the same branch with a new
   subject-only commit. **Limit 3.**
 - **Review rejected.** The implementer addresses every finding; the reviewer
-  runs again from scratch. Keep going while each round surfaces a **new** defect
+  runs again from scratch and must return `VERDICT: APPROVE` before the merge.
+  That holds for a round whose only findings are description inaccuracies too:
+  the author certifying their own corrected description is exactly the defect
+  class this loop exists to stop, and re-running the reviewer over a corrected
+  body is cheap. Keep going while each round surfaces a **new** defect
   — rounds that are still finding real problems are working, and a raw cap on
   them was tried here and overridden twice because it measured the wrong thing.
   Escalate to **Blocked** when a round finds nothing new but still rejects, when
   a finding recurs after being fixed, or after six rounds, whichever comes
-  first. If the only remaining findings are description inaccuracies, fix the
-  description, verify each claim mechanically, and merge without another full
-  round.
+  first.
 - **Conflict with `main`.** `git fetch origin && git rebase origin/main`,
   resolve, `git push --force-with-lease`, then re-run **both** CI and the
   reviewer. A conflict in booking or payment logic → **Blocked** immediately;
