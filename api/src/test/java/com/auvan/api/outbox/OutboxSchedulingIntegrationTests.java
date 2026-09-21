@@ -81,12 +81,22 @@ class OutboxSchedulingIntegrationTests extends AuthenticationTestSupport {
         assertThat(dispatched.getProcessedAt()).isNotNull();
     }
 
-    /** Polls rather than sleeping a fixed time, so a slow machine waits longer and a fast one does not. */
+    /**
+     * Polls rather than sleeping a fixed time, so a slow machine waits longer
+     * and a fast one does not.
+     *
+     * <p>It waits for a <em>terminal</em> status, not merely for something other
+     * than {@code PENDING}. A dispatch takes the row through {@code IN_FLIGHT}
+     * on its way, so "not PENDING" returns a row that has only been claimed and
+     * the {@code SENT} assertion fails on a machine slow enough to be polled
+     * mid-dispatch — which is a flake in this test, not a fault in the
+     * dispatcher.
+     */
     private OutboxEvent awaitResolution(UUID eventId) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MILLIS;
         while (System.currentTimeMillis() < deadline) {
             OutboxEvent event = events.findById(eventId).orElseThrow();
-            if (event.getStatus() != OutboxStatus.PENDING) {
+            if (event.getStatus() == OutboxStatus.SENT || event.getStatus() == OutboxStatus.DEAD) {
                 return event;
             }
             Thread.sleep(50);
