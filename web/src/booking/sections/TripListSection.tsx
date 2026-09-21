@@ -1,20 +1,28 @@
 import { Button } from "../../components/ui/Button";
 import { Panel } from "../../components/ui/Panel";
 import { formatDeparture, formatFare } from "../format";
-import type { AvailableTrip } from "../types";
+import type { AvailableTrip, WaitlistEntry } from "../types";
 
 export function TripListSection({
   trips,
+  waitlist,
   loading,
   error,
+  waitlistPending,
   onRetry,
   onSelect,
+  onJoinWaitlist,
+  onLeaveWaitlist,
 }: {
   trips: AvailableTrip[];
+  waitlist: WaitlistEntry[];
   loading: boolean;
   error: Error | null;
+  waitlistPending: boolean;
   onRetry: () => void;
   onSelect: (trip: AvailableTrip) => void;
+  onJoinWaitlist: (trip: AvailableTrip) => void;
+  onLeaveWaitlist: (entry: WaitlistEntry) => void;
 }) {
   return (
     <Panel className="p-5">
@@ -34,26 +42,72 @@ export function TripListSection({
         </p>
       )}
       <ul className="flex flex-col gap-3">
-        {trips.map((trip) => (
-          <li key={trip.id}>
-            <button
-              className="w-full rounded-xl border border-line bg-white px-4 py-3 text-left transition-colors hover:border-brand disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={trip.availableSeats === 0}
-              onClick={() => onSelect(trip)}
-              type="button"
-            >
-              <span className="block font-semibold text-ink">
-                {trip.origin} → {trip.destination}
-              </span>
-              <span className="mt-1 block text-sm text-muted">
-                {formatDeparture(trip.departureAt)} · {formatFare(trip.fare)} ·{" "}
-                {trip.availableSeats === 0
-                  ? "full"
-                  : `${trip.availableSeats} of ${trip.totalSeats} seats free`}
-              </span>
-            </button>
-          </li>
-        ))}
+        {trips.map((trip) => {
+          const summary = `${formatDeparture(trip.departureAt)} · ${formatFare(trip.fare)} · `;
+          // The waitlist exists only for a trip nobody can book. A trip with a
+          // seat free is a trip to book, and the API refuses a join on one.
+          if (trip.availableSeats > 0) {
+            return (
+              <li key={trip.id}>
+                <button
+                  className="w-full rounded-xl border border-line bg-white px-4 py-3 text-left transition-colors hover:border-brand"
+                  onClick={() => onSelect(trip)}
+                  type="button"
+                >
+                  <span className="block font-semibold text-ink">
+                    {trip.origin} → {trip.destination}
+                  </span>
+                  <span className="mt-1 block text-sm text-muted">
+                    {summary}
+                    {`${trip.availableSeats} of ${trip.totalSeats} seats free`}
+                  </span>
+                </button>
+              </li>
+            );
+          }
+          // A full trip is a block rather than a button: it carries the join
+          // and leave controls, and a button inside a button is invalid.
+          const entry = waitlist.find((queued) => queued.tripId === trip.id);
+          return (
+            <li key={trip.id}>
+              <div className="w-full rounded-xl border border-line bg-white px-4 py-3">
+                <span className="block font-semibold text-ink">
+                  {trip.origin} → {trip.destination}
+                </span>
+                <span className="mt-1 block text-sm text-muted">
+                  {summary}full
+                </span>
+                {entry ? (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm text-brand">
+                      You are number {entry.position} on the waitlist.
+                    </p>
+                    <Button
+                      disabled={waitlistPending}
+                      onClick={() => onLeaveWaitlist(entry)}
+                      variant="secondary"
+                    >
+                      Leave waitlist
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm text-muted">
+                      Join the waitlist and we will message you if a seat opens
+                      up.
+                    </p>
+                    <Button
+                      disabled={waitlistPending}
+                      onClick={() => onJoinWaitlist(trip)}
+                    >
+                      Join waitlist
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </Panel>
   );

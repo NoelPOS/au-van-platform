@@ -36,6 +36,33 @@ export type BookingEvent = {
   createdAt: string;
 };
 
+/**
+ * `WAITING` and `PROMOTED` are the queued states — the only ones a student's
+ * own read returns. The other three are terminal. Nothing but `WAITING` and
+ * `WITHDRAWN` is reachable until the promotion sweep lands (#69).
+ */
+export type WaitlistStatus =
+  | "WAITING"
+  | "PROMOTED"
+  | "FULFILLED"
+  | "WITHDRAWN"
+  | "EXPIRED";
+
+/**
+ * A student's place in a full trip's queue. `position` counts only queued
+ * entries and is derived by the API on every read, so a student who leaves
+ * stops occupying a place for everyone behind them. It is null for an entry
+ * that has ended and therefore has no place.
+ */
+export type WaitlistEntry = {
+  id: string;
+  tripId: string;
+  seatsWanted: number;
+  status: WaitlistStatus;
+  position: number | null;
+  joinedAt: string;
+};
+
 export type AvailableTrip = {
   id: string;
   routeId: string;

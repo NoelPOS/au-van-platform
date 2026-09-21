@@ -6,6 +6,7 @@ const bookingKeys = {
   trips: ["booking", "trips"] as const,
   seatMap: (tripId: string) => ["booking", "seat-map", tripId] as const,
   bookings: ["booking", "bookings"] as const,
+  waitlist: ["booking", "waitlist"] as const,
 };
 
 export function useAvailableTrips(session: AuthSession) {
@@ -38,6 +39,42 @@ export function useMyBookings(session: AuthSession) {
   return useQuery({
     queryKey: bookingKeys.bookings,
     queryFn: () => bookingApi.listBookings(session),
+  });
+}
+
+export function useMyWaitlist(session: AuthSession) {
+  return useQuery({
+    queryKey: bookingKeys.waitlist,
+    queryFn: () => bookingApi.listWaitlist(session),
+  });
+}
+
+/**
+ * Both waitlist mutations invalidate the trip list as well as the queue: a
+ * position is derived from the queue on the server, and joining or leaving is
+ * also the moment to find out whether the trip is still full.
+ */
+export function useJoinWaitlist(session: AuthSession) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tripId: string; seatsWanted: number }) =>
+      bookingApi.joinWaitlist(session, input),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.waitlist });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
+    },
+  });
+}
+
+export function useLeaveWaitlist(session: AuthSession) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { entryId: string }) =>
+      bookingApi.leaveWaitlist(session, input.entryId),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.waitlist });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
+    },
   });
 }
 

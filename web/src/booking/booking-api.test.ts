@@ -34,6 +34,9 @@ describe("booking API client", () => {
       passengerName: "Somchai P.",
       passengerPhone: "0812345678",
     });
+    await bookingApi.listWaitlist(session);
+    await bookingApi.joinWaitlist(session, { tripId: "trip-1", seatsWanted: 1 });
+    await bookingApi.leaveWaitlist(session, "waitlist-1");
 
     expect(
       fetcher.mock.calls.map(([url, options]) => [
@@ -46,6 +49,11 @@ describe("booking API client", () => {
       ["/api/v1/seat-holds", "POST"],
       ["/api/v1/bookings", "GET"],
       ["/api/v1/bookings", "POST"],
+      ["/api/v1/waitlist", "GET"],
+      ["/api/v1/waitlist", "POST"],
+      // A POST, not a DELETE: the API's CORS policy allows no DELETE, so a
+      // DELETE would work behind the dev proxy and fail in a real browser.
+      ["/api/v1/waitlist/waitlist-1/leave", "POST"],
     ]);
     const bookingRequest = fetcher.mock.calls[4][1] as RequestInit;
     const headers = new Headers(bookingRequest.headers);

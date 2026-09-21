@@ -1,6 +1,12 @@
 import { apiBaseUrl } from "../api-base-url";
 import { authenticatedFetch, type AuthSession } from "../auth/session";
-import type { AvailableTrip, Booking, SeatHold, TripSeatMap } from "./types";
+import type {
+  AvailableTrip,
+  Booking,
+  SeatHold,
+  TripSeatMap,
+  WaitlistEntry,
+} from "./types";
 
 /**
  * A failed booking request. The flow branches on `code`, never on the status
@@ -73,6 +79,23 @@ export const bookingApi = {
     request<void>(session, `/seat-holds/${holdId}/release`, { method: "POST" }),
   listBookings: (session: AuthSession) =>
     request<Booking[]>(session, "/bookings"),
+  /** The caller's own queued entries, across every trip, in one request. */
+  listWaitlist: (session: AuthSession) =>
+    request<WaitlistEntry[]>(session, "/waitlist"),
+  joinWaitlist: (
+    session: AuthSession,
+    input: { tripId: string; seatsWanted: number },
+  ) =>
+    request<WaitlistEntry>(session, "/waitlist", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  /**
+   * A POST, not a DELETE: the API's CORS policy allows no DELETE, so a DELETE
+   * here would work behind the Vite dev proxy and fail in a real browser.
+   */
+  leaveWaitlist: (session: AuthSession, entryId: string) =>
+    request<void>(session, `/waitlist/${entryId}/leave`, { method: "POST" }),
   createBooking: (
     session: AuthSession,
     idempotencyKey: string,
