@@ -4,8 +4,13 @@
 # Base images are pinned by tag *and* digest, and Node matches the version the
 # `Web checks` job pins, so the image reproduces CI's build rather than a
 # different one.
+#
+# That match is checked, not just intended: `Web checks` holds the version in
+# NODE_VERSION (.github/workflows/ci.yml) and its first step reads the FROM
+# line below and fails when the two differ. Bumping Node means editing both,
+# in one pull request -- the tag and the digest here, NODE_VERSION there.
 
-FROM node:20.20.2-alpine3.23@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS build
+FROM node:22.23.2-alpine3.23@sha256:72c5815a06aed9a2273aea5628d74d348af57843a7b547af2fe53dd3e4b95261 AS build
 
 WORKDIR /app
 

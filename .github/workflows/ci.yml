@@ -9,14 +9,34 @@ jobs:
   web:
     name: Web checks
     runs-on: ubuntu-latest
+    env:
+      # The one authoritative Node pin. web/Dockerfile's build stage has to
+      # carry the same version, and the step below fails this job when it does
+      # not, so the image cannot end up building the application on a
+      # different runtime from the one this required check exercises.
+      NODE_VERSION: 22.23.2
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v5
+      - name: Check that the web image pins the same Node
+        working-directory: .
+        run: |
+          # An assertion rather than a pair of comments, because this is a
+          # required check: a pull request that moves one pin without the
+          # other cannot reach main.
+          pinned=$(sed -n 's/^FROM node:\([^-]*\)-.*/\1/p' web/Dockerfile)
+          echo "Web checks pins $NODE_VERSION; web/Dockerfile pins ${pinned:-nothing}"
+          if [ "$pinned" != "$NODE_VERSION" ]; then
+            echo "The two Node pins have drifted. Move both together, in one" >&2
+            echo "pull request: NODE_VERSION above and the build stage's FROM" >&2
+            echo "line in web/Dockerfile, tag and digest." >&2
+            exit 1
+          fi
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
