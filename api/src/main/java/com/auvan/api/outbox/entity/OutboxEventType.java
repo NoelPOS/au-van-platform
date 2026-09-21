@@ -28,5 +28,26 @@ public enum OutboxEventType {
      * offset their name gives.
      */
     DEPARTURE_REMINDER_24H,
-    DEPARTURE_REMINDER_1H
+    DEPARTURE_REMINDER_1H,
+    /**
+     * A seat came free on a trip the student was queued for and the promotion
+     * sweep has put a hold on it in their name (ADR-011). Their
+     * {@code aggregate_id} is a {@code waitlist_entries} row rather than a
+     * booking — see {@code OutboxEvent.aggregateId} — because a promotion
+     * happens before any booking exists.
+     *
+     * <p>Neither of these two carries a {@code dedupe_key}. That column is
+     * unique across the whole table and is also what marks a row as a
+     * reminder, so a waitlist notification carrying one could be killed by
+     * {@code OutboxEventRepository.cancelScheduled} on an unrelated
+     * cancellation.
+     */
+    WAITLIST_PROMOTED,
+    /**
+     * The student did nothing before their promotion ran out, so the entry has
+     * ended and the seat goes to the next in line. Like {@code BOOKING_EXPIRED}
+     * this takes something away with nobody asking, so the message has to
+     * explain itself rather than confirm anything.
+     */
+    WAITLIST_PROMOTION_EXPIRED
 }

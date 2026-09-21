@@ -36,7 +36,9 @@ public class OutboxRecorder {
     }
 
     /**
-     * @param aggregateId     the booking the event is about
+     * @param aggregateId     the thing the event is about, which is a booking
+     *                        for every type but the two waitlist ones, whose
+     *                        aggregate is a waitlist entry
      * @param recipientUserId the student the message is for, which is the
      *                        booking's owner and never the actor: an
      *                        administrator's approval is news for the student
