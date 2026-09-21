@@ -229,10 +229,16 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
       return backToSeats(
         "Your seat hold expired before the booking was confirmed. Choose your seats again.",
       );
-    if (code === "hold_already_used")
-      return backToSeats(
-        "Those seats have already been booked. Choose your seats again.",
+    if (code === "hold_already_used") {
+      // A dropped connection can hide a successful 201, and a form edit then
+      // mints a new key: the booking exists. Sending the student back to the
+      // seat map would hide the very booking they are being told about, so
+      // this one lands on the list that shows it.
+      void bookings.refetch();
+      return backToTrips(
+        "Those seats are already booked. If that was you, the booking is in My bookings below.",
       );
+    }
     if (code === "hold_not_found")
       return backToSeats(
         "That seat hold is no longer available. Choose your seats again.",

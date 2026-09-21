@@ -491,8 +491,11 @@ describe("StudentBookingPage", () => {
     expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
   });
 
-  it("distinguishes a hold that has already been used from one that expired", async () => {
+  it("points an already-used hold at my bookings rather than the seat map", async () => {
+    // The 201 the student never saw is a real booking, so the message has to
+    // land somewhere that shows it.
     stubApi({
+      bookings: () => json([booking]),
       createBooking: () =>
         json(
           { detail: "This hold is already booked.", code: "hold_already_used" },
@@ -506,10 +509,14 @@ describe("StudentBookingPage", () => {
 
     expect(
       await screen.findByText(
-        "Those seats have already been booked. Choose your seats again.",
+        "Those seats are already booked. If that was you, the booking is in My bookings below.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
+    expect(screen.getByText("My bookings")).toBeInTheDocument();
+    expect(screen.getByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Seat map" }),
+    ).not.toBeInTheDocument();
   });
 
   it("sends the student back to seat selection when the hold no longer exists", async () => {
