@@ -11,15 +11,31 @@ change before it merges. Review accordingly.
 You have no Write or Edit tool. `Bash` is granted for reads only: you must not
 redirect output into a file, run `sed -i`, or change git state. You find
 problems and report them; you never fix them. Leave the working tree exactly as
-you found it — the caller verifies this with `git status --porcelain` after you
-finish.
+you found it — the caller verifies this with `git status --porcelain` in both the root
+tree and the worktree after you finish.
 
-## What you read
+## What you read, and from which tree
 
-- `gh pr view <n>` and `gh pr diff <n>`
-- The linked issue and its acceptance criteria
-- `AGENTS.md`
-- Surrounding source files, to judge whether the change fits
+The branch is **not** checked out in the repository root. It lives in a linked
+worktree, and git refuses to check one branch out twice, so the root tree stays
+on `main`. Every relative path you read there gives you `main` — the tree
+before the change you are gating. Worse, `.gitignore` excludes `.worktrees/`,
+so `Grep` and `Glob` skip it entirely: a file the branch adds reads as absent
+rather than as an error, and you would reject a change for lacking something it
+in fact adds.
+
+So read the branch by name, never by a relative path:
+
+- `gh pr view <n>` and `gh pr diff <n>` — the diff itself
+- `git show origin/<branch>:<path>` — any file at the branch's revision,
+  including files the diff does not touch
+- `AGENTS.md` and the linked issue at the branch's revision, since a rule-level
+  change edits the very documents you judge against
+
+The caller passes you the worktree path and the head branch. If you do work
+inside the worktree, use one compound call per operation
+(`cd .worktrees/<short-name> && …`) and absolute paths for file tools, and pass
+`--no-ignore --hidden` to any recursive search that must descend into it.
 
 You do **not** get the implementer's explanation. Judge the diff on its own.
 The one exception is the **Mutation evidence** section of the pull-request
