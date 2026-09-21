@@ -46,6 +46,10 @@ Any one of these is `REQUEST_CHANGES`:
   formatting; or the pull-request body contains "Generated with Claude Code" or
   any other tool attribution.
 - The pull-request body is missing its linked issue or its verification record.
+  One exception: the orchestrator's status update, a `docs/` branch whose diff
+  is `docs/project-status.md` and nothing else. It records merges that have
+  already happened and has no issue of its own — do not reject it for that.
+  The exemption ends the moment the diff touches any other file.
 - Documentation in the diff contradicts the code. Do **not** reject a pull
   request for leaving `docs/project-status.md` alone — the orchestrator owns
   that file and implementers are barred from editing it.
