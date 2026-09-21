@@ -4,6 +4,7 @@ import com.auvan.api.notification.config.LineMessagingProperties;
 import com.auvan.api.outbox.service.PermanentFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,11 +19,14 @@ import java.util.List;
  * The real push, against the LINE Messaging API.
  *
  * <p>Uses {@code RestClient}, as {@code LineTokenVerifierImpl} already does, so
- * this adds no dependency. It takes the auto-configured {@code RestClient.Builder}
- * rather than building one from nothing, which is the one deliberate difference
- * from that class: bound to a {@code MockRestServiceServer}, it is what lets the
- * status-code classification below be proven against real responses instead of
- * asserted about in prose.
+ * this adds no dependency. It builds its own builder for the same reason that
+ * class does: Spring Boot 4 moved {@code RestClientAutoConfiguration} into a
+ * module this project does not depend on, so there is no
+ * {@code RestClient.Builder} bean to inject and asking for one fails at
+ * startup. The second constructor below exists so a test can supply a builder
+ * bound to a {@code MockRestServiceServer}, which is what lets the status-code
+ * classification be proven against real responses instead of asserted about in
+ * prose.
  *
  * <p><strong>The classification is the whole of this class.</strong> LINE's own
  * guidance on retrying is that {@code 500} and a timeout are safe to retry and
@@ -68,6 +72,12 @@ class LineMessageSenderImpl implements LineMessageSender {
     private final RestClient lineClient;
     private final LineMessagingProperties properties;
 
+    @Autowired
+    LineMessageSenderImpl(LineMessagingProperties properties) {
+        this(properties, RestClient.builder());
+    }
+
+    /** Visible for tests, which pass a builder bound to a mock server. */
     LineMessageSenderImpl(LineMessagingProperties properties, RestClient.Builder builder) {
         this.properties = properties;
         this.lineClient = builder.baseUrl(properties.apiBaseUrl()).build();
