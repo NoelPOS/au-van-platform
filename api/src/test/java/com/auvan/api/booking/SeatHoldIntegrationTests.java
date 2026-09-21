@@ -5,7 +5,9 @@ import com.auvan.api.auth.client.LineTokenVerifier;
 import com.auvan.api.auth.client.VerifiedLineIdentity;
 import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.auth.repository.AppUserRepository;
+import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.SeatClaim;
+import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
@@ -28,7 +30,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -76,10 +77,10 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
     private SeatClaimRepository claims;
 
     @Autowired
-    private TransactionTemplate transactions;
+    private BookingRepository bookings;
 
     @Autowired
-    private JdbcTemplate jdbc;
+    private TransactionTemplate transactions;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -439,27 +440,20 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .executeUpdate());
     }
 
-    /**
-     * There is no {@code Booking} entity until #25, so the row the foreign key
-     * needs goes in with plain SQL rather than through a repository.
-     */
+    /** The row {@code seat_claims.booking_id}'s foreign key needs, and nothing more. */
     private UUID insertBooking() {
-        UUID bookingId = UUID.randomUUID();
         UUID userId = users.findByLineSubject("Ustudent").orElseThrow().getId();
-        OffsetDateTime now = OffsetDateTime.now();
-        jdbc.update("""
-                        insert into bookings (id, trip_id, user_id, passenger_name, passenger_phone,
-                                              total_fare, status, created_at, updated_at)
-                        values (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                bookingId, trip.getId(), userId, "Test Student", "0800000000",
-                new BigDecimal("35.00"), "CONFIRMED", now, now);
-        return bookingId;
+        return bookings.saveAndFlush(new Booking(trip, userId, "AUV-000000-" + reference(), "Test Student",
+                "0800000000", new BigDecimal("35.00"), OffsetDateTime.now())).getId();
     }
 
-    /** Nothing maps {@code bookings}, so no repository {@code deleteAll} reaches it. */
+    /** {@code bookings_reference_unique} is real, so every fixture needs its own. */
+    private static String reference() {
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
     private void deleteBookings() {
-        jdbc.update("delete from bookings");
+        bookings.deleteAll();
     }
 
     /** Writes a claim that expired a minute ago, which no API call can produce. */
