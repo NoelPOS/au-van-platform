@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.dto.CreateBookingRequest;
 import com.auvan.api.booking.entity.Booking;
@@ -41,13 +42,15 @@ public class BookingWriter {
     private final SeatClaimRepository claims;
     private final IdempotencyService idempotency;
     private final OutboxRecorder outbox;
+    private final BookingProperties properties;
 
     public BookingWriter(BookingRepository bookings, SeatClaimRepository claims, IdempotencyService idempotency,
-                         OutboxRecorder outbox) {
+                         OutboxRecorder outbox, BookingProperties properties) {
         this.bookings = bookings;
         this.claims = claims;
         this.idempotency = idempotency;
         this.outbox = outbox;
+        this.properties = properties;
     }
 
     @Transactional
@@ -63,8 +66,12 @@ public class BookingWriter {
         Trip trip = held.getFirst().getTripSeat().getTrip();
         assertBookable(trip, now);
 
+        // The deadline is written in this transaction, with the booking it
+        // bounds: a booking that committed without one would never expire and
+        // would hold its seats forever, which is the gap ADR-009 left open.
         Booking booking = new Booking(trip, userId, BookingReference.generate(now), request.passengerName(),
-                request.passengerPhone(), trip.getFare().multiply(BigDecimal.valueOf(held.size())), now);
+                request.passengerPhone(), trip.getFare().multiply(BigDecimal.valueOf(held.size())),
+                properties.paymentDeadlineFor(trip.getDepartureAt(), now), now);
         held.forEach(claim -> booking.addSeat(claim.getTripSeat()));
         String detail = "Booked seats " + labelsOf(held) + ".";
         booking.recordEvent(BookingEventType.CREATED, detail, userId, now);

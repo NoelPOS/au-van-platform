@@ -444,7 +444,8 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
     private UUID insertBooking() {
         UUID userId = users.findByLineSubject("Ustudent").orElseThrow().getId();
         return bookings.saveAndFlush(new Booking(trip, userId, "AUV-000000-" + reference(), "Test Student",
-                "0800000000", new BigDecimal("35.00"), OffsetDateTime.now())).getId();
+                "0800000000", new BigDecimal("35.00"), OffsetDateTime.now().plusHours(2),
+                OffsetDateTime.now())).getId();
     }
 
     /** {@code bookings_reference_unique} is real, so every fixture needs its own. */
