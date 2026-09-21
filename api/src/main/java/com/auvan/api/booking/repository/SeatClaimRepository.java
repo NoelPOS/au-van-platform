@@ -2,6 +2,7 @@ package com.auvan.api.booking.repository;
 
 import com.auvan.api.booking.entity.SeatClaim;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +32,14 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
     List<SeatClaim> findHoldsOnTripBy(@Param("tripId") UUID tripId, @Param("userId") UUID userId);
 
     List<SeatClaim> findByHoldId(UUID holdId);
+
+    /**
+     * Deletes reclaimed and replaced claims in one statement. This is deliberately
+     * a bulk delete rather than {@code deleteAll}: it runs immediately, and it
+     * skips the row-count check that would turn two students reclaiming the same
+     * expired claim into a {@code StaleStateException} for the loser.
+     */
+    @Modifying
+    @Query("delete from SeatClaim claim where claim.id in :ids")
+    void deleteByIdIn(@Param("ids") Collection<UUID> ids);
 }
