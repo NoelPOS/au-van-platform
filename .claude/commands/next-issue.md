@@ -52,9 +52,14 @@ Give this track its own worktree, so a concurrent track's `git checkout` cannot
 move your branch out from under you:
 
 ```sh
-git worktree add -b <type>/<kebab-description> ../auvan-<short-name> main
-cd ../auvan-<short-name>
+git worktree add -b <type>/<kebab-description> .worktrees/<short-name> main
+cd .worktrees/<short-name>
 ```
+
+`.worktrees/` sits inside the repository, so the agent file tools can write
+there, and it is git-ignored. `git worktree` is not in the
+`.claude/settings.json` allow list, so the command prompts for approval each
+time; adding the entry is the repository owner's call and is tracked in #36.
 
 Work there for the whole cycle, and remove it with `git worktree remove` once
 the pull request has merged.

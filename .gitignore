@@ -32,3 +32,6 @@ crash.*.log
 
 # Machine-specific Claude Code settings
 .claude/settings.local.json
+
+# Per-track git worktrees
+.worktrees/
