@@ -8,13 +8,28 @@ Run one complete delivery cycle for the next ready AU-Van issue.
 
 Several issues may run at once when their file surfaces are disjoint. Check
 before starting: two tracks must not both touch the same package, the same
-migration sequence, the same workflow file, or any of the shared root
-surfaces — `AGENTS.md`, `CLAUDE.md`, `.claude/`, and `docs/`. Those last four
-are what the test used to miss: two rule-level tracks are almost never
-disjoint, and PR #30 and PR #35 ran concurrently with both modifying
-`CLAUDE.md`. Typical safe pairings are an API issue with an infrastructure
-issue, or an API issue with a web issue whose endpoints already exist on
-`main`.
+migration sequence, or any of these shared surfaces.
+
+- `AGENTS.md` and `CLAUDE.md`.
+- `.claude/`, including `.claude/settings.json`.
+- `.github/` — the workflow files *and* everything beside them, such as
+  `pull_request_template.md`.
+- `.gitignore`.
+- `docs/project-status.md`, `docs/data-model.md`, and `docs/architecture.md`.
+
+These are what the test used to miss; two rule-level tracks are almost never
+disjoint. PR #30 and PR #35 ran concurrently and both added to `.gitignore`,
+one entry from #30 and thirteen lines from #35.
+
+`docs/adr/` is **not** a shared surface — two tracks may each add an ADR,
+because the files differ. The collision there is the sequence number, which
+both would otherwise claim. **The orchestrator allocates ADR numbers** and
+tells each track which number to use. This has already happened once: #25's
+plan drafted its ADR as 007, which #35 holds, and the orchestrator renumbered
+it to 008.
+
+Typical safe pairings are an API issue with an infrastructure issue, or an API
+issue with a web issue whose endpoints already exist on `main`.
 
 Two rules keep them from colliding:
 
