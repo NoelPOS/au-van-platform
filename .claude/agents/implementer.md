@@ -83,9 +83,9 @@ recalling it, and re-check the numbers after any later push.
 ## Documentation
 
 **Do not touch `docs/project-status.md`.** The orchestrator owns it, because
-every concurrent track would otherwise conflict on that one file. If the plan supplied an ADR, commit it
-to `docs/adr/` as its own `docs:` commit. Update `docs/data-model.md` when the
-schema changes.
+every concurrent track would otherwise conflict on that one file. If the plan
+supplied an ADR, commit it to `docs/adr/` as its own `docs:` commit. Update
+`docs/data-model.md` when the schema changes.
 
 ## Never
 
