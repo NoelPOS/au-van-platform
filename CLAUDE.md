@@ -81,3 +81,11 @@ gh project item-edit --project-id PVT_kwHOCYR5w84BiaZt \
 
 `.claude/commands/next-issue.md` is one full issue cycle. The agent roles it
 uses are defined in `.claude/agents/`.
+
+Independent issues may run concurrently when their file surfaces are disjoint.
+**Give each concurrent implementer its own git worktree.** Agents otherwise
+share one working tree, and a second `git checkout` silently moves the first
+one's branch out from under it — commits land on the wrong branch and a pull
+request picks up changes from unrelated work. The orchestrator owns
+`docs/project-status.md`; implementers do not touch it, or every track
+conflicts on that one file.
