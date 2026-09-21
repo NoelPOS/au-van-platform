@@ -419,20 +419,33 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
      *
      * <p>The statement is read out of the migration rather than restated here,
      * so the two cannot drift apart.
+     *
+     * <p>The {@code PAYMENT_UNDER_REVIEW} row is the one that distinguishes the
+     * two formulas. It must come out on the departure bound alone, the way
+     * {@link PaymentProofService#submit} writes it for every proof submitted
+     * after the migration; the creation formula would instead hand a booking
+     * already in front of an administrator a fixed two-hour timer measured from
+     * the migration, which is what acceptance criterion 3 on #62 forbids. The
+     * trip departs tomorrow, so the two bounds are twenty-one hours apart and
+     * the assertions cannot be satisfied by both.
      */
     @Test
-    void theV8BackfillGivesAPreExistingNonTerminalBookingADeadlineAndLeavesTerminalOnesNull() throws Exception {
+    void theV8BackfillBoundsEachNonTerminalStatusByItsOwnFormulaAndLeavesTerminalOnesNull() throws Exception {
         UUID waiting = createBooking("key-backfill-waiting");
         UUID confirmed = createBooking("key-backfill-confirmed", trip.getSeats().get(1));
         paymentProofs.submit(student, confirmed, jpeg("the-slip"));
         review.approve(administrator, proofs.findAll().getFirst().getId(), null);
-        // Both as they would have been before V8 ran.
+        UUID underReview = createBooking("key-backfill-under-review", trip.getSeats().get(2));
+        paymentProofs.submit(student, underReview, jpeg("the-slip"));
+        // All three as they would have been before V8 ran.
         jdbc.update("update bookings set payment_deadline_at = null");
 
         jdbc.update(backfillStatementOfV8());
 
         assertThat(bookings.findById(waiting).orElseThrow().getPaymentDeadlineAt())
                 .isCloseTo(OffsetDateTime.now().plusHours(2), within(1, ChronoUnit.MINUTES));
+        assertThat(bookings.findById(underReview).orElseThrow().getPaymentDeadlineAt())
+                .isCloseTo(trip.getDepartureAt().minusHours(1), within(1, ChronoUnit.MINUTES));
         assertThat(bookings.findById(confirmed).orElseThrow().getPaymentDeadlineAt()).isNull();
     }
 
