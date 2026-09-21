@@ -40,6 +40,8 @@ public class TripSeat {
         this.trip = trip;
     }
 
+    public UUID getId() { return id; }
+    public Trip getTrip() { return trip; }
     public String getLabel() { return label; }
     public int getRowNumber() { return rowNumber; }
     public int getColumnNumber() { return columnNumber; }
