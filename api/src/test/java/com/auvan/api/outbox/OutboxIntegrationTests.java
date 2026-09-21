@@ -332,6 +332,46 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
     }
 
     /**
+     * The same guard one layer down, where it actually has to hold. The
+     * candidate query filters terminal rows out, so the test above never
+     * reaches the claim; this one calls the claim directly, which is what
+     * happens for real when a rival resolves the row between another worker's
+     * candidate read and its claim. Drop {@code status} from the claim's
+     * {@code WHERE} and this reddens while everything else stays green.
+     */
+    @Test
+    void theClaimItselfRefusesARowThatHasAlreadyBeenResolved() {
+        UUID sentId = record("AUV-250101-CLAIMSENT");
+        UUID deadId = record("AUV-250101-CLAIMDEAD");
+        dispatcher.dispatchBatch();
+        OffsetDateTime now = OffsetDateTime.now();
+        events.claim(deadId, now, now);
+        events.markDead(deadId, now, "spent");
+        dueAt(sentId, now.minusMinutes(1));
+        dueAt(deadId, now.minusMinutes(1));
+
+        assertThat(events.claim(sentId, now, now.plusMinutes(2))).isZero();
+        assertThat(events.claim(deadId, now, now.plusMinutes(2))).isZero();
+    }
+
+    /**
+     * An outcome belongs to whoever holds the claim. Writing one for a row
+     * nobody has claimed would let a stale worker resolve a row that has since
+     * gone back to the queue. Drop {@code status} from the {@code markSent} and
+     * {@code markDead} guards and this reddens.
+     */
+    @Test
+    void anOutcomeIsRefusedForARowThatNoWorkerHasClaimed() {
+        UUID eventId = record("AUV-250101-UNCLAIMED");
+        OffsetDateTime now = OffsetDateTime.now();
+
+        assertThat(events.markSent(eventId, now)).isZero();
+        assertThat(events.markDead(eventId, now, "never claimed")).isZero();
+
+        assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
+    }
+
+    /**
      * The lease, which is this design's whole answer to a worker dying
      * mid-send: no sweeper collects the row, its lease simply runs out and it
      * becomes due again.
