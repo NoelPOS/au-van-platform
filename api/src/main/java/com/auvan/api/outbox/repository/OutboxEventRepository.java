@@ -113,4 +113,48 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             where event.id = :id and event.status = com.auvan.api.outbox.entity.OutboxStatus.IN_FLIGHT
             """)
     int markDead(@Param("id") UUID id, @Param("now") OffsetDateTime now, @Param("error") String error);
+
+    /**
+     * Whether this reminder has already been scheduled.
+     *
+     * <p>The durable guarantee is the {@code UNIQUE (dedupe_key)} constraint;
+     * this read is what keeps a second scheduling from reaching it. Letting the
+     * constraint be hit instead would be worse than it sounds: the scheduling
+     * happens inside the approval's transaction, and Hibernate marks a
+     * transaction rollback-only when it converts a constraint violation, so a
+     * duplicate would fail the administrator's approval rather than be ignored.
+     */
+    boolean existsByDedupeKey(String dedupeKey);
+
+    /**
+     * Kills a booking's unsent future reminders, because the booking is no
+     * longer going anywhere.
+     *
+     * <p>Without this a student who cancelled yesterday still gets a cheerful
+     * "your trip departs in an hour" — the legacy application's
+     * {@code cancelForBooking} ({@code src/services/reminder.service.ts:107-118}),
+     * ported.
+     *
+     * <p>Three clauses, each load-bearing. {@code dedupeKey is not null} is what
+     * makes this touch <em>only</em> reminders: the cancellation's own
+     * {@code BOOKING_CANCELLED} row is written in this same transaction and must
+     * still be delivered. {@code status = PENDING} leaves a row another worker
+     * is mid-send on alone, to be resolved by the claim that holds it.
+     * {@code nextAttemptAt > :now} is what makes it "unsent and still in the
+     * future" rather than "everything ever scheduled".
+     */
+    @Transactional
+    @Modifying
+    @Query("""
+            update OutboxEvent event
+            set event.status = com.auvan.api.outbox.entity.OutboxStatus.DEAD,
+                event.processedAt = :now,
+                event.lastError = :reason
+            where event.aggregateId = :aggregateId
+              and event.dedupeKey is not null
+              and event.status = com.auvan.api.outbox.entity.OutboxStatus.PENDING
+              and event.nextAttemptAt > :now
+            """)
+    int cancelScheduled(@Param("aggregateId") UUID aggregateId, @Param("now") OffsetDateTime now,
+                        @Param("reason") String reason);
 }

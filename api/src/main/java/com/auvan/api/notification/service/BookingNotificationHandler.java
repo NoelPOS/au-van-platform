@@ -75,6 +75,11 @@ public class BookingNotificationHandler {
             case PAYMENT_PROOF_SUBMITTED -> "We have your payment proof and are reviewing it.";
             case PAYMENT_APPROVED -> "Your payment is approved and your booking is confirmed.";
             case PAYMENT_REJECTED -> "Your payment proof was not accepted.";
+            // The two reminders say how long is left rather than what happened,
+            // because nothing has: they were scheduled when the booking was
+            // approved and this is simply their time (ADR-010).
+            case DEPARTURE_REMINDER_24H -> "Your trip departs in 24 hours.";
+            case DEPARTURE_REMINDER_1H -> "Your trip departs in 1 hour.";
         };
         return "AU-Van booking " + booking.reference() + "\n" + lead + "\n" + booking.detail();
     }

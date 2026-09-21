@@ -31,11 +31,14 @@ public class BookingExpiryWriter {
     private final BookingRepository bookings;
     private final SeatClaimRepository claims;
     private final OutboxRecorder outbox;
+    private final DepartureReminderService reminders;
 
-    public BookingExpiryWriter(BookingRepository bookings, SeatClaimRepository claims, OutboxRecorder outbox) {
+    public BookingExpiryWriter(BookingRepository bookings, SeatClaimRepository claims, OutboxRecorder outbox,
+                               DepartureReminderService reminders) {
         this.bookings = bookings;
         this.claims = claims;
         this.outbox = outbox;
+        this.reminders = reminders;
     }
 
     /**
@@ -81,6 +84,11 @@ public class BookingExpiryWriter {
         // that carry a booking_id, which is exactly what these are, so it would
         // report success and free nothing.
         claims.deleteByBookingId(booking.getId());
+        // An expired booking is not departing either. Placed last for the same
+        // reason cancellation places it last, and scoped the same way, so the
+        // BOOKING_EXPIRED row this expiry just recorded still reaches the
+        // student while the reminders that would have followed it do not.
+        reminders.cancel(booking.getId(), now);
         return true;
     }
 

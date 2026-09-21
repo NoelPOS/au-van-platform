@@ -3,8 +3,8 @@ package com.auvan.api.outbox.entity;
 /**
  * What happened, from the point of view of the student who has to be told.
  *
- * <p>One value per booking or payment transition that owes outbound work. #63
- * adds the departure reminders.
+ * <p>One value per booking or payment transition that owes outbound work, plus
+ * the two departure reminders, which owe it at a time of their own.
  */
 public enum OutboxEventType {
     BOOKING_CREATED,
@@ -18,5 +18,15 @@ public enum OutboxEventType {
     BOOKING_EXPIRED,
     PAYMENT_PROOF_SUBMITTED,
     PAYMENT_APPROVED,
-    PAYMENT_REJECTED
+    PAYMENT_REJECTED,
+    /**
+     * The two departure reminders, ported from the legacy application's
+     * {@code departure_24h} and {@code departure_1h}
+     * ({@code src/services/reminder.service.ts:40-43}). Unlike every value
+     * above, these describe nothing that has happened: they are scheduled when
+     * a booking is approved and become due at {@code departureAt} minus the
+     * offset their name gives.
+     */
+    DEPARTURE_REMINDER_24H,
+    DEPARTURE_REMINDER_1H
 }

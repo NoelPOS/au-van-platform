@@ -43,15 +43,17 @@ public class PaymentProofReviewService {
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
     private final OutboxRecorder outbox;
+    private final DepartureReminderService reminders;
     private final BookingProperties properties;
 
     public PaymentProofReviewService(BookingRepository bookings, PaymentProofRepository proofs,
                                      PaymentProofStorage storage, OutboxRecorder outbox,
-                                     BookingProperties properties) {
+                                     DepartureReminderService reminders, BookingProperties properties) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
         this.outbox = outbox;
+        this.reminders = reminders;
         this.properties = properties;
     }
 
@@ -83,6 +85,11 @@ public class PaymentProofReviewService {
         reviewed.booking().recordEvent(BookingEventType.PAYMENT_APPROVED, detail, adminId, now);
         reviewed.booking().confirm(now);
         recordForStudent(OutboxEventType.PAYMENT_APPROVED, reviewed.booking(), detail, now);
+        // Approval is the moment a trip becomes something to be reminded about,
+        // and it is inside this transaction so an approval that rolls back
+        // schedules nothing. Whichever of the two reminders is already behind
+        // the booking is not queued at all.
+        reminders.schedule(reviewed.booking(), now);
         return BookingResponse.from(reviewed.booking());
     }
 
