@@ -7,6 +7,7 @@ import com.auvan.api.booking.entity.SeatClaim;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
+import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
 import org.springframework.stereotype.Service;
@@ -54,22 +55,54 @@ public class SeatAvailabilityService {
         OffsetDateTime now = OffsetDateTime.now();
         Trip trip = trips.findById(tripId)
                 .orElseThrow(() -> Problems.notFound("trip_not_found", "Trip not found."));
-        Map<UUID, SeatClaim> claimsBySeat = claims.findByTripIdIn(List.of(tripId)).stream()
-                .collect(Collectors.toMap(claim -> claim.getTripSeat().getId(), Function.identity()));
+        Map<UUID, SeatClaim> blocking = blockingClaimsBySeat(tripId, now);
         List<TripSeatMapResponse.SeatResponse> seats = trip.getSeats().stream()
                 .map(seat -> new TripSeatMapResponse.SeatResponse(seat.getId(), seat.getLabel(), seat.getRowNumber(),
-                        seat.getColumnNumber(), stateOf(claimsBySeat.get(seat.getId()), userId, now)))
+                        seat.getColumnNumber(), stateOf(blocking.get(seat.getId()), userId)))
                 .toList();
         return new TripSeatMapResponse(trip.getId(), trip.getDepartureAt(), trip.getFare(), seats);
     }
 
-    private static SeatState stateOf(SeatClaim claim, UUID userId, OffsetDateTime now) {
-        if (claim == null || !claim.blocksSeatAt(now)) {
+    /**
+     * The seats of one trip that nothing is blocking right now, in seat order.
+     *
+     * <p>This is the promotion sweep's definition of "free" and it is the seat
+     * map's, because it is the same derivation: both read
+     * {@link #blockingClaimsBySeat}. ADR-011 asked for exactly that. A second,
+     * slightly different predicate in the promoter would let it promote onto a
+     * seat somebody is holding, {@code seat_claims_trip_seat_unique} would
+     * refuse the insert, and the bug would show up as a promotion that silently
+     * never happens rather than as an oversell — far harder to notice.
+     *
+     * <p>Expiry is lazy, so a seat whose hold has lapsed is free although the
+     * lapsed row is still sitting on it. Whoever takes the seat reclaims that
+     * row; this read writes nothing.
+     */
+    @Transactional(readOnly = true)
+    public List<TripSeat> freeSeatsOf(Trip trip, OffsetDateTime now) {
+        Map<UUID, SeatClaim> blocking = blockingClaimsBySeat(trip.getId(), now);
+        return trip.getSeats().stream().filter(seat -> !blocking.containsKey(seat.getId())).toList();
+    }
+
+    /**
+     * The claims that are blocking a seat of this trip at {@code now}, by seat
+     * id. A seat missing from the map is free, by definition and by
+     * {@link SeatClaim#blocksSeatAt} — the one predicate every reader of seat
+     * state in this application goes through.
+     */
+    private Map<UUID, SeatClaim> blockingClaimsBySeat(UUID tripId, OffsetDateTime now) {
+        return claims.findByTripIdIn(List.of(tripId)).stream()
+                .filter(claim -> claim.blocksSeatAt(now))
+                .collect(Collectors.toMap(claim -> claim.getTripSeat().getId(), Function.identity()));
+    }
+
+    private static SeatState stateOf(SeatClaim blocking, UUID userId) {
+        if (blocking == null) {
             return SeatState.AVAILABLE;
         }
-        if (claim.isBooked()) {
+        if (blocking.isBooked()) {
             return SeatState.BOOKED;
         }
-        return claim.isHeldBy(userId) ? SeatState.HELD_BY_YOU : SeatState.HELD;
+        return blocking.isHeldBy(userId) ? SeatState.HELD_BY_YOU : SeatState.HELD;
     }
 }
