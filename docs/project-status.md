@@ -8,11 +8,12 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 
 ## Repository state
 
-- Default branch: `main`
-- Last merged implementation commit: `09de2fe` (`fix(inventory): stabilize duplicate trip conflict check`)
-- Active issue: [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19)
-- Active branch: `feature/transport-inventory-admin-ui`
+- Default branch: `main`, protected: "Web checks" and "API checks" must pass, branches must be up to date, and the rule applies to administrators.
+- Last merged implementation commit: `c47e18a` (`chore(web): proxy local API for LIFF tunnel testing`)
+- Active issue: [#22 Establish agent-driven delivery configuration](https://github.com/NoelPOS/au-van-platform/issues/22)
+- Active branch: `chore/delivery-agent-configuration`
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
+- Delivery is agent-driven: roles in `.claude/agents/`, one cycle in `.claude/commands/next-issue.md`.
 
 ## Accepted decisions
 
@@ -27,18 +28,18 @@ None.
 
 ## Next step
 
-Implement and review [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19). The next ready issue after it is [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6).
+Merge [#22 Establish agent-driven delivery configuration](https://github.com/NoelPOS/au-van-platform/issues/22). The next ready issue after it is [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6), which will be split into three focused sub-issues: the seat availability and holds API, the booking and idempotency API, and the LIFF booking flow.
 
 ## Ordered backlog
 
 The issue tracker is the durable implementation queue. Refine an issue when it becomes the next ready item; do not expand its scope without updating the issue and, when relevant, an ADR.
 
-1. [#5 Manage routes, trips, and vehicle seat layouts](https://github.com/NoelPOS/au-van-platform/issues/5) (parent feature)
-2. [#18 Establish transport inventory API](https://github.com/NoelPOS/au-van-platform/issues/18)
-3. [#19 Build transport inventory administration UI](https://github.com/NoelPOS/au-van-platform/issues/19)
-4. [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6)
-5. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
-6. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
-7. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
-8. [#10 Add end-to-end, concurrency, CI/CD, and demo deployment coverage](https://github.com/NoelPOS/au-van-platform/issues/10)
-9. [#11 Provision AWS-target infrastructure as code](https://github.com/NoelPOS/au-van-platform/issues/11)
+1. [#22 Establish agent-driven delivery configuration](https://github.com/NoelPOS/au-van-platform/issues/22)
+2. [#6 Create concurrency-safe seat holds and bookings](https://github.com/NoelPOS/au-van-platform/issues/6)
+3. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
+4. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
+5. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
+6. [#10 Add end-to-end, concurrency, CI/CD, and demo deployment coverage](https://github.com/NoelPOS/au-van-platform/issues/10)
+7. [#11 Provision AWS-target infrastructure as code](https://github.com/NoelPOS/au-van-platform/issues/11)
+
+Completed: [#5](https://github.com/NoelPOS/au-van-platform/issues/5) (parent), [#18](https://github.com/NoelPOS/au-van-platform/issues/18), and [#19](https://github.com/NoelPOS/au-van-platform/issues/19) — the transport inventory API and administration UI are merged.
