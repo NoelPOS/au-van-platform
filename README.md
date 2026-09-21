@@ -106,6 +106,47 @@ Neither `./gradlew test` nor CI needs any of this. The tests substitute an
 in-memory implementation of the storage port, so the suite still runs with no
 container and no credential.
 
+## LINE Messaging
+
+Notifications and departure reminders are pushed through the LINE Messaging API
+(ADR-010). Set `LINE_CHANNEL_ACCESS_TOKEN` in the ignored root `.env` to the
+long-lived channel access token of your **Messaging API** channel.
+
+**This is a different channel from `LINE_CHANNEL_ID`.** That one is a LINE
+**Login** channel and is used only to verify a LIFF id token; this one is a LINE
+**Messaging API** channel and is used only to send. They are separate channels
+with separate credentials, created separately in the LINE Developers console.
+
+**Create the Messaging channel under the same LINE provider as the Login
+channel.** A LINE user id is scoped to its provider: the `sub` this system
+stores from the Login channel is a valid push target only if the Messaging
+channel shares that provider. Put the Messaging channel under a different
+provider and every push fails with a recipient error — a `404` naming an unknown
+user — which looks exactly like a bug in this API and is not one. Nothing in the
+code can detect the mismatch, so this is the thing to check first if no
+notification ever arrives.
+
+Two further facts about delivery, both of them normal rather than faults:
+
+- A push reaches only a student who has **added your official account as a
+  friend**. There is no way to know in advance, so the first attempt is also the
+  discovery: LINE answers `404`, the outbox row is recorded as a dead letter, and
+  it is not retried, because retrying it would fail identically forever.
+- Each send carries the outbox row's id as `X-Line-Retry-Key`, which LINE
+  deduplicates for twenty-four hours. That is what makes a retried send at most
+  one message the student actually sees. The whole retry schedule
+  (`outbox.backoff-base`, `outbox.backoff-cap`, `outbox.max-attempts`) is set to
+  finish in minutes, far inside that window; changing any of the three means
+  re-checking it.
+
+Neither `./gradlew test` nor CI needs the token. The tests substitute a
+recording implementation of the send port, or drive the real one against a
+mocked HTTP server, so the suite runs with no channel and no credential — the
+same posture the payment-proof storage takes. Only an actual push to an actual
+phone needs a real channel. With the token left empty, notifications are still
+recorded and attempted and land as dead letters; set `LINE_MESSAGING_ENABLED` to
+`false` to have them recorded and resolved without being attempted at all.
+
 ## Run the whole stack in containers
 
 The two `Dockerfile`s build the API and the production web bundle, and
