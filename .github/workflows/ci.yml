@@ -70,3 +70,29 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: ./gradlew test
+
+  # Deliberately holds no AWS credential, configures no OIDC role, and asks
+  # for no `permissions:`. fmt, init -backend=false and validate need none of
+  # that, and the job must not be able to reach AWS even by mistake. It proves
+  # that the Terraform is well-formed and that its references resolve; it does
+  # not prove that the infrastructure works.
+  infra:
+    name: Infrastructure checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra
+      - name: Validate the budget module
+        working-directory: infra/budget
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: Validate the demo module
+        working-directory: infra/demo
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
