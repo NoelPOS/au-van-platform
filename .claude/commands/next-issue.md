@@ -16,7 +16,7 @@ Two rules keep them from colliding:
 
 - **The orchestrator owns `docs/project-status.md`.** Implementers must not
   touch it; every track would otherwise conflict on it. Update it yourself
-  after each merge.
+  after each merge, as its own pull request — see §8.
 - **Each track rebases on `main` after any other track merges**, then re-runs
   both CI and the reviewer, because the diff has changed.
 
@@ -133,6 +133,12 @@ Set the issue's board item to **Done** (`afc01cfd`); close the issue if `Closes
 #` did not. Close a parent issue when its last child lands. Then **read the
 board back** and assert the statuses are what you set — this step is what keeps
 the board from drifting.
+
+- **Land your `docs/project-status.md` update as its own pull request.** Record
+  the merge on a `docs/<short-name>` branch and open a pull request for it.
+  There is no direct-push route: `main` is protected with administrator
+  enforcement, and its required "Commit checks" context runs only on a pull
+  request, so a push straight to `main` can never turn that check green.
 
 ## Failure handling
 
