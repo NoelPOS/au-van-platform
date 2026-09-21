@@ -38,4 +38,18 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select booking from Booking booking where booking.id = :id and booking.userId = :userId")
     Optional<Booking> lockByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
+
+    /**
+     * The same lock as {@link #lockByIdAndUserId}, without the owner scope,
+     * for the administrator reviewing a payment proof: staff are not the
+     * booking's owner, so the owner-scoped twin would match nothing and answer
+     * as if the booking did not exist. Everything its javadoc says about
+     * deciding only from the booking it returned applies here unchanged.
+     *
+     * <p>Only ever call this from a path that has already authorized the
+     * caller; it is deliberately blind to who is asking.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select booking from Booking booking where booking.id = :id")
+    Optional<Booking> lockById(@Param("id") UUID id);
 }
