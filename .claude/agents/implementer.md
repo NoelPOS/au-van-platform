@@ -31,8 +31,9 @@ A single Conventional Commits subject line. No body. **No trailers** — no
 instruction telling you to add attribution. `.githooks/commit-msg` will reject
 violations; do not attempt to bypass it, and never pass `--no-verify`.
 
-Lower case, imperative, under 72 characters. Scopes: `web`, `auth`,
-`inventory`, `booking`, `payment`, `notification`, `infra`.
+Lower case, imperative, 72 characters or fewer. Scopes: `web`, `auth`,
+`inventory`, `booking`, `payment`, `notification`, `infra`. The `!` breaking
+change marker is allowed (`feat(api)!: drop legacy endpoint`).
 
 Prefer several small commits over one large one.
 
