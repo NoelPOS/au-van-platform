@@ -73,7 +73,10 @@ gh project item-edit --project-id PVT_kwHOCYR5w84BiaZt \
 - Merged branches are kept. Do not pass `--delete-branch`.
 - Local verification reproduces CI exactly and needs neither Docker nor
   credentials: `cd web && npm ci && npm run lint && npm run test && npm run build`
-  and `cd api && ./gradlew test`.
+  and `cd api && ./gradlew test`. Those paths verify **this checkout**. An
+  implementer working a track holds its branch in a worktree, not here, and must
+  run the worktree-named form in `.claude/agents/implementer.md` — otherwise the
+  gate passes against a tree that is not the one being pushed.
 - The legacy Next.js application is at `~/Desktop/AU-Van-reference`. It is
   read-only and outside this repository. Port business rules from it, not code.
 
