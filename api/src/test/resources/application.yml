@@ -82,6 +82,19 @@ outbox:
     enabled: false
     poll-interval: PT5S
 
+notification:
+  line:
+    # False, and this is the one value here that deliberately differs from the
+    # main configuration: with no implementation of LineMessageSender the suite
+    # needs no LINE channel and no credential, exactly as the in-memory
+    # PaymentProofStorage lets it run with no bucket. Tests that need a sender
+    # register one — RecordingLineMessageSender for the dispatch paths, and
+    # LineMessagingIntegrationTests builds the real LineMessageSenderImpl
+    # against a MockRestServiceServer so no request ever leaves the machine.
+    enabled: false
+    api-base-url: https://api.line.me
+    channel-access-token:
+
 payment-proof:
   # Mirrors the main configuration; this file replaces it rather than merging
   # with it. No endpoint and no credentials: the tests substitute an in-memory

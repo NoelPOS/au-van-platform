@@ -7,6 +7,7 @@ import com.auvan.api.notification.client.LinePushMessage;
 import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
+import com.auvan.api.outbox.service.PermanentFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,13 +19,13 @@ import java.util.Optional;
  * Turns one outbox row into one message, and is the only thing that knows what
  * a message says.
  *
- * <p>The sender is optional on purpose. Until #63 supplies an implementation of
- * {@link LineMessageSender} nothing here can reach a phone, and the two other
+ * <p>The sender is optional on purpose. {@code notification.line.enabled} is
+ * what decides whether an implementation of {@link LineMessageSender} exists at
+ * all, and with it off — which is how the whole test suite runs — the two other
  * answers are both wrong: failing would burn every row's attempt budget and
- * fill the table with dead letters describing an absent dependency, and
- * pretending to send would hide it. So the omission is logged once per event
- * and the row is resolved — the work was recorded, which is this issue's whole
- * claim, and delivering it is #63's.
+ * fill the table with dead letters describing a dependency nobody asked for,
+ * and pretending to send would hide it. So the omission is logged once per
+ * event and the row is resolved.
  */
 @Service
 public class BookingNotificationHandler {
@@ -48,12 +49,16 @@ public class BookingNotificationHandler {
     public void handle(OutboxEvent event) {
         BookingNotification booking = json.readValue(event.getPayload(), BookingNotification.class);
         if (sender.isEmpty()) {
-            log.info("No LineMessageSender is configured: {} for booking {} is recorded but not delivered (#63).",
+            log.info("notification.line.enabled is off: {} for booking {} is recorded but not delivered.",
                     event.getEventType(), event.getAggregateId());
             return;
         }
-        AppUser recipient = users.findById(event.getRecipientUserId()).orElseThrow(() -> new IllegalStateException(
-                "Outbox event " + event.getId() + " names a recipient that no longer exists."));
+        // Permanent, not transient: a user row that has gone will not come back,
+        // and retrying the lookup four more times only delays the dead letter
+        // that says so.
+        AppUser recipient = users.findById(event.getRecipientUserId())
+                .orElseThrow(() -> new PermanentFailureException(
+                        "Outbox event " + event.getId() + " names a recipient that no longer exists."));
         // The retry key is the row's id and never changes across retries, which
         // is what keeps an at-least-once transport from producing a second
         // message the student sees.

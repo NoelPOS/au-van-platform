@@ -5,10 +5,11 @@ package com.auvan.api.notification.client;
  * — and made to fail — without a LINE channel, the same shape
  * {@code PaymentProofStorage} uses for object storage.
  *
- * <p>There are two implementations: a recording fake in test sources, and, once
- * #63 lands, one against the Messaging API. Until then no bean implements this
- * and {@code BookingNotificationHandler} records the omission instead of
- * sending, which is why nothing in this issue is user-visible.
+ * <p>There are two implementations: {@link LineMessageSenderImpl} against the
+ * Messaging API, and a recording fake in test sources. The real one exists only
+ * when {@code notification.line.enabled} is true; with it off no bean implements
+ * this and {@code BookingNotificationHandler} records the omission instead of
+ * sending, which is how the suite runs with no channel and no credential.
  */
 public interface LineMessageSender {
     /**

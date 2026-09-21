@@ -105,6 +105,23 @@ outbox:
     enabled: true
     poll-interval: PT5S
 
+notification:
+  line:
+    # Whether a LineMessageSender implementation exists at all. True by default
+    # so a deployment that forgets the token below fails loudly and leaves a
+    # dead letter, rather than silently telling nobody anything. Turn it off and
+    # BookingNotificationHandler records the omission and resolves the row,
+    # which is how the whole test suite runs with no channel and no credential.
+    enabled: ${LINE_MESSAGING_ENABLED:true}
+    api-base-url: ${LINE_MESSAGING_API_BASE_URL:https://api.line.me}
+    # A LINE MESSAGING API channel credential, and a DIFFERENT channel from
+    # auth.line.channel-id above, which is a LINE Login channel. If the two
+    # channels sit under different LINE providers, the sub stored as
+    # AppUser.lineSubject is not a valid push target and every send fails with a
+    # recipient error that looks like a bug in this code. README.md says so next
+    # to the variable; nothing here can detect it.
+    channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
+
 payment-proof:
   # A private bucket; nothing here is ever handed to a browser (ADR-009).
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}

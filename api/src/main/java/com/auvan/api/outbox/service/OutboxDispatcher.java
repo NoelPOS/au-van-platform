@@ -91,9 +91,22 @@ public class OutboxDispatcher {
     /**
      * A send that threw may still have arrived, so the retry has to be safe
      * rather than avoided: the row keeps its id, and the id is the retry key.
+     *
+     * <p>Unless retrying is pointless. A {@link PermanentFailureException} says
+     * the send will fail the same way however often it is tried — an unknown
+     * LINE recipient, or a student who has never added the official account —
+     * and it dies here rather than four attempts later. Without that, every such
+     * student costs {@code outbox.max-attempts} failed sends for every
+     * notification they are owed, forever.
      */
     private void recordFailure(OutboxEvent claimed, RuntimeException failure) {
         String error = truncated(failure.toString());
+        if (failure instanceof PermanentFailureException) {
+            log.warn("Outbox event {} cannot be delivered and is dead on attempt {}: {}",
+                    claimed.getId(), claimed.getAttempts(), error);
+            events.markDead(claimed.getId(), OffsetDateTime.now(), error);
+            return;
+        }
         if (claimed.getAttempts() >= properties.maxAttempts()) {
             log.warn("Outbox event {} failed on attempt {} and is dead: {}",
                     claimed.getId(), claimed.getAttempts(), error);
