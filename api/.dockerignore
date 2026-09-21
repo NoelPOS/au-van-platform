@@ -1,0 +1,24 @@
+# Docker's build context is the filesystem, not git: .gitignore has no effect
+# here, so everything machine-specific has to be named again.
+
+# Host build output and caches. A macOS/arm64 build copied into a linux build
+# stage is at best stale and at worst an exec-format error deep in the build.
+.gradle/
+build/
+
+# Deliberately no recursive jar pattern. gradle/wrapper/gradle-wrapper.jar is
+# tracked on purpose, and a `**/*.jar` line here excludes it from the context,
+# so the build stage dies on "Unable to access jarfile" before Gradle starts.
+# A plain `*.jar` would not, because these patterns do not cross a directory
+# separator -- which only makes the mistake harder to reason about.
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Not needed by the build, and Windows scripts never are.
+gradlew.bat
+Dockerfile
+.dockerignore

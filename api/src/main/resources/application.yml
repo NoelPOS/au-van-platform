@@ -17,6 +17,15 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  lifecycle:
+    # Sits under ECS's default 30s stopTimeout, so a task drains rather than
+    # being killed with requests still in flight.
+    timeout-per-shutdown-phase: 20s
+
+server:
+  # The container receives SIGTERM directly (see api/Dockerfile); graceful is
+  # what makes it finish in-flight requests instead of dropping them.
+  shutdown: graceful
 
 auth:
   jwt:
