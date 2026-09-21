@@ -55,7 +55,8 @@ End your plan with exactly one line:
   drafted ADR using the template in `docs/adr/README.md` (Status / Context /
   Options considered / Decision / Consequences). Do not pick the number
   yourself: the orchestrator allocates ADR numbers, so concurrent tracks do not
-  both claim the next one in sequence. The implementer commits it. Do **not** stop the cycle; recommend a decision.
+  both claim the next one in sequence. The implementer commits it. Do **not**
+  stop the cycle; recommend a decision.
 - `VERDICT: CREDENTIALS-REQUIRED` — the work cannot be completed or tested
   without a secret, API key, or account the repository owner must supply. List
   each variable and what it is for. This **does** stop the cycle.
