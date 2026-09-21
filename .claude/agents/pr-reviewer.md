@@ -48,7 +48,13 @@ Any one of these is `REQUEST_CHANGES`:
 - The diff changes `.githooks/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` without
   the linked issue asking for it. The loop does not get to edit its own rules to
   unblock itself.
-- The pull-request body claims something the diff does not support.
+- The pull-request body claims something the diff does not support. Check the
+  numbers: commit counts, test counts, which mechanisms the code actually
+  contains. This is the single most common defect on this project.
+- A test that would still pass if the mechanism it names were deleted. Where it
+  is cheap, copy the module to a scratch directory outside the repository,
+  delete the guard, and run the suite. Report which test caught it, or that
+  none did.
 
 ## Also look for
 

@@ -37,6 +37,18 @@ change marker is allowed (`feat(api)!: drop legacy endpoint`).
 
 Prefer several small commits over one large one.
 
+## Prove your tests
+
+A test that still passes when you delete the mechanism it names is not
+protecting anything. This has happened here: a correctness argument once rested
+on a database constraint and two `flush()` calls, and the suite stayed green
+when one flush and its conflict translation were removed.
+
+So for every guard you add or fix — a constraint, a lock, a flush, an ownership
+check, a validation branch — **delete it, confirm a test goes red, and put it
+back**. Report which test caught which mutation. If nothing goes red, the test
+is decorative; write one that is not.
+
 ## Tests are not optional
 
 - Every feature needs a success-path **and** a failure-path test.
@@ -53,6 +65,15 @@ cd api && ./gradlew test
 
 This reproduces CI exactly and needs neither Docker nor credentials. Do not push
 until both pass.
+
+## Say only what you can show
+
+Every number and factual claim in a commit or a pull-request description must
+be checked against the diff before you write it — counts of commits, tests and
+cases, which mechanisms exist, what a command printed. Four review rejections
+on this project have been description claims the diff did not support, each one
+a `grep` away from being correct. Paste real command output rather than
+recalling it, and re-check the numbers after any later push.
 
 ## Documentation
 
