@@ -15,24 +15,42 @@ public class InMemoryPaymentProofStorage implements PaymentProofStorage {
     public record StoredObject(String contentType, byte[] content) { }
 
     private final Map<String, StoredObject> objects = new ConcurrentHashMap<>();
-    private volatile boolean failing;
+    private volatile boolean failingStores;
+    private volatile boolean failingLoads;
 
     @Override
     public void store(String objectKey, String contentType, byte[] content) {
-        if (failing) {
+        if (failingStores) {
             throw new IllegalStateException("The payment-proof bucket is unreachable.");
         }
         objects.put(objectKey, new StoredObject(contentType, content.clone()));
     }
 
+    @Override
+    public byte[] load(String objectKey) {
+        StoredObject stored = objects.get(objectKey);
+        if (failingLoads || stored == null) {
+            // A missing object is a failure the caller converts, never a null:
+            // the port says so, and S3 raises NoSuchKeyException for the same.
+            throw new IllegalStateException("The payment-proof bucket is unreachable.");
+        }
+        return stored.content().clone();
+    }
+
     /** Makes every later store throw, standing in for an unreachable bucket. */
     public void failEveryStore() {
-        failing = true;
+        failingStores = true;
+    }
+
+    /** The same for reads, standing in for an object that is gone. */
+    public void failEveryLoad() {
+        failingLoads = true;
     }
 
     public void reset() {
         objects.clear();
-        failing = false;
+        failingStores = false;
+        failingLoads = false;
     }
 
     public Map<String, StoredObject> objects() {
