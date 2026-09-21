@@ -16,13 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Creates and releases seat holds. The unique constraint on
@@ -57,14 +56,22 @@ public class SeatHoldService {
         }
 
         // Re-selecting replaces the caller's whole hold on this trip, and any
-        // expired claim on a requested seat is reclaimed in the same breath.
-        Set<SeatClaim> released = new LinkedHashSet<>(claims.findHoldsOnTripBy(trip.getId(), userId));
-        onRequestedSeats.stream().filter(claim -> !claim.blocksSeatAt(now)).forEach(released::add);
-        claims.deleteAll(released);
-        // Hibernate orders inserts before deletes within one flush, so these
-        // deletes have to reach the database first. Without this flush a student
-        // re-selecting a seat they already hold collides with their own row.
-        claims.flush();
+        // expired claim on a requested seat is reclaimed in the same breath. The
+        // two sets overlap, so they are deduplicated by id rather than by
+        // instance identity.
+        List<UUID> reclaimed = Stream.concat(
+                        claims.findHoldsOnTripBy(trip.getId(), userId).stream(),
+                        onRequestedSeats.stream().filter(claim -> !claim.blocksSeatAt(now)))
+                .map(SeatClaim::getId)
+                .distinct()
+                .toList();
+        if (!reclaimed.isEmpty()) {
+            // A bulk delete issues its statement at once, so the reclaim reaches the
+            // database before the inserts below. Left to a normal flush, Hibernate
+            // would order the inserts first and a student re-selecting a seat they
+            // already hold would collide with their own row.
+            claims.deleteByIdIn(reclaimed);
+        }
 
         UUID holdId = UUID.randomUUID();
         OffsetDateTime expiresAt = now.plus(properties.holdTtl());
