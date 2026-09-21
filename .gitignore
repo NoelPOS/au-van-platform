@@ -17,5 +17,18 @@ coverage/
 playwright-report/
 test-results/
 
+# Terraform working directories, state, and real variable values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+crash.*.log
+
+# Tracked on purpose: the placeholder variable files and the provider lock,
+# so that everyone resolves the same provider build.
+!*.tfvars.example
+!.terraform.lock.hcl
+
 # Machine-specific Claude Code settings
 .claude/settings.local.json
