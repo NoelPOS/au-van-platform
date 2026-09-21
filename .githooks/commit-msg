@@ -2,11 +2,21 @@
 # Enforces the AU-Van commit convention: a single Conventional Commits subject
 # line, with no body and no trailers. See AGENTS.md, "Naming and review
 # conventions".
+#
+# This hook is fast local feedback. Enforcement that cannot be bypassed lives in
+# the "Commit checks" CI job, which runs the same rules over a pull request's
+# commits. Install this hook with scripts/setup-hooks.sh.
 
 message_file="$1"
 
-# Strip comment lines and trailing blank lines.
-body=$(grep -v '^#' "$message_file" | sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba')
+body=$(grep -v '^#' "$message_file")
+subject=$(printf '%s\n' "$body" | head -n 1)
+
+# Messages git generates itself. Reverts and merges legitimately carry a body,
+# and fixup/squash subjects are rewritten when the branch is tidied.
+case "$subject" in
+    'Revert "'*|'Merge '*|'fixup! '*|'squash! '*) exit 0 ;;
+esac
 
 fail() {
     echo "commit-msg: $1" >&2
@@ -14,11 +24,11 @@ fail() {
     exit 1
 }
 
-if printf '%s' "$body" | grep -qi '^co-authored-by:'; then
+if printf '%s\n' "$body" | grep -qi '^co-authored-by:'; then
     fail "commit messages carry no Co-Authored-By trailer."
 fi
 
-if printf '%s' "$body" | grep -qi 'generated with'; then
+if printf '%s\n' "$body" | grep -qi 'generated with claude\|co-authored-by: claude'; then
     fail "commit messages carry no tool attribution."
 fi
 
@@ -26,12 +36,10 @@ if [ "$(printf '%s\n' "$body" | wc -l | tr -d ' ')" -gt 1 ]; then
     fail "commit messages are a single subject line with no body."
 fi
 
-subject=$(printf '%s' "$body" | head -n 1)
-
-if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?: [a-z].*[^.]$'; then
+if ! printf '%s' "$subject" | grep -Eq '^(feat|fix|docs|chore|refactor|test|perf|build|ci|style|revert)(\([a-z0-9-]+\))?!?: [a-z].*[^.]$'; then
     fail "subject must be Conventional Commits, lower-case, no trailing period: 'type(scope): imperative outcome'."
 fi
 
 if [ "${#subject}" -gt 72 ]; then
-    fail "subject is ${#subject} characters; keep it under 72."
+    fail "subject is ${#subject} characters; keep it to 72 or fewer."
 fi
