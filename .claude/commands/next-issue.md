@@ -57,16 +57,38 @@ move your branch out from under you:
 
 ```sh
 git worktree add -b <type>/<kebab-description> .worktrees/<short-name> main
-cd .worktrees/<short-name>
 ```
 
 `.worktrees/` sits inside the repository, so the agent file tools can write
 there, and it is git-ignored. `git worktree` is not in the
 `.claude/settings.json` allow list, so the command prompts for approval each
-time; adding the entry is the repository owner's call and is tracked in #36.
+time; adding the entry is the repository owner's call and is tracked in #42.
 
-Work there for the whole cycle, and remove it with `git worktree remove` once
-the pull request has merged.
+**Do not `cd` into the worktree and expect to stay there.** An agent's shell
+working directory resets to the repository root between every Bash call, so a
+`cd` in one call is gone by the next, and every later `git add`, `git commit`
+or `npm run` would run in the shared root tree on whatever branch that tree
+holds — exactly the collision the worktree exists to prevent. Name the
+worktree on each command instead:
+
+- **Git:** `git -C .worktrees/<short-name> add <path>`, then
+  `git -C .worktrees/<short-name> commit -m "<subject>"`. Use `git -C`, not a
+  compound `cd … && git commit …`: a compound command does not match the
+  `Bash(git commit:*)` allow entry, so it prompts for approval every time.
+- **The local gate:** one compound command per project, so the `cd` and the
+  commands it applies to share a single Bash call. Each line below is its own
+  call, because the working directory resets in between.
+
+```sh
+cd .worktrees/<short-name>/web && npm ci && npm run lint && npm run test && npm run build
+cd .worktrees/<short-name>/api && ./gradlew test
+```
+
+- **File tools:** absolute paths under `.worktrees/<short-name>/`. A relative
+  path resolves against the root tree, not the worktree.
+
+Work on that branch for the whole cycle, and remove the worktree with
+`git worktree remove` once the pull request has merged.
 
 Run the `implementer` agent. It writes code, tests, and docs, commits with
 subject-only Conventional Commits, and runs the full local gate.
