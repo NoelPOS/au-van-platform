@@ -79,11 +79,19 @@ public class BookingService {
      * Cancels a booking and frees its seats. There is no cutoff window: the
      * legacy application refuses only an already-cancelled booking, and its
      * two-hour rule belongs to rescheduling, which is out of scope.
+     *
+     * <p>The booking's row is locked first, and everything below decides from
+     * what the lock returned. Cancellation is a read-then-write on
+     * {@code status} racing the administrator's review (#52): without the lock
+     * an approval committing in between leaves a {@code CONFIRMED} booking
+     * whose {@code seat_claims} this method has already deleted. Owner-scoped,
+     * because cancelling is the student's own action.
      */
     @Transactional
     public BookingResponse cancel(UUID userId, UUID bookingId) {
         OffsetDateTime now = OffsetDateTime.now();
-        Booking booking = load(userId, bookingId);
+        Booking booking = bookings.lockByIdAndUserId(bookingId, userId)
+                .orElseThrow(() -> Problems.notFound("booking_not_found", "Booking not found."));
         if (booking.isCancelled()) {
             throw Problems.conflict("booking_already_cancelled", "That booking has already been cancelled.");
         }
