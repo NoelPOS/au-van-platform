@@ -25,7 +25,7 @@ public class AppUser {
     private String displayName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private ApplicationRole role;
 
     @Column(name = "created_at", nullable = false)

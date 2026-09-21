@@ -18,10 +18,10 @@ public class VanRoute {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String origin;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String destination;
 
     @Column(nullable = false, precision = 10, scale = 2)
@@ -31,7 +31,7 @@ public class VanRoute {
     private int durationMinutes;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private RouteStatus status;
 
     protected VanRoute() { }
