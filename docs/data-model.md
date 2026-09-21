@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs`. The asynchronous-workflow tables remain planned.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. The asynchronous-workflow tables remain planned.
 
 ## Schema ownership
 
@@ -26,7 +26,7 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `booking_seats` | `V3` | Which seats a booking bought, kept after cancellation frees the claims |
 | `booking_events` | `V3` | Append-only history of a booking's state changes |
 | `idempotency_keys` | `V3`, `V4` | The response a critical client write already produced, for replay on retry |
-| `payment_proofs` | `V5` | One payment-proof submission: its object key, metadata, and review state |
+| `payment_proofs` | `V5`, `V6` | One payment-proof submission: its object key, metadata, and the administrator's decision |
 | `notifications` | planned | Delivery intent and result for LINE, in-app, and email channels |
 | `reminder_jobs` | planned | Scheduled reminder work and retry metadata |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
@@ -52,7 +52,7 @@ A booking is created from a hold, exactly once. ADR-008 records the decision.
 - Confirmation takes a `PESSIMISTIC_WRITE` lock on the hold's `seat_claims` rows and decides from what that query returned. The unique constraint cannot see this race: confirmation updates rows that already exist rather than inserting new ones, so two confirmations of one hold would both satisfy it.
 - `bookings.reference` is the customer-facing code, `AUV-YYMMDD-XXXXXXXX` over a thirty-symbol alphabet that omits `0/O`, `1/I/L`, and `U`. `bookings_reference_unique` decides a collision.
 - `booking_seats` records what was bought. Cancellation deletes the booking's `seat_claims` rows so other students can take the seats, and the booking still says which seats it had.
-- `booking_events` is append-only, oldest first, and `actor_user_id` is nullable so that staff and system actors in #7 need no change of shape.
+- `booking_events` is append-only, oldest first, and `actor_user_id` is nullable for system-driven transitions. A payment review records the administrator there, so a student's own booking response can carry a staff user id.
 - `idempotency_keys` stores the rendered response against `(user_id, endpoint, idempotency_key)`, which is unique, plus `request_hash`: a SHA-256 over the serialised validated request. A retry replays the stored bytes; the same key with a different payload is refused. The response is stored rather than re-rendered, so a retry arriving after a cancellation still returns what was sent the first time.
 - `seat_claims` deletions by id refuse rows that carry a `booking_id`, so a reclaim or a release cannot free a seat that a concurrent confirmation has just sold.
 
@@ -60,12 +60,13 @@ A booking is created from a hold, exactly once. ADR-008 records the decision.
 
 A booking is created `PENDING_PAYMENT` and only an approved payment proof reaches `CONFIRMED`. ADR-009 records the decision.
 
-- `payment_proofs` holds one row per submission, so the rejection and resubmission #52 adds keep their history instead of overwriting each other.
+- `payment_proofs` holds one row per submission, so a rejection and the resubmission that follows it keep their history instead of overwriting each other.
 - The image is in object storage and only `object_key` is in PostgreSQL. Nothing that reads this table can hand out the bytes: every read goes back through the API, which authorizes it itself.
 - `object_key` is `payment-proofs/{bookingId}/{timestamp}-{uuid}{ext}` and unique, so no submission can overwrite another's image.
-- `status` is `SUBMITTED` until an administrator decides; the reviewer's own columns arrive with #52 alongside the endpoints that write them.
+- `status` is `SUBMITTED` until an administrator decides, and `reviewed_by_user_id`, `reviewed_at`, and `review_note` record the decision. `payment_proofs_review_recorded` is a `CHECK`: a row that is no longer `SUBMITTED` must name who decided it and when, and a `SUBMITTED` row must name neither.
+- A decision locks the booking's row first and is made only from what the lock returned, the same discipline ADR-008 established for confirmation. Approval moves the booking to `CONFIRMED`, rejection to `PAYMENT_REJECTED`, from which the student may submit another proof.
 - The submission is one transaction, and the image is written to storage before any row. A storage failure therefore leaves no proof row, no status change, and no history entry.
-- `booking_events` carries `PAYMENT_PROOF_SUBMITTED`, so the audit trail stays in the one append-only table rather than growing a parallel one.
+- `booking_events` carries `PAYMENT_PROOF_SUBMITTED`, `PAYMENT_APPROVED`, and `PAYMENT_REJECTED`, so the audit trail stays in the one append-only table rather than growing a parallel one. A rejection's note is the event's detail, which is how the student is told what to fix.
 - `seat_claims` are not released while a booking waits for payment or for review, so a seat can be held indefinitely until #8's expiry processing bounds it. ADR-009 records that as an accepted consequence.
 
 ## Critical constraints to design
