@@ -271,14 +271,35 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
           Signed in as {session.user.displayName ?? "student"}.
         </p>
       </header>
-      {notice && (
+      {/*
+        Both live regions stay mounted and only their text changes. A
+        `role="status"` region inserted together with its first text is
+        announced unreliably, and swapping the role on one element has the
+        same problem. Empty, the wrapper is taken out of the flex flow rather
+        than unmounted, so it neither leaves a gap nor leaves the tree.
+      */}
+      <div className={notice ? "" : "sr-only"}>
         <p
-          className={`rounded-xl px-4 py-3 text-sm ${notice.tone === "error" ? "bg-red-50 text-red-700" : "bg-brand-soft text-brand"}`}
-          role={notice.tone === "error" ? "alert" : "status"}
+          className={
+            notice?.tone === "error"
+              ? "rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+              : ""
+          }
+          role="alert"
         >
-          {notice.message}
+          {notice?.tone === "error" ? notice.message : ""}
         </p>
-      )}
+        <p
+          className={
+            notice?.tone === "status"
+              ? "rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand"
+              : ""
+          }
+          role="status"
+        >
+          {notice?.tone === "status" ? notice.message : ""}
+        </p>
+      </div>
       {step === "trips" && (
         <TripListSection
           error={trips.error}
