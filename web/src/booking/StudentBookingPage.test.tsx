@@ -314,11 +314,11 @@ describe("StudentBookingPage", () => {
       409,
     );
 
-    expect(
-      await screen.findByText(
-        "That trip is no longer available. Choose another.",
-      ),
-    ).toBeInTheDocument();
+    // Found by role, not by text: the notice is an error and has to reach a
+    // screen reader as one the moment it appears.
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "That trip is no longer available. Choose another.",
+    );
     expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
   });
 
@@ -436,11 +436,13 @@ describe("StudentBookingPage", () => {
     await tick(10_000);
 
     expect(seatsRequested).toBeGreaterThan(1);
+    // Nothing the student did takes the seat away, so the only way they learn
+    // about it is the live region announcing itself.
     expect(
-      screen.getByText(
-        "Seat A1 was taken by another student and has been removed from your selection.",
-      ),
-    ).toBeInTheDocument();
+      screen.getAllByRole("status").map((region) => region.textContent),
+    ).toContain(
+      "Seat A1 was taken by another student and has been removed from your selection.",
+    );
     expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
   });
 
@@ -503,9 +505,11 @@ describe("StudentBookingPage", () => {
     const beforeExpiry = seatsRequested;
     await tick(30_000);
 
+    // A polite live region rather than plain text: the expiry is not an error
+    // the student caused, but it has to be announced.
     expect(
-      screen.getByText("Your seat hold expired. Choose your seats again."),
-    ).toBeInTheDocument();
+      screen.getAllByRole("status").map((region) => region.textContent),
+    ).toContain("Your seat hold expired. Choose your seats again.");
     expect(
       screen.getByRole("group", { name: "Seat map" }),
     ).toBeInTheDocument();
@@ -747,11 +751,9 @@ describe("StudentBookingPage", () => {
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    expect(
-      await screen.findByText(
-        "Check the passenger name and phone number, then try again.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Check the passenger name and phone number, then try again.",
+    );
     expect(
       screen.getByRole("button", { name: "Confirm booking" }),
     ).toBeInTheDocument();
@@ -882,8 +884,8 @@ describe("StudentBookingPage", () => {
     }
 
     expect(
-      screen.getByText("You can hold at most 4 seats at a time."),
-    ).toBeInTheDocument();
+      screen.getAllByRole("status").map((region) => region.textContent),
+    ).toContain("You can hold at most 4 seats at a time.");
     expect(screen.getByText("4 seats selected · 140.00 THB")).toBeInTheDocument();
   });
 
