@@ -186,6 +186,14 @@ the board from drifting.
   enforcement, and its required "Commit checks" context runs only on a pull
   request, so a push straight to `main` can never turn that check green.
 
+  That pull request takes the same gates as any other: the CI gate in §5, the
+  reviewer gate in §6 and §6b, and `gh pr merge --rebase` in §7. It is the one
+  pull request with no issue of its own — it is bookkeeping for a merge that
+  has already happened — so `AGENTS.md` and `pr-reviewer.md` exempt it by name
+  from the linked-issue requirement. The exemption is narrow: it holds only
+  while the diff is `docs/project-status.md` and nothing else. Anything further
+  needs its own issue and its own pull request.
+
 ## Failure handling
 
 Counters are per issue and reset on merge.
@@ -228,5 +236,7 @@ retry caps exhausted, or an empty backlog. Then:
 3. Add the `status: blocked` label.
 4. Write the question into the **Current blockers** section of
    `docs/project-status.md`, so a fresh session recovers it via the startup
-   protocol.
+   protocol. Land it by the same route as the status update in §8 — a
+   `docs/<short-name>` branch and a pull request through §5 to §7, under the
+   same exemption. There is no direct push to `main` here either.
 5. Report to the user.
