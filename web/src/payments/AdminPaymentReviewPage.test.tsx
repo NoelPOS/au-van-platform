@@ -147,7 +147,9 @@ describe("AdminPaymentReviewPage", () => {
       String(url).includes("/approve"),
     );
     expect(call?.[0]).toBe("/api/v1/admin/payment-proofs/proof-1/approve");
-    expect((call?.[1] as RequestInit).body).toBe(JSON.stringify({ note: "" }));
+    const init = call?.[1] as RequestInit;
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe(JSON.stringify({ note: "" }));
   });
 
   it("refuses to reject without a reason and sends the reason once it has one", async () => {
