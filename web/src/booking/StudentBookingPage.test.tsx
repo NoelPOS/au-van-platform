@@ -349,6 +349,39 @@ describe("StudentBookingPage", () => {
     expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
   });
 
+  it("pluralises the message when the poll takes more than one selected seat", async () => {
+    vi.useFakeTimers();
+    let seatsRequested = 0;
+    stubApi({
+      seats: () => {
+        seatsRequested += 1;
+        if (seatsRequested === 1) return json(seatMap());
+        return json({
+          ...seatMap(),
+          seats: seatMap().seats.map((seat) => ({
+            ...seat,
+            state: "BOOKED" as SeatState,
+          })),
+        });
+      },
+    });
+
+    renderPage();
+    await tick();
+    fireEvent.click(screen.getByRole("button", { name: /Mega Bangna/ }));
+    await tick();
+    fireEvent.click(screen.getByRole("button", { name: "Seat A1, available" }));
+    fireEvent.click(screen.getByRole("button", { name: "Seat B1, held by you" }));
+
+    await tick(10_000);
+
+    expect(
+      screen.getByText(
+        "Seats A1, B1 were taken by another student and have been removed from your selection.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows the hold countdown and returns to seat selection when it expires", async () => {
     vi.useFakeTimers();
     stubApi({
