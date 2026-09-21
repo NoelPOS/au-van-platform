@@ -152,7 +152,6 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
   function onHoldFailure(error: unknown) {
     const code = error instanceof ApiError ? error.code : null;
     const status = error instanceof ApiError ? error.status : 0;
-    if (status === 401) return;
     if (code === "trip_not_available")
       return backToTrips("That trip is no longer available. Choose another.");
     if (code === "trip_departed")
@@ -214,7 +213,6 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
   function onBookingFailure(error: unknown) {
     const code = error instanceof ApiError ? error.code : null;
     const status = error instanceof ApiError ? error.status : 0;
-    if (status === 401) return;
     if (code === "hold_expired")
       return backToSeats(
         "Your seat hold expired before the booking was confirmed. Choose your seats again.",
