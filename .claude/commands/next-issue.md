@@ -83,16 +83,13 @@ time; adding the entry is the repository owner's call and is tracked in #42.
 working directory resets to the repository root between every Bash call, so a
 `cd` in one call is gone by the next, and every later `git add`, `git commit`
 or `npm run` would run in the shared root tree on whatever branch that tree
-holds — exactly the collision the worktree exists to prevent. Name the
-worktree on each command instead:
+holds — exactly the collision the worktree exists to prevent. Instead put the
+`cd` and the command it applies to in **one compound Bash call**, one call per
+operation:
 
-- **Git:** `git -C .worktrees/<short-name> add <path>`, then
-  `git -C .worktrees/<short-name> commit -m "<subject>"`. Use `git -C`, not a
-  compound `cd … && git commit …`: a compound command does not match the
-  `Bash(git commit:*)` allow entry, so it prompts for approval every time.
-- **The local gate:** one compound command per project, so the `cd` and the
-  commands it applies to share a single Bash call. Each line below is its own
-  call, because the working directory resets in between.
+- **Git:** `cd .worktrees/<short-name> && git add <path>`, then
+  `cd .worktrees/<short-name> && git commit -m "<subject>"`.
+- **The local gate:** the same shape, one call per project.
 
 ```sh
 cd .worktrees/<short-name>/web && npm ci && npm run lint && npm run test && npm run build
@@ -101,6 +98,22 @@ cd .worktrees/<short-name>/api && ./gradlew test
 
 - **File tools:** absolute paths under `.worktrees/<short-name>/`. A relative
   path resolves against the root tree, not the worktree.
+
+The compound form is the one the permission matcher accepts. Probed against the
+live matcher with a deny entry, `echo probe && git push --force --dry-run …` is
+denied — so the matcher **does** decompose an `&&` chain and evaluate each
+sub-command. The `git commit` in the second position is therefore matched by
+the existing `Bash(git commit:*)` allow entry, and the leading `cd` costs
+nothing.
+
+**Do not use `git -C <worktree> …`.** The same probe showed
+`git -C <repo> push --force --dry-run …` executing where the bare form was
+denied: inserting `-C <path>` before the subcommand defeats prefix matching
+entirely. So `git -C .worktrees/<short-name> commit -m …` matches no allow
+entry and prompts on every commit. #43 records that matcher gap. Do **not**
+propose `Bash(git -C:*)` as the fix either: it would make
+`git -C . push --force` and `git -C . config core.hooksPath …` both allowed and
+unreachable by the existing denies, which is strictly worse than today.
 
 Work on that branch for the whole cycle, and remove the worktree with
 `git worktree remove` once the pull request has merged.
