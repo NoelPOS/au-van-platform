@@ -9,9 +9,9 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 ## Repository state
 
 - Default branch: `main`, protected: "Web checks", "API checks", and "Commit checks" must pass, branches must be up to date, and the rule applies to administrators.
-- Last merged implementation commit: `3feb4b3` (`fix: check attribution against the stored message`)
-- Active issue: [#24 Provide seat availability and concurrency-safe seat holds](https://github.com/NoelPOS/au-van-platform/issues/24)
-- Active branch: `feature/seat-holds`
+- Last merged implementation commit: `86b323c` (`fix(booking): release holds with the bulk delete too`)
+- Active issues, running as concurrent tracks on disjoint file surfaces: [#27 migrations](https://github.com/NoelPOS/au-van-platform/issues/27) on `fix/apply-database-migrations`, [#29 delivery cycle](https://github.com/NoelPOS/au-van-platform/issues/29) on `chore/harden-delivery-cycle`, and [#32 Terraform foundation](https://github.com/NoelPOS/au-van-platform/issues/32) on `feature/terraform-foundation`
+- This file is owned by the orchestrator. Implementers do not edit it, because every concurrent track would otherwise conflict on it.
 - Legacy reference: `/Users/noelpaingoaksoe/Desktop/AU-Van-reference` (not part of this repository)
 - Delivery is agent-driven: roles in `.claude/agents/`, one cycle in `.claude/commands/next-issue.md`.
 
@@ -23,23 +23,28 @@ The legacy Next.js application has been cloned separately as a read-only migrati
 - Use low-cost demo hosting first while keeping an AWS-ready target topology.
 - Verify LINE identity server-side and issue short-lived AU-Van JWTs.
 - Hold and book seats in one `seat_claims` table, with lazy hold expiry and no Redis.
+- Write the AWS target topology in Terraform, statically checked and never applied by an agent.
 
 ## Current blockers
 
-None blocking #24. One defect was found while implementing it and is filed as [#27 Database migrations have never been applied](https://github.com/NoelPOS/au-van-platform/issues/27): Spring Boot 4 moved Flyway auto-configuration into the `spring-boot-flyway` module, which `api/build.gradle` does not declare, so no Flyway bean is created and the `V1`–`V3` migrations never run. Hibernate's embedded-database `create-drop` builds the schema instead, in tests and in any environment using this classpath. Adding the module makes the migrations run and immediately exposes a second, pre-existing defect in `SeatLayout.replaceSeats`, which re-adds layout seats before the old ones are deleted and violates `seat_layout_seats_label_unique`. Both belong in one focused fix.
+None. [#27](https://github.com/NoelPOS/au-van-platform/issues/27) — that Flyway auto-configuration moved to a module `api/build.gradle` never declared, so `V1`–`V3` had never been applied and Hibernate generated the schema from the mappings — is fixed and in review. Its fix also resolved the pre-existing `SeatLayout.replaceSeats` collision that only became visible once the migrations ran.
+
+Two limitations are known and deliberately deferred. The API test suite runs on H2 in PostgreSQL mode rather than real PostgreSQL, so concurrency behaviour is proven only on H2; that belongs to [#10](https://github.com/NoelPOS/au-van-platform/issues/10). Infrastructure code is statically checked but never executed, so it is designed and codified rather than deployed until the owner applies it themselves.
 
 ## Next step
 
-Review and merge [#24 Provide seat availability and concurrency-safe seat holds](https://github.com/NoelPOS/au-van-platform/issues/24) on `feature/seat-holds`. Take [#27 Database migrations have never been applied](https://github.com/NoelPOS/au-van-platform/issues/27) next, because every later migration rests on it. The ready implementation issues after that are [#25 Create bookings idempotently with an auditable state history](https://github.com/NoelPOS/au-van-platform/issues/25) and [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26).
+Merge the three tracks in review: [#27](https://github.com/NoelPOS/au-van-platform/issues/27), [#29](https://github.com/NoelPOS/au-van-platform/issues/29) and [#32](https://github.com/NoelPOS/au-van-platform/issues/32). Then [#31 Containerize the API and web build](https://github.com/NoelPOS/au-van-platform/issues/31), which blocks the AWS topology because no Dockerfile exists, followed by [#25 Create bookings idempotently](https://github.com/NoelPOS/au-van-platform/issues/25) and [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26).
 
 ## Ordered backlog
 
 The issue tracker is the durable implementation queue. Refine an issue when it becomes the next ready item; do not expand its scope without updating the issue and, when relevant, an ADR.
 
-1. [#24 Provide seat availability and concurrency-safe seat holds](https://github.com/NoelPOS/au-van-platform/issues/24) — in review
-2. [#27 Database migrations have never been applied](https://github.com/NoelPOS/au-van-platform/issues/27)
-3. [#25 Create bookings idempotently with an auditable state history](https://github.com/NoelPOS/au-van-platform/issues/25)
-4. [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26)
+1. [#27 Database migrations have never been applied](https://github.com/NoelPOS/au-van-platform/issues/27) — in review
+2. [#29 Harden the delivery cycle](https://github.com/NoelPOS/au-van-platform/issues/29) — in review
+3. [#32 Establish the Terraform foundation](https://github.com/NoelPOS/au-van-platform/issues/32) — in review
+4. [#31 Containerize the API and web build](https://github.com/NoelPOS/au-van-platform/issues/31)
+5. [#25 Create bookings idempotently with an auditable state history](https://github.com/NoelPOS/au-van-platform/issues/25)
+6. [#26 Build the LIFF seat booking flow](https://github.com/NoelPOS/au-van-platform/issues/26)
 5. [#7 Review payment proofs and confirm bookings](https://github.com/NoelPOS/au-van-platform/issues/7)
 6. [#8 Deliver asynchronous notifications and booking expiry processing](https://github.com/NoelPOS/au-van-platform/issues/8)
 7. [#9 Add waitlist promotion and operational visibility](https://github.com/NoelPOS/au-van-platform/issues/9)
