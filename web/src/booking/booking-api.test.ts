@@ -53,6 +53,53 @@ describe("booking API client", () => {
     expect(headers.get("Idempotency-Key")).toBe("key-1");
   });
 
+  it("posts a payment proof as multipart without a JSON content type", async () => {
+    // The shared request() helper always sets application/json; a multipart
+    // body has to bypass it so the browser writes its own boundary header.
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(json({})));
+    vi.stubGlobal("fetch", fetcher);
+    const slip = new File(["slip-bytes"], "slip.jpg", { type: "image/jpeg" });
+
+    await bookingApi.submitPaymentProof(session, "booking-1", slip);
+
+    const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v1/bookings/booking-1/payment-proof");
+    expect(init.method).toBe("POST");
+    const headers = new Headers(init.headers);
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("Authorization")).toBe("Bearer student-token");
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get("file")).toBe(slip);
+  });
+
+  it("carries the code when a payment proof is refused", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          json(
+            {
+              detail: "This booking is not waiting for a payment proof.",
+              code: "booking_not_awaiting_payment",
+            },
+            409,
+          ),
+        ),
+      ),
+    );
+
+    const error = (await bookingApi
+      .submitPaymentProof(
+        session,
+        "booking-1",
+        new File(["x"], "slip.jpg", { type: "image/jpeg" }),
+      )
+      .catch((thrown) => thrown)) as ApiError;
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("booking_not_awaiting_payment");
+  });
+
   it("completes a hold release even though it answers 204 with no body", async () => {
     vi.stubGlobal(
       "fetch",

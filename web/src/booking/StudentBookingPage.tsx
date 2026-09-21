@@ -8,6 +8,7 @@ import {
   useMyBookings,
   useReleaseHold,
   useSeatMap,
+  useSubmitPaymentProof,
 } from "./hooks";
 import { ConfirmationSection } from "./sections/ConfirmationSection";
 import { MyBookingsSection } from "./sections/MyBookingsSection";
@@ -53,6 +54,7 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
   const holdSeats = useHoldSeats(session);
   const releaseHold = useReleaseHold(session);
   const createBooking = useCreateBooking(session);
+  const submitProof = useSubmitPaymentProof(session);
 
   const seats = seatMap.data?.seats ?? [];
   // The poll can never fight the selection: availability is derived from the
@@ -82,9 +84,14 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
   }, [tripIsGone]);
 
   if (
-    [trips.error, bookings.error, seatMap.error, holdSeats.error, createBooking.error].some(
-      isUnauthorized,
-    )
+    [
+      trips.error,
+      bookings.error,
+      seatMap.error,
+      holdSeats.error,
+      createBooking.error,
+      submitProof.error,
+    ].some(isUnauthorized)
   ) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16">
@@ -219,6 +226,24 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
       setStep("confirmed");
     } catch (error) {
       onBookingFailure(error);
+    }
+  }
+
+  /**
+   * The upload keeps the student where they are: nothing else on the page
+   * depends on it, and a refused file is fixed by picking another one.
+   */
+  async function submitPaymentProof(bookingId: string, file: File) {
+    setNotice(null);
+    try {
+      await submitProof.mutateAsync({ bookingId, file });
+      setNotice({
+        tone: "status",
+        message:
+          "Payment proof received. Staff confirm the booking once they have checked it.",
+      });
+    } catch (error) {
+      setNotice({ tone: "error", message: messageOf(error) });
     }
   }
 
@@ -365,6 +390,10 @@ export function StudentBookingPage({ session }: { session: AuthSession }) {
           bookings={bookings.data ?? []}
           error={bookings.error}
           loading={bookings.isPending}
+          onSubmitProof={(bookingId, file) =>
+            void submitPaymentProof(bookingId, file)
+          }
+          submitting={submitProof.isPending}
         />
       )}
     </main>

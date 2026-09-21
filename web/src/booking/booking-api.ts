@@ -83,4 +83,27 @@ export const bookingApi = {
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(input),
     }),
+  /**
+   * The one call that cannot go through `request()`: that helper always sets
+   * `Content-Type: application/json`, and a multipart upload needs the browser
+   * to set its own `multipart/form-data; boundary=...` instead. Setting it by
+   * hand is not an option either — only the browser knows the boundary.
+   */
+  submitPaymentProof: async (
+    session: AuthSession,
+    bookingId: string,
+    file: File,
+  ): Promise<Booking> => {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await authenticatedFetch(
+      session,
+      `${apiBaseUrl}/api/v1/bookings/${bookingId}/payment-proof`,
+      { method: "POST", body },
+    );
+
+    if (!response.ok) throw await failure(response);
+
+    return (await response.json()) as Booking;
+  },
 };

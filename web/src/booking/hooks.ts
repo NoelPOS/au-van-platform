@@ -66,6 +66,18 @@ export function useReleaseHold(session: AuthSession) {
   });
 }
 
+export function useSubmitPaymentProof(session: AuthSession) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (variables: { bookingId: string; file: File }) =>
+      bookingApi.submitPaymentProof(session, variables.bookingId, variables.file),
+    // The booking comes back with its new status, but the list beside it is
+    // what the student is looking at.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: bookingKeys.bookings }),
+  });
+}
+
 export function useCreateBooking(session: AuthSession) {
   const queryClient = useQueryClient();
   return useMutation({
