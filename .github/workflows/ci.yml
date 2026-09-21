@@ -107,3 +107,104 @@ jobs:
             terraform -chdir="$dir" validate || status=1
           done <<< "$modules"
           exit $status
+
+  # Like `Infrastructure checks` above, this job deliberately holds no
+  # credential: no registry login, no `docker push`, no `permissions:` block
+  # and no `secrets.` reference. It builds the images and runs them, which is
+  # the whole of the verification; nothing is deployed anywhere.
+  #
+  # It costs roughly 7-9 minutes cold and 3-4 warm. It runs in parallel with
+  # the other jobs but is the longest of them, so it takes a pull request's
+  # wall-clock time from about 3 minutes to about 8. Plain `docker compose
+  # build` first: caching via build-push-action would roughly halve the warm
+  # case and roughly double this file, and that is not worth paying before the
+  # cost is actually felt.
+  containers:
+    name: Container checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Lint the API Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: api/Dockerfile
+
+      - name: Lint the web Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: web/Dockerfile
+
+      - name: Write a throwaway environment file
+        run: |
+          # Generated for this runner and thrown away with it. The API refuses
+          # to start with a blank JWT_SECRET and Flyway needs a reachable
+          # database, so "the image runs" can only be checked with both set.
+          {
+            echo "POSTGRES_DB=au_van"
+            echo "POSTGRES_USER=au_van"
+            echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)"
+            echo "JWT_SECRET=$(openssl rand -base64 32)"
+            echo "LINE_CHANNEL_ID="
+            echo "ADMIN_BOOTSTRAP_LINE_SUBJECT="
+          } > .env
+
+      - name: Build both images
+        run: docker compose build
+
+      - name: Check that neither container runs as root
+        run: |
+          # Numeric, because ECS's and Kubernetes' runAsNonRoot checks read the
+          # uid from the image configuration rather than resolving a name.
+          for service in api web; do
+            uid=$(docker compose run --rm --no-deps --entrypoint id "$service" -u)
+            echo "$service runs as uid $uid"
+            [ "$uid" -ne 0 ]
+          done
+
+      - name: Start the whole stack
+        run: docker compose up -d --wait
+
+      - name: Check the API health endpoint
+        run: curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'
+
+      - name: Check the SPA and the API it proxies
+        run: |
+          # Both on one origin, which is the contract the bundle relies on:
+          # the SPA calls a relative /api and the serving layer routes it.
+          curl -fsS http://localhost:8081/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:8081/actuator/health | grep -q '"status":"UP"'
+
+      - name: Check that no API host was inlined into the bundle
+        run: |
+          # web/.env.example ships VITE_API_BASE_URL=http://localhost:8080, and
+          # `vite build` auto-loads .env before any build argument is read. If
+          # such a file ever reaches the build stage, Vite inlines that host
+          # into the bundle and every deployed request goes to the visitor's
+          # own machine, with no error raised anywhere. web/.dockerignore keeps
+          # it out and the build stage asserts it; this is the last check, on
+          # the artefact that is actually served.
+          docker compose cp web:/usr/share/nginx/html ./served
+          if grep -rn 'localhost:8080' ./served; then
+            echo "The served bundle carries a build-time API host." >&2
+            exit 1
+          fi
+
+      - name: Check that the API shuts down on SIGTERM
+        run: |
+          # The JVM has to be PID 1 and has to exit on the signal. Anything
+          # in front of it that does not forward SIGTERM makes every stop wait
+          # out the full grace period and end in SIGKILL, dropping in-flight
+          # requests -- which nothing else here would notice.
+          pid1=$(docker compose exec -T api cat /proc/1/comm)
+          echo "api pid 1 is $pid1"
+          [ "$pid1" = "java" ]
+          start=$(date +%s)
+          docker compose stop -t 30 api
+          elapsed=$(( $(date +%s) - start ))
+          echo "api stopped in ${elapsed}s"
+          [ "$elapsed" -lt 15 ]
+
+      - name: Tear the stack down
+        if: always()
+        run: docker compose down -v
