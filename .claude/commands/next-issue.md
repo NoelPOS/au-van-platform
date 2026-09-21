@@ -158,6 +158,11 @@ one cannot be merged around. Red → **Failure handling**.
 ## 6. Review gate
 
 Run the `pr-reviewer` agent and read its final `VERDICT:` line from its output.
+**Pass it `.worktrees/<short-name>` and the head branch**, the same way §3 hands
+the path to the implementer. Without them it reads the root tree, which is on
+`main`, and judges the change against the code before it — and because
+`.gitignore` hides `.worktrees/`, a file the branch adds reads as absent rather
+than as an error.
 Do not look for a GitHub review state — the reviewing account is also the author
 here, so `gh pr review --approve` returns 422; the reviewer posts its findings
 with `gh pr comment` instead.
