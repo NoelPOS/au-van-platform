@@ -165,6 +165,7 @@ Either one non-empty means the reviewer mutated a tree — abort the cycle and
 report it. The root check alone is not enough: `.gitignore` excludes
 `.worktrees/`, so an edit to the track's own files leaves the root output empty
 and only the second command reports it.
+
 `VERDICT: REQUEST_CHANGES` → **Failure handling**. This gate has no exception:
 nothing merges until a reviewer run returns `VERDICT: APPROVE`.
 
