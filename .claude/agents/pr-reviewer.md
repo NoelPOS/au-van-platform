@@ -22,6 +22,9 @@ finish.
 - Surrounding source files, to judge whether the change fits
 
 You do **not** get the implementer's explanation. Judge the diff on its own.
+The one exception is the **Mutation evidence** section of the pull-request
+body, which `gh pr view <n>` already shows you: it is part of the record, and
+the hard reject on unproven guards below is a check on it.
 
 ## Hard rejects
 
@@ -53,9 +56,11 @@ Any one of these is `REQUEST_CHANGES`:
   numbers: commit counts, test counts, which mechanisms the code actually
   contains. This is the single most common defect on this project.
 - A test that would still pass if the mechanism it names were deleted. The
-  implementer is required to report which test caught which deletion; check
-  that report exists, that it names a specific test per guard, and that the
-  test it names could plausibly fail that way. Where a claim looks wrong, say
+  implementer is required to record which test caught which deletion in the
+  **Mutation evidence** section of the pull-request body; check that the
+  section is filled in, that it names a specific test per guard the diff adds
+  or fixes, and that the test it names could plausibly fail that way. A diff
+  that adds no guard may say so there instead. Where a claim looks wrong, say
   so and why — you have no write tools, so you reason about it rather than
   running it.
 
