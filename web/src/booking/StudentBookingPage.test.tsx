@@ -197,6 +197,34 @@ describe("StudentBookingPage", () => {
     });
   });
 
+  it("trims the passenger name and phone before sending them", async () => {
+    const fetcher = stubApi();
+
+    renderPage();
+    await selectSeatA1();
+    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    await screen.findByRole("button", { name: "Confirm booking" });
+    fireEvent.change(screen.getByLabelText("Full name"), {
+      target: { value: "  Somchai P.  " },
+    });
+    fireEvent.change(screen.getByLabelText("Phone number"), {
+      target: { value: " 0812345678 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    const created = fetcher.mock.calls.filter(
+      ([url, init]) =>
+        url === "/api/v1/bookings" &&
+        (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(JSON.parse(String((created[0][1] as RequestInit).body))).toEqual({
+      holdId: "hold-1",
+      passengerName: "Somchai P.",
+      passengerPhone: "0812345678",
+    });
+  });
+
   it("names each seat state so it is not carried by colour alone", async () => {
     stubApi();
 
