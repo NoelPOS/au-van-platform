@@ -20,7 +20,7 @@ public class SeatLayout {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 100)
     private String name;
 
     @OneToMany(mappedBy = "seatLayout", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -31,20 +31,27 @@ public class SeatLayout {
 
     public SeatLayout(String name, List<SeatLayoutSeat> seats) {
         this.name = name;
-        replaceSeats(seats);
+        addSeats(seats);
     }
 
     public UUID getId() { return id; }
     public String getName() { return name; }
     public List<SeatLayoutSeat> getSeats() { return List.copyOf(seats); }
 
-    public void update(String name, List<SeatLayoutSeat> seats) {
+    public void rename(String name) {
         this.name = name;
-        replaceSeats(seats);
     }
 
-    private void replaceSeats(List<SeatLayoutSeat> seats) {
+    /**
+     * Orphan-removes every seat. Replacing a layout's seats is two steps rather
+     * than one because the removal has to reach the database before the
+     * replacements are added; see {@code SeatLayoutService.update}.
+     */
+    public void removeSeats() {
         this.seats.clear();
+    }
+
+    public void addSeats(List<SeatLayoutSeat> seats) {
         seats.forEach(seat -> {
             seat.assignTo(this);
             this.seats.add(seat);

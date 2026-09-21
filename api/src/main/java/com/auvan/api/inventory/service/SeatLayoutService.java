@@ -46,7 +46,16 @@ public class SeatLayoutService {
         if (seatLayouts.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A seat layout with that name already exists.");
         }
-        seatLayout.update(name, toSeats(request.seats()));
+        List<SeatLayoutSeat> replacements = toSeats(request.seats());
+        seatLayout.rename(name);
+        seatLayout.removeSeats();
+        // seat_layout_seats_label_unique is checked row by row, and Hibernate
+        // orders inserts ahead of deletes within one flush, so a replacement
+        // seat reusing a label would collide with the row it replaces. Flushing
+        // the removal on its own sends the deletes first, for the same reason
+        // the seat hold path deletes reclaimed claims in bulk before inserting.
+        seatLayouts.flush();
+        seatLayout.addSeats(replacements);
         return SeatLayoutResponse.from(seatLayout);
     }
 
