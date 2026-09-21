@@ -3,13 +3,29 @@
 # line, with no body and no trailers. See AGENTS.md, "Naming and review
 # conventions".
 #
-# This hook is fast local feedback. Enforcement that cannot be bypassed lives in
-# the "Commit checks" CI job, a required status check on main that runs the same
-# rules. Install this hook with scripts/setup-hooks.sh.
+# This hook is fast local feedback; the "Commit checks" CI job, a required
+# status check on main, runs the same rules and is what actually gates a merge.
+# Install locally with scripts/setup-hooks.sh.
+#
+# Scope: this catches attribution as tooling emits it and as a person would
+# plausibly type it. It is a substring match, so it does not resist deliberate
+# obfuscation — homoglyphs, zero-width characters, and novel phrasings get past
+# it, and anyone who can edit this file defeats it outright, since CI runs the
+# branch's own copy. Deliberate attribution is caught by review of the diff.
 
 message_file="$1"
 
-body=$(grep -v '^#' "$message_file")
+# Two views of the message.
+#
+# "authored" is what the author actually wrote, minus the diff that
+# `git commit -v` appends below git's scissors line. Comments are KEPT, because
+# `git commit -m` uses cleanup=whitespace and stores a '#'-prefixed line
+# verbatim — so a comment is a real place attribution can hide.
+#
+# "body" is what git will store for an editor commit, with comments removed.
+# The shape rules use it so git's own template does not look like a body.
+authored=$(sed '/^#.*>8/,$d' "$message_file")
+body=$(printf '%s\n' "$authored" | grep -v '^#')
 subject=$(printf '%s\n' "$body" | head -n 1)
 
 fail() {
@@ -24,11 +40,11 @@ fail() {
 # The patterns are deliberately broad. The attribution this project must keep
 # out is emitted as "Generated with [Claude Code](https://claude.com/claude-code)",
 # so a narrow literal match misses it the moment the wording or markup shifts.
-if printf '%s\n' "$body" | grep -Eqi '^[A-Za-z][A-Za-z0-9-]*-[Bb]y:'; then
+if printf '%s\n' "$authored" | grep -Eqi '^[[:space:]]*[A-Za-z][A-Za-z0-9-]*-[Bb]y:'; then
     fail "commit messages carry no attribution trailer."
 fi
 
-if printf '%s\n' "$body" | grep -Eqi 'claude code|anthropic|generated (with|by|using) claude'; then
+if printf '%s\n' "$authored" | grep -Eqi 'claude[^a-z0-9]{0,3}code|claude\.com|anthropic|generated (with|by|using) claude'; then
     fail "commit messages carry no tool attribution."
 fi
 
