@@ -20,10 +20,10 @@ public class Vehicle {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -31,7 +31,7 @@ public class Vehicle {
     private SeatLayout seatLayout;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private VehicleStatus status;
 
     protected Vehicle() { }

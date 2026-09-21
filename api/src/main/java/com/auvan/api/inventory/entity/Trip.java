@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
@@ -21,7 +22,11 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "trips")
+// Mirrored from V2 under the same names, so the mapping and the migration
+// cannot describe this table differently without it showing in review.
+@Table(name = "trips", uniqueConstraints =
+        @UniqueConstraint(name = "trips_vehicle_departure_unique",
+                columnNames = {"vehicle_id", "departure_at"}))
 public class Trip {
     @Id
     @UuidGenerator
@@ -45,7 +50,7 @@ public class Trip {
     private int durationMinutes;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private TripStatus status;
 
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
