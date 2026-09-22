@@ -34,9 +34,15 @@ variable "public_subnet_cidrs" {
 }
 
 variable "load_balancer_ingress_cidrs" {
-  description = "Ranges allowed to reach the load balancer on port 80. Open by default, which stopped being hypothetical when #75a added the load balancer and the service behind it. ADR-007 puts CloudFront in front of that load balancer forwarding Authorization, so an open range leaves the origin reachable directly in plaintext, bypassing CloudFront while carrying a JWT. #75b narrows it, and until it lands this is the module's known exposure. Note that the right narrowing is the com.amazonaws.global.cloudfront.origin-facing managed prefix list, which this variable cannot express: aws_vpc_security_group_ingress_rule takes prefix_list_id as a mutually exclusive alternative to cidr_ipv4, so #75b needs its own variable and its own rule resource rather than a value here, and sets this default to []."
+  description = "Extra ranges allowed to reach the load balancer on port 80, on top of the CloudFront prefix list. Empty by default, and empty is the intended state: the browser reaches the demo through CloudFront, and a range here is a second way in that bypasses it, in plaintext, while the request carries a JWT. Keep it empty unless you are diagnosing the origin directly, and empty it again afterwards. Room is the other reason -- the CloudFront prefix list already fills most of the security group's 60-rule quota, so there is not much space beside it."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
+}
+
+variable "load_balancer_allow_cloudfront_prefix_list" {
+  description = "Whether the load balancer admits the com.amazonaws.global.cloudfront.origin-facing managed prefix list. On by default, and this is how the demo is reached: with it off and load_balancer_ingress_cidrs empty, the load balancer admits nothing and CloudFront's /api/* behaviour times out. It is a separate rule resource rather than a value in load_balancer_ingress_cidrs because aws_vpc_security_group_ingress_rule takes prefix_list_id as a mutually exclusive alternative to cidr_ipv4."
+  type        = bool
+  default     = true
 }
 
 variable "app_port" {
@@ -114,11 +120,6 @@ variable "line_channel_id" {
   description = "LINE Login channel id the API validates id tokens against. An audience identifier rather than a credential, in the same category as the LIFF id web/.env.example already treats as public. Empty leaves the LIFF exchange unconfigured."
   type        = string
   default     = ""
-}
-
-variable "cors_allowed_origins" {
-  description = "Origins the API's CORS filter and the actuator's accept, comma-separated. Deliberately has no default, for the same reason api_image_tag has none: only the operator knows the origin the browser will load the app from, and there is no value that is right before they say. Empty is not that value and same-origin is not an exemption -- per the Fetch spec a browser sends an Origin header on every request whose method is not GET or HEAD, including a same-origin one, and Spring's CorsUtils.isCorsRequest keys on that header being present rather than on it differing. An empty string binds as an empty list, so DefaultCorsProcessor would answer 403 Invalid CORS request to every POST, PUT and DELETE -- login, booking creation, payment-proof upload -- before authentication runs, while GETs kept working. Set it to the browser's origin: http://<the load_balancer_dns_name output> while this module is all there is, and https://<distribution domain> once #75b's CloudFront distribution fronts both the web build and /api/*. Never a wildcard -- these requests carry an Authorization header."
-  type        = string
 }
 
 variable "alarm_notification_email" {
