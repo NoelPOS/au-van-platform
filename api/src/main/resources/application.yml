@@ -51,6 +51,19 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: ${LINE_CHANNEL_ID:}
+    # Where a LIFF id token is sent to be verified, and the LINE LOGIN channel's
+    # host, not the Messaging one's -- notification.line.api-base-url below is
+    # that, and the two are separate channels on separate hosts by accident of
+    # LINE sharing one domain for both. Configurable for the same reason that
+    # one is: a test has to be able to point the real client at a server it
+    # controls (ADR-013), and the end-to-end compose overlay is the only thing
+    # in this repository that does.
+    #
+    # THIS DEFAULT IS A SECURITY CONTROL. Moved off LINE, this instance accepts
+    # whatever the other host asserts about a token. Nothing else weakens --
+    # LineTokenVerifierImpl still demands iss, aud and sub -- but the answer it
+    # checks comes from wherever this points.
+    api-base-url: ${LINE_LOGIN_API_BASE_URL:https://api.line.me}
   admin-bootstrap:
     line-subject: ${ADMIN_BOOTSTRAP_LINE_SUBJECT:}
 
