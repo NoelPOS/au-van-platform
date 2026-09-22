@@ -102,6 +102,10 @@ The bucket is not created for you. Once, after MinIO is up, open the console at
 named `au-van-payment-proofs`. Leave it private: nothing outside the API ever
 reads it, and no URL to it is ever sent to a browser.
 
+The one exception is the end-to-end stack, which cannot ask anyone to open a
+console: `compose.e2e.yaml` creates the same bucket with a one-shot `mc mb`
+service before the API starts.
+
 Neither `./gradlew test` nor CI needs any of this. The tests substitute an
 in-memory implementation of the storage port, so the suite still runs with no
 container and no credential.
@@ -182,6 +186,41 @@ Stop the stack with `docker compose down`, or `docker compose down -v` to
 delete the local database volume as well.
 
 Run validation locally with `cd web && npm run lint && npm run test && npm run build` and `cd api && ./gradlew test`.
+
+## Run the end-to-end suite
+
+`tests/e2e/` is a Playwright suite covering the two critical journeys — an
+administrator building a route, a van, its seats and a departure and then
+reviewing a payment slip, and a student booking a seat, sending a slip and being
+told what happened — against the whole stack: the real API, a real PostgreSQL,
+real MinIO, and the production web bundle served by nginx.
+
+`compose.e2e.yaml` is an overlay on `compose.yaml`, not a replacement. It adds a
+stand-in for LINE's verification endpoint and points `auth.line.api-base-url` at
+it, creates the payment-proof bucket, shortens `booking.hold-ttl` so a test can
+watch a hold lapse, and builds the web image with `VITE_E2E_AUTH=true`, which
+adds a sign-in control that needs no LINE channel. **None of that reaches a real
+image**: `ADR-013` explains why, and CI asserts it.
+
+It needs the same ignored root `.env` the container stack does — only
+`POSTGRES_PASSWORD` and `JWT_SECRET` — and no LINE credential, no LIFF channel
+and no network egress.
+
+```sh
+docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+cd tests/e2e
+npm ci
+npm run browsers   # once per machine: downloads Chromium
+npm test
+```
+
+`npm run report` opens the HTML report, and
+`docker compose -f compose.yaml -f compose.e2e.yaml down -v` tears the stack
+down and deletes its volumes. `npm run stack:up` and `npm run stack:down` from
+`tests/e2e` are the same two compose commands.
+
+The suite runs in one worker against one database and is not a required status
+check yet; CI runs it as `End-to-end checks`.
 
 `cd api && ./gradlew postgresTest` runs a second, smaller suite against a real
 PostgreSQL 17 server that Testcontainers starts for it, pinned to the same
