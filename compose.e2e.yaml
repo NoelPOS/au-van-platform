@@ -1,5 +1,5 @@
-# The end-to-end overlay: compose.yaml, plus the three things a Playwright run
-# needs and a real deployment must never have.
+# The end-to-end overlay: compose.yaml, plus what a Playwright run needs and a
+# real deployment must never have.
 #
 #   docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build
 #   cd tests/e2e && npm ci && npm run browsers && npm test
@@ -19,7 +19,7 @@ services:
   # LINE's verification endpoint, stood in for. The API is pointed at this
   # through auth.line.api-base-url below; against the default host a made-up
   # subject is refused, which is what makes the sign-in seam safe rather than a
-  # bypass. See tests/e2e/fake-line/verify.js -- it is thirty lines.
+  # bypass. See tests/e2e/fake-line/verify.js -- forty lines of code.
   #
   # The same Node image the web build stage pins, so this adds no image to pull
   # that the repository did not already have, and the source is mounted rather
