@@ -34,7 +34,7 @@ variable "public_subnet_cidrs" {
 }
 
 variable "load_balancer_ingress_cidrs" {
-  description = "Ranges allowed to reach the load balancer on port 80. Open by default, which is only tolerable while this module creates no load balancer. ADR-007 puts CloudFront in front of that load balancer forwarding Authorization, so an open range would leave the origin reachable directly in plaintext, bypassing CloudFront while carrying a JWT. Narrow this when #11b creates the load balancer. Note that the right narrowing is the com.amazonaws.global.cloudfront.origin-facing managed prefix list, which this variable cannot express: aws_vpc_security_group_ingress_rule takes prefix_list_id as a mutually exclusive alternative to cidr_ipv4, so #11b needs its own variable and its own rule resource rather than a value here."
+  description = "Ranges allowed to reach the load balancer on port 80. Open by default, which stopped being hypothetical when #75a added the load balancer and the service behind it. ADR-007 puts CloudFront in front of that load balancer forwarding Authorization, so an open range leaves the origin reachable directly in plaintext, bypassing CloudFront while carrying a JWT. #75b narrows it, and until it lands this is the module's known exposure. Note that the right narrowing is the com.amazonaws.global.cloudfront.origin-facing managed prefix list, which this variable cannot express: aws_vpc_security_group_ingress_rule takes prefix_list_id as a mutually exclusive alternative to cidr_ipv4, so #75b needs its own variable and its own rule resource rather than a value here, and sets this default to []."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }

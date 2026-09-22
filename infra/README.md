@@ -76,6 +76,16 @@ Logs and the LINE API — and that the database sits in a subnet named `-public-
 with `publicly_accessible = false` and a security group that admits the task
 and nothing else. The subnet's name is not the boundary; the security group is.
 
+Two things this module does not do yet, and both are #75b's. The listener
+serves plain HTTP, because without a custom domain there is no ACM certificate
+— ADR-007 marks that row out of scope, and CloudFront's own `*.cloudfront.net`
+certificate is what gives the browser HTTPS. And
+`load_balancer_ingress_cidrs` is still open, which stopped being hypothetical
+the moment there was a load balancer to reach: until #75b narrows it to the
+CloudFront origin-facing prefix list, the origin is reachable directly, in
+plaintext, by anyone. Do not leave this module applied and unattended in that
+state.
+
 Two rows of ADR-007's scope table are no longer right, and this module departs
 from them deliberately:
 
