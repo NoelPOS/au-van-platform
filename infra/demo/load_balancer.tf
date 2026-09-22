@@ -3,7 +3,7 @@
 # Port 80 and no certificate, deliberately. There is no custom domain, so there
 # is no ACM certificate to attach -- the row ADR-007 marks out of scope. The
 # HTTPS the browser needs comes from CloudFront's *.cloudfront.net certificate
-# in #75b, and the leg from CloudFront to this listener is plain HTTP. ADR-007
+# in #80, and the leg from CloudFront to this listener is plain HTTP. ADR-007
 # and infra/README.md record that residual risk rather than paying for a domain
 # to remove it.
 
