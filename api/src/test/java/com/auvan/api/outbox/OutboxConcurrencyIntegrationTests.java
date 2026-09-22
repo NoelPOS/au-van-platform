@@ -49,7 +49,11 @@ import static org.mockito.Mockito.mockingDetails;
  * production claim for real and the database decides.
  *
  * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * Concurrency coverage against real PostgreSQL belongs to issue #10.
+ * {@link OutboxClaimConcurrencyPostgresTests} re-proves the claim against a real
+ * PostgreSQL 17, where the {@code WHERE}-clause recheck that the loser's {@code 0}
+ * actually rests on is a documented guarantee rather than an emulation. That suite
+ * is tagged {@code postgres} and excluded from {@code ./gradlew test}, so this
+ * class keeps its Docker-free feedback.
  */
 @SpringBootTest
 class OutboxConcurrencyIntegrationTests extends AuthenticationTestSupport {

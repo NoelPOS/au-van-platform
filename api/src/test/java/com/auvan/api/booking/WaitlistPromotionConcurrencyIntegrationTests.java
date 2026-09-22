@@ -80,7 +80,12 @@ import static org.mockito.Mockito.mockingDetails;
  * refused and every test here needs both a queued student and a free seat.
  *
  * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * Coverage against real PostgreSQL belongs to issue #10.
+ * The {@code SELECT … FOR UPDATE} these paths decide behind is the same lock
+ * {@link BookingConcurrencyPostgresTests} proves against a real PostgreSQL 17, in a
+ * suite tagged {@code postgres} and excluded from {@code ./gradlew test}. These
+ * particular races are deliberately not re-run there: the tagged suite asserts one
+ * property per engine-specific guarantee rather than every class twice, which is
+ * what keeps it short enough to be worth running on every pull request.
  */
 @SpringBootTest
 class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSupport {

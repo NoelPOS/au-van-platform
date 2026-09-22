@@ -63,9 +63,12 @@ import static org.mockito.Mockito.doAnswer;
  * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour, and the
  * racing test cannot pin the losers' HTTP status either: H2 surfaces unique-key
  * contention as a constraint violation or as a lock timeout depending on timing,
- * and only the first becomes a 409. Concurrency coverage against real PostgreSQL
- * belongs to issue #10; putting Testcontainers here would put Docker on the
- * critical path of every build.
+ * and only the first becomes a 409. {@link SeatHoldConcurrencyPostgresTests} runs
+ * the same race against a real PostgreSQL 17, where unique-key contention is always
+ * a unique violation, and does assert every loser's status and code. It stays a
+ * suite of its own — tagged {@code postgres} and excluded from
+ * {@code ./gradlew test} — because putting Testcontainers here would put Docker on
+ * the critical path of every build.
  */
 @SpringBootTest
 class SeatHoldConcurrencyIntegrationTests extends AuthenticationTestSupport {
