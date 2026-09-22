@@ -91,6 +91,34 @@ jobs:
           java-version: 21
       - run: ./gradlew test
 
+  # The other half of the API suite: the @Tag("postgres") classes, which run
+  # against a real PostgreSQL 17 rather than H2 in PostgreSQL-compatibility
+  # mode. `API checks` above deliberately does not run them, because
+  # `./gradlew test` is the local gate README.md and .claude/agents/
+  # implementer.md both promise needs no Docker.
+  #
+  # Testcontainers starts the server itself, so no `services:` block: the tests
+  # own the container's lifetime and its image tag, which is pinned to the same
+  # postgres:17-alpine that compose.yaml runs.
+  #
+  # Not a required status check on day one, deliberately. `Commit checks` was
+  # promoted to required only once it had been green on real pull requests, and
+  # infra/README.md records the same intent for `Infrastructure checks`. Promote
+  # this one the same way, after two or three green runs.
+  postgres:
+    name: Database concurrency checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: ./gradlew postgresTest
+
   # Deliberately holds no AWS credential, configures no OIDC role, and asks
   # for no `permissions:`. fmt, init -backend=false and validate need none of
   # that, and the job must not be able to reach AWS even by mistake. It proves
