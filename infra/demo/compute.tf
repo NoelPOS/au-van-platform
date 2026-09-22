@@ -73,12 +73,13 @@ resource "aws_ecs_task_definition" "api" {
           value = aws_db_instance.main.username
         },
         {
-          # Empty in this pull request, and correct while it is: #75b puts one
-          # CloudFront distribution in front of both the web build and /api/*,
-          # so the browser's requests are same-origin and there is no
-          # cross-origin request to allow. #75b's implementer replaces this
-          # expression with the distribution's own domain if a cross-origin
-          # caller ever appears -- the variable stays as the operator override.
+          # Required, with no default, because being same-origin does not
+          # exempt a request from Spring's CORS filter: a browser sends Origin
+          # on every non-GET/HEAD request even to its own origin, and
+          # CorsUtils.isCorsRequest keys on the header being present. An empty
+          # value here would 403 every POST before authentication. #75b sets
+          # this from its distribution's domain; until then it is the load
+          # balancer's own origin. See variables.tf for the full reasoning.
           name  = "CORS_ALLOWED_ORIGINS"
           value = var.cors_allowed_origins
         },
