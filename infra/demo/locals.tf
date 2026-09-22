@@ -16,4 +16,10 @@ locals {
   # A parameter's ARN is the parameter path appended to this prefix with no
   # separator of its own, because the path already starts with a slash.
   ssm_parameter_arn_prefix = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter"
+
+  # The distribution's two origin identifiers. Named here rather than repeated
+  # as literals in cdn.tf because target_origin_id is a free string: a typo in
+  # one of the four behaviours validates cleanly and fails only at apply.
+  cdn_web_origin_id = "web-bucket"
+  cdn_api_origin_id = "load-balancer"
 }
