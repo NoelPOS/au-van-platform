@@ -1,8 +1,15 @@
 # The end-to-end overlay: compose.yaml, plus the three things a Playwright run
 # needs and a real deployment must never have.
 #
-#   docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+#   docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build
 #   cd tests/e2e && npm ci && npm run browsers && npm test
+#
+# `--build` is not optional. The web service differs from compose.yaml's only in
+# a build argument, so the two produce the same image tag; without it, compose
+# reuses whatever `docker compose build` left there and the stack silently
+# serves a production bundle with no sign-in control in it. Every spec then
+# times out looking for a control that is not there, which says nothing about
+# what is wrong. `npm run stack:up` passes it.
 #
 # A separate file rather than an edit, so local development and `Container
 # checks` build and run exactly what they did before. Nothing here is deployed

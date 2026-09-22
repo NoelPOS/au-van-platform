@@ -345,7 +345,12 @@ jobs:
           npm run browsers
 
       - name: Start the end-to-end stack
-        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+        run: |
+          # --build is not optional: the E2E web service differs from
+          # compose.yaml's only in a build argument, so the two share an image
+          # tag. A runner has no image to reuse, but the flag is what makes the
+          # command here and the one in README.md the same command.
+          docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build
 
       - name: Run the suite
         working-directory: tests/e2e

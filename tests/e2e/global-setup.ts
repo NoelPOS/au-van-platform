@@ -21,6 +21,34 @@ export function compose(...args: string[]): string {
 }
 
 /**
+ * Fails the whole run, once and legibly, when the web container is serving a
+ * bundle built without `VITE_E2E_AUTH`.
+ *
+ * <p>The E2E web service differs from `compose.yaml`'s only in a build
+ * argument, so the two produce the same image tag and `up` without `--build`
+ * happily reuses a production image. Every spec then times out looking for a
+ * sign-in control that is not in the page, which is an expensive way to be told
+ * nothing. This is the mirror of the `Container checks` grep: that one proves
+ * the marker is absent from a production bundle, this one proves it is present
+ * in the one the suite is about to drive.
+ */
+async function assertTheServedBundleCarriesTheSignIn(
+  api: Awaited<ReturnType<typeof request.newContext>>,
+  baseURL: string,
+): Promise<void> {
+  const html = await (await api.get("/")).text();
+  const asset = /\/assets\/[A-Za-z0-9._-]+\.js/.exec(html)?.[0];
+  const bundle = asset ? await (await api.get(asset)).text() : "";
+  if (!bundle.includes("auvan-e2e-sign-in")) {
+    throw new Error(
+      `The bundle served at ${baseURL} has no end-to-end sign-in control in it, so the ` +
+        "web image was built without VITE_E2E_AUTH. Bring the stack up with --build:\n" +
+        "  docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build",
+    );
+  }
+}
+
+/**
  * Creates the administrator, which is more work than it sounds.
  *
  * <p>`bootstrapAdmin` is a separate Gradle `BootRun` main class, not a startup
@@ -42,6 +70,8 @@ export default async function globalSetup(config: FullConfig) {
   const api = await request.newContext({ baseURL });
 
   try {
+    await assertTheServedBundleCarriesTheSignIn(api, baseURL);
+
     const created = await api.post("/api/v1/auth/line/exchange", {
       data: { idToken: adminSubject },
     });

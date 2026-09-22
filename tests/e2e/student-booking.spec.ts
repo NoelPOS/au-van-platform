@@ -13,7 +13,6 @@ import {
   signInAsAdmin,
   signInAsStudent,
   studentSubject,
-  type TripFixture,
 } from "./helpers";
 
 const slip = join(
