@@ -82,12 +82,38 @@ resource "aws_security_group" "load_balancer" {
   }
 }
 
+# Empty by default, so this resource normally collapses to nothing. A range
+# here is an escape hatch for an operator diagnosing the origin directly, not
+# the way the demo is reached -- see load_balancer_ingress_cidrs.
 resource "aws_vpc_security_group_ingress_rule" "load_balancer_http" {
   for_each = toset(var.load_balancer_ingress_cidrs)
 
   security_group_id = aws_security_group.load_balancer.id
   description       = "HTTP from ${each.value}"
   cidr_ipv4         = each.value
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
+}
+
+# The narrowing ADR-007's topology has been waiting for: the load balancer is
+# reachable from CloudFront and from nothing else. It needs a rule of its own
+# because aws_vpc_security_group_ingress_rule takes prefix_list_id as a
+# mutually exclusive alternative to cidr_ipv4, so the range list above cannot
+# express it.
+#
+# One rule, not dozens, but not one quota entry either: a prefix list counts
+# against the security group's rule quota once per entry it holds, and this
+# one carries up to about 55 against a default quota of 60. It fits with
+# almost nothing to spare, which is the other reason
+# load_balancer_ingress_cidrs defaults to empty rather than keeping a handful
+# of ranges alongside it.
+resource "aws_vpc_security_group_ingress_rule" "load_balancer_from_cloudfront" {
+  count = var.load_balancer_allow_cloudfront_prefix_list ? 1 : 0
+
+  security_group_id = aws_security_group.load_balancer.id
+  description       = "HTTP from CloudFront's origin-facing ranges"
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80

@@ -73,15 +73,23 @@ resource "aws_ecs_task_definition" "api" {
           value = aws_db_instance.main.username
         },
         {
-          # Required, with no default, because being same-origin does not
-          # exempt a request from Spring's CORS filter: a browser sends Origin
-          # on every non-GET/HEAD request even to its own origin, and
-          # CorsUtils.isCorsRequest keys on the header being present. An empty
-          # value here would 403 every POST before authentication. #75b sets
-          # this from its distribution's domain; until then it is the load
-          # balancer's own origin. See variables.tf for the full reasoning.
+          # Composed from the distribution rather than taken from a variable,
+          # now that there is a distribution to compose it from (#80). This is
+          # the origin the browser actually loads the app from, and it cannot
+          # drift from the one CloudFront serves.
+          #
+          # Required, and not a formality: being same-origin does not exempt a
+          # request from Spring's CORS filter. A browser sends Origin on every
+          # non-GET/HEAD request even to its own origin, and
+          # CorsUtils.isCorsRequest keys on the header being present, so an
+          # empty value would 403 every POST before authentication runs.
+          #
+          # It looks like a dependency cycle and is not: the distribution
+          # depends on the load balancer, this task definition depends on the
+          # distribution, and neither the load balancer nor the target group
+          # depends on the task definition.
           name  = "CORS_ALLOWED_ORIGINS"
-          value = var.cors_allowed_origins
+          value = "https://${aws_cloudfront_distribution.main.domain_name}"
         },
         {
           # A LINE Login channel's audience identifier, not a credential --
