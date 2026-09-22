@@ -182,3 +182,14 @@ Stop the stack with `docker compose down`, or `docker compose down -v` to
 delete the local database volume as well.
 
 Run validation locally with `cd web && npm run lint && npm run test && npm run build` and `cd api && ./gradlew test`.
+
+`cd api && ./gradlew postgresTest` runs a second, smaller suite against a real
+PostgreSQL 17 server that Testcontainers starts for it, pinned to the same
+`postgres:17-alpine` image `compose.yaml` uses. It re-proves the handful of
+concurrency guarantees that only the real engine can settle — the row lock
+behind a hold's confirmation, the outbox claim's conditional `UPDATE`, and the
+seat-hold race's exact conflict response — and it applies the whole migration
+history to an empty database on the way. **It needs a running Docker daemon.**
+`./gradlew test` deliberately does not: those classes are tagged `postgres` and
+excluded from it, so the gate above stays runnable on a machine with no Docker
+at all. CI runs the tagged suite as its own `Database concurrency checks` job.
