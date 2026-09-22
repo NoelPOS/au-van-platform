@@ -1,16 +1,21 @@
 # Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
 #
-# Every value below is the module default, except api_image_tag, which has no
-# default at all -- an operator must name the build they mean. The file exists
-# to show what is adjustable. No secret is set here or anywhere else in this
-# repository: the database password is RDS-managed and JWT_SECRET and
-# LINE_CHANNEL_ACCESS_TOKEN are SecureString parameters the owner creates by
-# hand before the first apply (ADR-012, and `terraform output
+# Every value below is the module default, except api_image_tag and
+# cors_allowed_origins, which have no default at all -- both carry a
+# replace-me value below and an apply fails until the operator supplies them.
+# Neither is knowable before the first apply, so the first deployment is two
+# passes; infra/README.md gives the order. The
+# file exists to show what is adjustable. No secret is set here or anywhere
+# else in this repository: the database password is RDS-managed and JWT_SECRET
+# and LINE_CHANNEL_ACCESS_TOKEN are SecureString parameters the owner creates
+# by hand before the first apply (ADR-012, and `terraform output
 # required_ssm_parameters` for their names).
 #
-# load_balancer_ingress_cidrs is open, which is only tolerable while this
-# module creates no CloudFront distribution to put in front of the load
-# balancer -- see its description in variables.tf for how #75b must narrow it.
+# load_balancer_ingress_cidrs is open. Now that this module creates a load
+# balancer there is something behind that range, so it is this module's known
+# exposure rather than a hypothetical one, and it stays open until #75b narrows
+# it to the CloudFront origin-facing prefix list -- see its description in
+# variables.tf. Do not leave the module applied and unattended meanwhile.
 aws_region   = "ap-southeast-1"
 project_name = "au-van"
 environment  = "demo"
@@ -42,9 +47,13 @@ desired_count = 1
 # leaves the LIFF exchange unconfigured.
 line_channel_id = ""
 
-# Empty is correct while CloudFront serves the web build and /api/* from one
-# origin: the browser's requests are same-origin and there is nothing to allow.
-cors_allowed_origins = ""
+# REPLACE-ME. No default, and empty is not a safe stand-in: a browser sends
+# Origin on every non-GET/HEAD request even to its own origin, so an empty list
+# makes the API answer 403 to every POST. Use the origin the browser loads the
+# app from -- http://<the load_balancer_dns_name output> while this module is
+# all there is, and https://<distribution domain> once #75b's CloudFront
+# distribution fronts both the web build and /api/*.
+cors_allowed_origins = "http://replace-me.ap-southeast-1.elb.amazonaws.com"
 
 # Empty creates no SNS topic and no subscription; the alarms still show their
 # state.
