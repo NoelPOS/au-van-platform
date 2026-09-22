@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { apiBaseUrl } from "./api-base-url";
 import { createLiffSession } from "./auth/liff-session";
-import { configuredLiffId } from "./auth/liff-config";
+import { E2eSignIn } from "./auth/E2eSignIn";
+import { configuredLiffId, e2eAuthEnabled } from "./auth/liff-config";
 import type { AuthSession } from "./auth/session";
 import { Button } from "./components/ui/Button";
 import { StudentBookingPage } from "./booking/StudentBookingPage";
@@ -77,6 +78,14 @@ function App() {
             </Button>
           </div>
         ))}
+      {/*
+        Present only in a build made with VITE_E2E_AUTH=true, which is the
+        Playwright stack's web image and nothing else (ADR-013). The flag is a
+        build-time constant, so this whole subtree — and the module it comes
+        from — is folded away in any other build, and `Container checks` greps
+        the served bundle for its marker to prove it.
+      */}
+      {!session && e2eAuthEnabled && <E2eSignIn onSignedIn={setSession} />}
       {signInError && (
         <p
           className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
