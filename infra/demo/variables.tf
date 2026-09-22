@@ -117,9 +117,8 @@ variable "line_channel_id" {
 }
 
 variable "cors_allowed_origins" {
-  description = "Origins the API's CORS filter and the actuator's accept, comma-separated. Empty by default, which is correct for the deployed demo: #75b puts one CloudFront distribution in front of both the web build and /api/*, so the browser makes same-origin requests and no cross-origin request exists to allow. Never a wildcard -- these requests carry an Authorization header."
+  description = "Origins the API's CORS filter and the actuator's accept, comma-separated. Deliberately has no default, for the same reason api_image_tag has none: only the operator knows the origin the browser will load the app from, and there is no value that is right before they say. Empty is not that value and same-origin is not an exemption -- per the Fetch spec a browser sends an Origin header on every request whose method is not GET or HEAD, including a same-origin one, and Spring's CorsUtils.isCorsRequest keys on that header being present rather than on it differing. An empty string binds as an empty list, so DefaultCorsProcessor would answer 403 Invalid CORS request to every POST, PUT and DELETE -- login, booking creation, payment-proof upload -- before authentication runs, while GETs kept working. Set it to the browser's origin: http://<the load_balancer_dns_name output> while this module is all there is, and https://<distribution domain> once #75b's CloudFront distribution fronts both the web build and /api/*. Never a wildcard -- these requests carry an Authorization header."
   type        = string
-  default     = ""
 }
 
 variable "alarm_notification_email" {
