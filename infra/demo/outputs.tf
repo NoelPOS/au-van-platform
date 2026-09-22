@@ -5,8 +5,23 @@
 # parameters are named rather than read (ADR-012). An output that resolved a
 # secret would write it to state and print it on every apply.
 
+output "demo_url" {
+  description = "Where the demo is. The distribution's own *.cloudfront.net name, over HTTPS, serving the web build and proxying /api/* and /actuator/* to the load balancer."
+  value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "web_bucket" {
+  description = "Name of the private bucket the web build is uploaded to. Terraform creates the bucket and never its contents: `aws s3 sync web/dist s3://<this>` is an owner step in the deployment runbook."
+  value       = aws_s3_bucket.web.id
+}
+
+output "cloudfront_distribution_id" {
+  description = "Distribution id, for `aws cloudfront create-invalidation` after replacing the bundle. index.html is on a no-cache behaviour, so an invalidation is only needed if the runbook ever caches it."
+  value       = aws_cloudfront_distribution.main.id
+}
+
 output "load_balancer_dns_name" {
-  description = "Public DNS name of the load balancer. #75b's CloudFront distribution takes this as its API origin."
+  description = "Public DNS name of the load balancer, which is the distribution's API origin. Not the way to reach the demo: the security group admits only CloudFront."
   value       = aws_lb.main.dns_name
 }
 
