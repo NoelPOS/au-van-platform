@@ -88,6 +88,15 @@ behaviours rather than in the objects' `Cache-Control` metadata, so an upload
 with the wrong `--cache-control` flag cannot reintroduce the bug. The top two
 are a security control, and the next section is about them.
 
+The distribution defines no `custom_error_response`. That argument is
+distribution-wide with no per-behaviour form, so mapping 403 and 404 to
+`200 /index.html` for the bucket behaviours would rewrite the API's own 403s
+and 404s too, and the client would parse `index.html` where it expects a typed
+error body. `nginx.conf.template` scopes its `try_files` to `location /` and
+passes `^/(api|actuator)/` statuses through unchanged; having no mapping is
+what matches that. `default_root_object` serves the app at `/`, and the app has
+no client-side router, so nothing else needs one.
+
 **This module now bills by the hour.** Applied and left running, it is roughly
 one Fargate task at 0.5 vCPU and 1 GB, one `db.t4g.micro` with 20 GB of gp3, one
 application load balancer — the largest single line, about $16 a month — one
@@ -169,7 +178,8 @@ personal data behind this deployment, and do not leave it applied when nobody
 is watching a demo.** A production topology gets the domain, the certificate,
 HTTPS to the origin, and this section deleted.
 
-Two rows of ADR-007's scope table are no longer right, and this module departs
+Three things ADR-007 says about this topology are no longer right — two rows of
+its scope table and the shape of the distribution — and this module departs
 from them deliberately:
 
 - **The payment-proof bucket is created unconditionally**, where that table
@@ -183,6 +193,13 @@ from them deliberately:
   *instead of* a broker, and #61/#62/#63 shipped it, so no code path would ever
   publish to a queue. A defined-but-disabled queue would be dead HCL carrying a
   suggestion the architecture has rejected.
+- **The distribution has four behaviours**, where ADR-007 says "one CloudFront
+  distribution with two behaviours". The extra two are not new scope: they are
+  the rest of the contract `web/nginx.conf.template` already implements for the
+  container image — `/actuator/*` so the health panel's request reaches the API
+  instead of the bundle bucket, and `/assets/*` so the content-hashed files are
+  cached while `index.html` is not. The behaviour table in the `demo/` section
+  above lists all four.
 
 ElastiCache is a different case and stays defined and defaulted off: Redis is
 still on the classpath and still configured, and `application.yml` disables only
