@@ -1,0 +1,17 @@
+{
+  "name": "e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Playwright coverage of the critical student and administrator journeys, against the whole stack.",
+  "scripts": {
+    "stack:up": "docker compose -f ../../compose.yaml -f ../../compose.e2e.yaml up -d --wait",
+    "stack:down": "docker compose -f ../../compose.yaml -f ../../compose.e2e.yaml down -v",
+    "browsers": "playwright install --with-deps chromium",
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
+  }
+}

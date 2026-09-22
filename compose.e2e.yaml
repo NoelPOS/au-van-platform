@@ -1,0 +1,105 @@
+# The end-to-end overlay: compose.yaml, plus the three things a Playwright run
+# needs and a real deployment must never have.
+#
+#   docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+#   cd tests/e2e && npm ci && npm run browsers && npm test
+#
+# A separate file rather than an edit, so local development and `Container
+# checks` build and run exactly what they did before. Nothing here is deployed
+# anywhere, and this file is the only place in the repository that points an API
+# away from LINE (ADR-013).
+services:
+  # LINE's verification endpoint, stood in for. The API is pointed at this
+  # through auth.line.api-base-url below; against the default host a made-up
+  # subject is refused, which is what makes the sign-in seam safe rather than a
+  # bypass. See tests/e2e/fake-line/verify.js -- it is thirty lines.
+  #
+  # The same Node image the web build stage pins, so this adds no image to pull
+  # that the repository did not already have, and the source is mounted rather
+  # than built: there is nothing to install.
+  fake-line:
+    image: node:22.23.2-alpine3.23@sha256:72c5815a06aed9a2273aea5628d74d348af57843a7b547af2fe53dd3e4b95261
+    user: node
+    working_dir: /srv
+    command: ['node', 'verify.js']
+    environment:
+      LINE_CHANNEL_ID: e2e-login-channel
+    volumes:
+      - ./tests/e2e/fake-line:/srv:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/health']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # The payment-proof bucket, which README.md otherwise tells you to create by
+  # hand in the MinIO console. The student journey's upload step fails without
+  # it, and "create it by hand" is not something an automated run can do.
+  #
+  # minioadmin/minioadmin is the image's own default, as compose.yaml's comment
+  # on the minio service records; it is not a credential this repository chose.
+  minio-init:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ['sh', '-c']
+    command:
+      - >-
+        mc alias set e2e http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing e2e/au-van-payment-proofs
+    restart: 'no'
+
+  api:
+    environment:
+      # The Login channel the fake above answers for. Both sides have to agree:
+      # the verifier compares the `aud` it gets back with this value.
+      LINE_CHANNEL_ID: e2e-login-channel
+      LINE_LOGIN_API_BASE_URL: http://fake-line:8080
+      # Needed even though the browser and the API share the origin. A browser
+      # sends `Origin` on every POST, same-origin or not, and Spring Framework 6
+      # treats any request carrying one as a CORS request -- so the exchange
+      # POST from http://localhost:8081 is answered 403 "Invalid CORS request"
+      # unless that origin is allowed. `Container checks` never sees this,
+      # because curl sends no Origin header and issues no POST. This was found
+      # by running the suite, not by reading the configuration.
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
+      # Or every notification attempts a real push against a channel that does
+      # not exist, and each one lands as a dead letter -- which the operations
+      # screen then shows, and an assertion about "nothing was given up on"
+      # would be reporting the test rig rather than the product.
+      LINE_MESSAGING_ENABLED: 'false'
+      # Five minutes is right for a student in a seat map and far too long for a
+      # test that has to watch a hold lapse. Forty seconds is the smallest value
+      # that still leaves an order of magnitude of headroom over the couple of
+      # seconds the success path spends between holding seats and confirming.
+      BOOKING_HOLD_TTL: PT40S
+      # Set explicitly, although it is already the default, because it is the
+      # deliberate answer to a real hazard: unlike the API test profile,
+      # booking.expiry.enabled, booking.waitlist.enabled and
+      # outbox.dispatch.enabled are all live here, sweeping every minute. Two
+      # hours is longer than any run, and the specs schedule their trips a week
+      # out so the departure-cutoff bound never binds either -- so no sweep can
+      # cancel a booking underneath an assertion. The sweeps are left ON rather
+      # than disabled: the E2E stack should be the real stack.
+      BOOKING_PAYMENT_WINDOW: PT2H
+      # MinIO's own defaults again, read by the AWS SDK's credentials chain.
+      # Here rather than in the environment file so that a fresh checkout can
+      # run this suite with nothing in .env but POSTGRES_PASSWORD and
+      # JWT_SECRET.
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    depends_on:
+      fake-line:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: web
+      args:
+        # The one build argument that must never be set for a real image. It
+        # adds the sign-in control the suite drives; `Container checks` builds
+        # without it and greps the served bundle to prove the control is absent.
+        VITE_E2E_AUTH: 'true'
