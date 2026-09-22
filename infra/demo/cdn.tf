@@ -199,11 +199,16 @@ resource "aws_cloudfront_distribution" "main" {
   # VITE_API_BASE_URL is set, so the request is same-origin -- and
   # nginx.conf.template routes ^/(api|actuator)/ for the container image. Omit
   # this behaviour and the default one answers out of the bundle bucket
-  # instead: the bucket has no such object, the 403 mapping below turns that
-  # into index.html with a 200, and the landing page's health panel reports
-  # the API available whether or not it is. Wrong in the deployed demo and
-  # nowhere else -- not locally, and not in Container checks, which curls the
-  # API container directly on its own network.
+  # instead: the bucket has no such object, so the landing page's health panel
+  # would be reporting on the bucket and the request would never reach the API
+  # at all. That is the whole of what this behaviour establishes -- that the
+  # request gets to the API rather than being answered at the edge. It says
+  # nothing about what the API then answers: web/src/App.tsx:22 sets the panel
+  # from response.ok alone, so an API that answers 404 or 403 on
+  # /actuator/health still reads as down, which is an actuator question and
+  # not a routing one. Wrong in the deployed demo and nowhere else -- not
+  # locally, and not in Container checks, which curls the API container
+  # directly on its own network.
   ordered_cache_behavior {
     path_pattern     = "/actuator/*"
     target_origin_id = local.cdn_api_origin_id
@@ -257,25 +262,16 @@ resource "aws_cloudfront_distribution" "main" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  # An OAC-protected bucket denies rather than 404s, so a path with no object
-  # behind it comes back 403 and would otherwise render S3's raw XML error
-  # document instead of the app. The web app has no client-side router today,
-  # so this is parity with nginx's `try_files $uri $uri/ /index.html` rather
-  # than a load-bearing rewrite -- and it stays correct if one arrives.
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 0
-  }
-
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 0
-  }
-
+  # There is deliberately no custom_error_response here. It is a
+  # distribution-level argument with no per-behaviour form, so a 403/404 ->
+  # 200 /index.html mapping would rewrite the API's own 403s and 404s too --
+  # web/src/booking/booking-api.ts:55 branches on response.ok and then parses
+  # a typed ApiError, so an authorization denial would reach the student as a
+  # JSON parse error. nginx.conf.template scopes its try_files to location /
+  # and passes ^/(api|actuator)/ statuses through unchanged; omitting the
+  # mapping is what actually matches that. default_root_object serves the app
+  # at /, and the app has no client-side router, so the only cost is that an
+  # unknown bucket path renders S3's denial rather than index.html.
   restrictions {
     geo_restriction {
       restriction_type = "none"
