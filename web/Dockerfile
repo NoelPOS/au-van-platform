@@ -40,6 +40,19 @@ RUN test ! -e .env && test ! -e .env.local && test ! -e .env.production
 # blank value.
 ARG VITE_LIFF_ID=""
 ENV VITE_LIFF_ID=$VITE_LIFF_ID
+
+# The Playwright suite's sign-in control, and the only build argument here that
+# must never be set for a real image (ADR-013). compose.e2e.yaml sets it to
+# "true"; nothing else does. The default is an empty string rather than absent
+# so the build is identical either way, and web/src/auth/liff-config.ts compares
+# for the exact string "true" for that reason.
+#
+# An image built without it contains none of that code: the flag is inlined, the
+# module-level constant folds, and the control is tree-shaken. `Container
+# checks` greps the served bundle for its marker, which is the assertion that
+# actually keeps this honest -- a comment here would not.
+ARG VITE_E2E_AUTH=""
+ENV VITE_E2E_AUTH=$VITE_E2E_AUTH
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:04a3275f25d766cff8926d2e57b2ff34a783d6b12a702dc98bb82226d2d9a508 AS runtime
