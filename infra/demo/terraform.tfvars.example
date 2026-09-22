@@ -1,9 +1,16 @@
 # Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
 #
-# Every value below is the module default; the file exists to show what is
-# adjustable. load_balancer_ingress_cidrs is open, which is only tolerable
-# while this module creates no load balancer -- see its description in
-# variables.tf for how #11b must narrow it.
+# Every value below is the module default, except api_image_tag, which has no
+# default at all -- an operator must name the build they mean. The file exists
+# to show what is adjustable. No secret is set here or anywhere else in this
+# repository: the database password is RDS-managed and JWT_SECRET and
+# LINE_CHANNEL_ACCESS_TOKEN are SecureString parameters the owner creates by
+# hand before the first apply (ADR-012, and `terraform output
+# required_ssm_parameters` for their names).
+#
+# load_balancer_ingress_cidrs is open, which is only tolerable while this
+# module creates no CloudFront distribution to put in front of the load
+# balancer -- see its description in variables.tf for how #75b must narrow it.
 aws_region   = "ap-southeast-1"
 project_name = "au-van"
 environment  = "demo"
@@ -15,3 +22,33 @@ load_balancer_ingress_cidrs = ["0.0.0.0/0"]
 
 app_port      = 8080
 database_port = 5432
+
+# The image tag to deploy. No default: name the build, not a floating tag.
+api_image_tag = "replace-me"
+
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+db_engine_version    = "17"
+db_multi_az          = false
+
+enable_redis    = false
+redis_node_type = "cache.t4g.micro"
+
+task_cpu      = 512
+task_memory   = 1024
+desired_count = 1
+
+# A LINE Login channel id -- an audience identifier, not a credential. Empty
+# leaves the LIFF exchange unconfigured.
+line_channel_id = ""
+
+# Empty is correct while CloudFront serves the web build and /api/* from one
+# origin: the browser's requests are same-origin and there is nothing to allow.
+cors_allowed_origins = ""
+
+# Empty creates no SNS topic and no subscription; the alarms still show their
+# state.
+alarm_notification_email = ""
+
+log_retention_days   = 7
+ssm_parameter_prefix = "/au-van/demo"
