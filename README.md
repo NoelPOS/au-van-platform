@@ -207,12 +207,18 @@ It needs the same ignored root `.env` the container stack does — only
 and no network egress.
 
 ```sh
-docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build
 cd tests/e2e
 npm ci
 npm run browsers   # once per machine: downloads Chromium
 npm test
 ```
+
+`--build` matters. The E2E web service differs from the ordinary one only in a
+build argument, so the two share an image tag; without it, compose can reuse an
+image built by `docker compose build` and serve a bundle with no sign-in control
+in it. The suite's global setup checks the served bundle and says so rather than
+letting every spec time out.
 
 `npm run report` opens the HTML report, and
 `docker compose -f compose.yaml -f compose.e2e.yaml down -v` tears the stack

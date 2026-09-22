@@ -19,7 +19,7 @@ export { adminSubject };
 let sequence = 0;
 
 /** Unique per test, so every run and every worker has its own fixtures. */
-export function uniqueSuffix(): string {
+function uniqueSuffix(): string {
   sequence += 1;
   return `${Date.now().toString(36)}${sequence}`;
 }
@@ -32,13 +32,13 @@ export function studentSubject(): string {
  * A `datetime-local` value, in the browser's timezone. The configuration pins
  * that to UTC so this string and what the page renders cannot disagree.
  */
-export function departureInDays(days: number): string {
+function departureInDays(days: number): string {
   const when = new Date(Date.now() + days * 86_400_000);
   when.setUTCSeconds(0, 0);
   return when.toISOString().slice(0, 16);
 }
 
-export async function signIn(page: Page, subject: string): Promise<void> {
+async function signIn(page: Page, subject: string): Promise<void> {
   await page.goto("/");
   await page.getByLabel("End-to-end sign-in subject").fill(subject);
   await page.getByRole("button", { name: "Sign in as subject" }).click();
