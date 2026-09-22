@@ -41,6 +41,12 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: test-channel-id
+    # Mirrors the main configuration's default; this file replaces it rather
+    # than merging with it, so a key added to one has to be added to the other.
+    # Deliberately the real host even here: no test reaches it, because
+    # LineTokenVerifierImplTests builds the verifier against a
+    # MockRestServiceServer instead, exactly as LineMessageSenderImplTests does.
+    api-base-url: https://api.line.me
   admin-bootstrap:
     line-subject:
 
