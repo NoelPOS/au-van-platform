@@ -46,11 +46,36 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	// The @Tag("postgres") suite only (see postgresTest below). Testcontainers 2.x
+	// renamed every module to a testcontainers- prefix, so these are not the
+	// Boot 3-era org.testcontainers:postgresql / :junit-jupiter coordinates.
+	// Versions come from Boot's own dependency management; do not pin them here.
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// The default gate, and the one README.md and .claude/agents/implementer.md
+// promise needs no Docker. Excluding the tag is what keeps that promise: the
+// Testcontainers classes are on the test classpath but nothing here starts a
+// container.
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'postgres'
+	}
+}
+
+// The other half: the same test sources, filtered down to the tagged classes
+// that run against a real PostgreSQL 17 server. Needs a working Docker daemon.
+tasks.register('postgresTest', Test) {
+	group = 'verification'
+	description = 'Runs the @Tag("postgres") concurrency suite against a real PostgreSQL container. Requires Docker.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'postgres'
+	}
 }
 
 tasks.register('bootstrapAdmin', BootRun) {
