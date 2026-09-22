@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -98,6 +98,17 @@ URL and username, `CORS_ALLOWED_ORIGINS`, `PAYMENT_PROOF_BUCKET`,
 `PAYMENT_PROOF_REGION`, and `LINE_CHANNEL_ID` — a Login channel's audience
 identifier, not a secret, in the same category as the LIFF id that
 `web/.env.example` already treats as public.
+
+Not a credential is not the same as not required. `CORS_ALLOWED_ORIGINS` has no
+Terraform default for the same reason `api_image_tag` has none: an empty value
+is a working configuration that fails at runtime rather than at apply. A browser
+sends an `Origin` header on every request whose method is not GET or HEAD, even
+to its own origin, and Spring's `CorsUtils.isCorsRequest` keys on that header
+being present rather than on it differing, so an empty allowed-origins list
+makes `DefaultCorsProcessor` answer 403 to every POST before authentication runs
+while GETs keep working. Being behind one CloudFront distribution does not
+exempt the demo from that. So the operator names the origin, and an apply that
+has not named it fails.
 
 **No AWS access key is set for the task.** `PAYMENT_PROOF_ENDPOINT` stays
 unset so the S3 client addresses real S3, and the SDK's default credentials
