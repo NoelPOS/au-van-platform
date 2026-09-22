@@ -3,7 +3,7 @@
 # nothing was deployed anywhere; this is where it arrives.
 #
 # Only the API image. The web build is served from S3 by the CloudFront
-# distribution #75b adds, so a second repository -- and the second Fargate task
+# distribution #80 adds, so a second repository -- and the second Fargate task
 # that would pull from it -- would serve bytes S3 already serves and double the
 # compute bill for nothing.
 
