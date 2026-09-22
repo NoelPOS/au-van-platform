@@ -29,7 +29,7 @@ its own.
 | Module | What it holds |
 |---|---|
 | [`budget/`](budget) | The account's monthly cost budget and its notification thresholds |
-| [`demo/`](demo) | The demo network: VPC, two public subnets, internet gateway, route table, security groups |
+| [`demo/`](demo) | The demo topology: network, registry, database, compute, load balancer, storage, IAM, monitoring |
 
 ### `budget/`
 
@@ -46,18 +46,75 @@ it applied.
 
 ### `demo/`
 
-The network only, at this point: a VPC, two public subnets in two availability
-zones, an internet gateway, a public route table, and three security groups —
-load balancer, task, database — wired so the task accepts traffic only from the
-load balancer and the database only from the task.
+The network: a VPC, two public subnets in two availability zones, an internet
+gateway, a public route table, and three security groups — load balancer, task,
+database — wired so the task accepts traffic only from the load balancer and
+the database only from the task.
 
-There is deliberately no compute, database, cache, bucket or CDN here yet, and
-nothing in this module bills by the hour. Those arrive in a later issue.
+On top of it, the origin stack: an ECR repository for the API image, an RDS
+PostgreSQL instance, one ECS Fargate service running that image, an application
+load balancer whose target group health-checks `/actuator/health`, the private
+payment-proof bucket, two IAM roles, a CloudWatch log group and three alarms.
+The CloudFront distribution and the web bundle bucket are the remaining piece
+and arrive in #75b.
 
-There is also no NAT gateway and there are no private subnets. A NAT gateway
-is roughly $32-58 a month for a demo that runs for an hour, so the isolation
-comes from the security groups instead. ADR-007 records that as the production
-delta.
+**This module now bills by the hour.** Applied and left running, it is roughly
+one Fargate task at 0.5 vCPU and 1 GB, one `db.t4g.micro` with 20 GB of gp3, one
+application load balancer — the largest single line, about $16 a month — and one
+Secrets Manager secret at about $0.40. Apply `budget/` first and leave it
+applied; destroy this module when the demo is over. Every teardown-shaped
+argument in here (`force_delete`, `force_destroy`, `skip_final_snapshot`,
+`deletion_protection = false`, `backup_retention_period = 0`) is wrong for
+production and deliberate for a demo that has to come down in one command.
+
+There is no NAT gateway and there are no private subnets. A NAT gateway is
+roughly $32-58 a month for a demo that runs for an hour, so the isolation comes
+from the security groups instead. ADR-007 records that as the production delta.
+The consequence in the topology is that the task runs with a public address —
+the internet gateway is its only route to ECR, Secrets Manager, SSM, CloudWatch
+Logs and the LINE API — and that the database sits in a subnet named `-public-`
+with `publicly_accessible = false` and a security group that admits the task
+and nothing else. The subnet's name is not the boundary; the security group is.
+
+Two rows of ADR-007's scope table are no longer right, and this module departs
+from them deliberately:
+
+- **The payment-proof bucket is created unconditionally**, where that table
+  deferred it "once the payment and notification work has designed their
+  interfaces". They have: ADR-009 chose the private API-brokered bucket and #51
+  shipped `S3PaymentProofStorage` against it. A demo with the bucket off has a
+  payment flow that 500s on the first upload, and a demo's worth of slips is
+  storage-priced at cents.
+- **The SQS queue is dropped entirely** rather than defined and defaulted off.
+  ADR-010 designed that interface and chose a transactional outbox in PostgreSQL
+  *instead of* a broker, and #61/#62/#63 shipped it, so no code path would ever
+  publish to a queue. A defined-but-disabled queue would be dead HCL carrying a
+  suggestion the architecture has rejected.
+
+ElastiCache is a different case and stays defined and defaulted off: Redis is
+still on the classpath and still configured, and `application.yml` disables only
+its health indicator while saying to re-enable it with the first Redis-backed
+feature.
+
+### What the owner creates before the first `apply` of `demo/`
+
+Terraform does not create these, and no agent may. ADR-012 records why.
+
+1. **Two SecureString parameters**, whose names `terraform output
+   required_ssm_parameters` prints — `/au-van/demo/jwt-secret` and
+   `/au-van/demo/line-channel-access-token` by default. Create each with `aws
+   ssm put-parameter --type SecureString`. The task cannot start without them,
+   and that failure is deliberate: there is no placeholder that could quietly
+   run in its place.
+2. **The budget in `budget/`**, applied and left applied.
+3. **`api_image_tag`** in `terraform.tfvars`, naming an image already pushed to
+   the repository this module creates. It has no default on purpose.
+
+The database password is not on that list: RDS generates it and holds it in
+Secrets Manager, and Terraform sees only an ARN.
+
+#76 owns the runbook that sequences all of this, and the teardown that reverses
+it.
 
 ## Conventions
 
