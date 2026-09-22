@@ -89,6 +89,22 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Check that LINE token verification still defaults to LINE
+        working-directory: .
+        run: |
+          # auth.line.api-base-url was made configurable so the Playwright
+          # suite can point an instance at a verification double (ADR-013).
+          # The default is the whole of what keeps that safe: an instance that
+          # resolves it anywhere else believes whatever that host asserts about
+          # a token. An assertion rather than a comment, and in this job rather
+          # than one of the optional ones, because this is a required check.
+          expected='api-base-url: ${LINE_LOGIN_API_BASE_URL:https://api.line.me}'
+          if ! grep -qF "$expected" api/src/main/resources/application.yml; then
+            echo "auth.line.api-base-url no longer defaults to LINE's own host." >&2
+            echo "Expected this line in api/src/main/resources/application.yml:" >&2
+            echo "  $expected" >&2
+            exit 1
+          fi
       - run: ./gradlew test
 
   # The other half of the API suite: the @Tag("postgres") classes, which run
@@ -242,6 +258,24 @@ jobs:
             exit 1
           fi
 
+      - name: Check that no end-to-end sign-in was built into the bundle
+        run: |
+          # ADR-013's other half, and the assertion that makes the sign-in seam
+          # a seam rather than a bypass. VITE_E2E_AUTH gates a control that
+          # posts a chosen subject straight to the exchange endpoint;
+          # compose.e2e.yaml sets it and this job deliberately does not, so the
+          # flag folds to false, the control's module is tree-shaken, and its
+          # marker is absent from the artefact that is actually served.
+          #
+          # ./served is the copy the previous step took out of the running web
+          # container, so this greps the same bytes a visitor is sent.
+          if grep -rn 'auvan-e2e-sign-in' ./served; then
+            echo "The served bundle carries the end-to-end sign-in control." >&2
+            echo "web/src/auth/liff-config.ts explains why e2eAuthEnabled has" >&2
+            echo "to stay a module-level constant for this to hold." >&2
+            exit 1
+          fi
+
       - name: Check that the API shuts down on SIGTERM
         run: |
           # The JVM has to be PID 1 and has to exit on the signal. Anything
@@ -260,3 +294,75 @@ jobs:
       - name: Tear the stack down
         if: always()
         run: docker compose down -v
+
+  # The Playwright suite, against the whole stack: the real API, a real
+  # PostgreSQL, real MinIO, and the production web bundle served by nginx --
+  # plus the two things a Playwright run needs and a deployment must not have,
+  # both of them in compose.e2e.yaml and neither of them in compose.yaml.
+  #
+  # It holds no LINE credential, needs no LIFF channel and makes no request
+  # that leaves the runner: a stub answers LINE's verification endpoint and
+  # `auth.line.api-base-url` points the API at it, which is the seam ADR-013
+  # settles. `Container checks` above proves the other half -- that the sign-in
+  # control the suite drives is absent from a production build.
+  #
+  # Not a required status check on day one, deliberately, on the same footing
+  # as `Infrastructure checks`, `Container checks` and `Database concurrency
+  # checks`: promote it after two or three green runs on real pull requests.
+  e2e:
+    name: End-to-end checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          # The same pin `Web checks` holds; the suite is TypeScript run by
+          # Playwright's own loader, so nothing here has to match the image.
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Write a throwaway environment file
+        run: |
+          # Generated for this runner and thrown away with it, exactly as
+          # `Container checks` does it. LINE_CHANNEL_ID is deliberately absent:
+          # compose.e2e.yaml sets it on the api service, and a service-level
+          # environment value wins over env_file.
+          {
+            echo "POSTGRES_DB=au_van"
+            echo "POSTGRES_USER=au_van"
+            echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)"
+            echo "JWT_SECRET=$(openssl rand -base64 32)"
+            echo "LINE_CHANNEL_ACCESS_TOKEN="
+            echo "ADMIN_BOOTSTRAP_LINE_SUBJECT="
+          } > .env
+
+      - name: Install the suite and its browser
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npm run browsers
+
+      - name: Start the end-to-end stack
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait
+
+      - name: Run the suite
+        working-directory: tests/e2e
+        run: npm test
+
+      - name: Keep the report from a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+      - name: Show what the stack was doing when the suite failed
+        if: failure()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml logs --tail 200
+
+      - name: Tear the stack down
+        if: always()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml down -v
