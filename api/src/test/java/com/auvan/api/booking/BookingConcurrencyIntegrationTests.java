@@ -69,7 +69,11 @@ import static org.mockito.Mockito.verify;
  * exceptions and rows.
  *
  * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * Concurrency coverage against real PostgreSQL belongs to issue #10.
+ * {@link BookingConcurrencyPostgresTests} re-proves the two guards that actually
+ * depend on it — the hold's row lock and {@code deleteByIdIn}'s
+ * {@code booking_id is null} — against a real PostgreSQL 17. That suite is tagged
+ * {@code postgres} and excluded from {@code ./gradlew test}, so this class keeps
+ * its Docker-free feedback.
  */
 @SpringBootTest
 class BookingConcurrencyIntegrationTests extends AuthenticationTestSupport {
