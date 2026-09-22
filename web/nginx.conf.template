@@ -35,6 +35,19 @@ server {
     # Same-origin routing, so the SPA calls a relative /api and no bundle ever
     # carries an API hostname. ADR-007 gives CloudFront the same shape.
     location ~ ^/(api|actuator)/ {
+        # nginx defaults to 1m, which is below the 5MB payment-proof ceiling the
+        # product documents and the student is told about ("A JPEG, PNG, or WebP
+        # image of up to 5MB"). Left at the default, every slip over a megabyte
+        # is answered 413 by this proxy, the browser shows "Request failed
+        # (413)", and payment_proof_too_large -- the machine-readable code the
+        # API raises for exactly this -- is unreachable behind the container.
+        # The Playwright suite found it; nothing else could have.
+        #
+        # 8m, matching spring.servlet.multipart.max-request-size, so this stays
+        # the outer backstop and the application's own validation is what
+        # answers. The two move together.
+        client_max_body_size 8m;
+
         set $api_upstream ${API_UPSTREAM};
         # No URI part after the variable, so nginx forwards the request path
         # unchanged rather than rewriting it.
