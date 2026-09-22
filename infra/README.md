@@ -117,11 +117,35 @@ Terraform does not create these, and no agent may. ADR-012 records why.
    and that failure is deliberate: there is no placeholder that could quietly
    run in its place.
 2. **The budget in `budget/`**, applied and left applied.
-3. **`api_image_tag`** in `terraform.tfvars`, naming an image already pushed to
-   the repository this module creates. It has no default on purpose.
 
 The database password is not on that list: RDS generates it and holds it in
 Secrets Manager, and Terraform sees only an ARN.
+
+### Two variables this module cannot supply for you
+
+`api_image_tag` and `cors_allowed_origins` have no defaults, and neither can be
+filled in correctly before the first `apply` — the ECR repository they need an
+image in, and the load balancer whose DNS name the browser will use, are both
+created *by* that apply. So the first deployment is two passes, and that is the
+order to run them in:
+
+1. Put a tag you intend to build in `api_image_tag` — a commit sha, not
+   `latest` — and any placeholder in `cors_allowed_origins`. Apply. This creates
+   the repository, the database, the load balancer and the service. **The task
+   will not come up yet**: there is no image at that tag, so ECS reports a pull
+   failure and the target group stays unhealthy. That is expected, not a
+   misconfiguration.
+2. Read `terraform output ecr_repository_url` and `terraform output
+   load_balancer_dns_name`. Build the API image, tag it with the sha from step
+   1, and `docker push` it to that repository.
+3. Set `cors_allowed_origins` to `http://<load_balancer_dns_name>` — the origin
+   the browser will actually load the app from — and apply again. The new task
+   definition revision rolls the service, the task pulls the image that now
+   exists, and the health check passes.
+
+Once #75b's CloudFront distribution fronts both the web build and `/api/*`,
+`cors_allowed_origins` becomes that distribution's `https://` domain, and #75b
+can wire it from the resource rather than from a variable.
 
 #76 owns the runbook that sequences all of this, and the teardown that reverses
 it.
