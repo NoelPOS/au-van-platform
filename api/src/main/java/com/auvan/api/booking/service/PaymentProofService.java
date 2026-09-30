@@ -20,22 +20,6 @@ import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * A student's payment-proof submission: the image goes to object storage, the
- * row and the booking's new status go to PostgreSQL, and the booking's history
- * records who submitted it.
- *
- * <p>The image is written <em>before</em> any row, and the whole method is one
- * transaction. Storage failing therefore leaves nothing behind at all — no
- * proof row, no status change, no history entry — which is what the issue asks
- * for. The opposite order would risk the failure the admin review in #52 has no
- * answer for: a proof row whose image was never stored.
- *
- * <p>The transaction opens by locking the booking's row, so two submissions in
- * flight against one booking resolve to one winner and one {@code 409} rather
- * than to two proofs. ADR-008 established that pattern for confirmation, which
- * has the same shape: a state check that decides a write no constraint guards.
- */
 @Service
 public class PaymentProofService {
     private final BookingRepository bookings;
@@ -59,16 +43,6 @@ public class PaymentProofService {
     @Transactional
     public BookingResponse submit(UUID userId, UUID bookingId, MultipartFile file) {
         OffsetDateTime now = OffsetDateTime.now();
-        // Another student's booking answers exactly as one that does not exist,
-        // the same way BookingService.load does. Owner and lock come from the
-        // one statement, so a non-owner matches nothing and locks nothing.
-        //
-        // The lock is the first thing this method does, and everything below
-        // decides from the booking it returned. Without it the status check two
-        // lines down is a read-then-write under READ_COMMITTED: two submissions
-        // in flight at once both read PENDING_PAYMENT, both pass, and the
-        // booking ends up with two proofs. payment_proofs constrains only
-        // object_key, which carries a fresh UUID, so nothing else refuses.
         Booking booking = bookings.lockByIdAndUserId(bookingId, userId)
                 .orElseThrow(() -> Problems.notFound("booking_not_found", "Booking not found."));
         if (!booking.isAwaitingPaymentProof()) {
@@ -80,19 +54,14 @@ public class PaymentProofService {
         PaymentProofFile.assertSizeWithin(file.getSize(), maxFileBytes);
 
         String objectKey = PaymentProofFile.objectKey(bookingId, image.extension(), now);
+        // Store the image before any row is written, so a storage failure leaves nothing behind.
         store(objectKey, image.contentType(), read(file));
 
         proofs.save(new PaymentProof(booking, userId, objectKey, image.contentType(), file.getSize(), now));
         String detail = "Payment proof submitted for review.";
         booking.recordEvent(BookingEventType.PAYMENT_PROOF_SUBMITTED, detail, userId, now);
-        // The deadline moves to the departure bound: the student has done what
-        // was asked of them and is now waiting on a reviewer, so a payment timer
-        // would expire a booking for somebody else's slowness. The seat is still
-        // released in time to be worth selling again (ADR-010).
         booking.markPaymentUnderReview(
                 bookingProperties.departureBoundFor(booking.getTrip().getDepartureAt()), now);
-        // In this transaction, so a storage or database failure leaves no
-        // message owed for a submission that never happened.
         outbox.record(OutboxEventType.PAYMENT_PROOF_SUBMITTED, booking.getId(), booking.getUserId(),
                 new BookingNotification(booking.getReference(), detail), now);
         return BookingResponse.from(booking);
@@ -102,8 +71,6 @@ public class PaymentProofService {
         try {
             storage.store(objectKey, contentType, content);
         } catch (RuntimeException failure) {
-            // Without this the SDK's own exception escapes as a bare 500 whose
-            // body names the bucket and the endpoint.
             throw Problems.serviceUnavailable("payment_proof_storage_unavailable",
                     "The payment proof could not be stored. Please try again.", failure);
         }

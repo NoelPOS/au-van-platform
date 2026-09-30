@@ -6,11 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
-/**
- * Everything a confirmation may say. The trip, the seats, and the price are all
- * derived from the hold on the server: a client-supplied price is never trusted,
- * and a client-supplied seat list could disagree with the seats it holds.
- */
+// Price and seats come from the hold server-side; never accept them from the client.
 public record CreateBookingRequest(
         @NotNull UUID holdId,
         @NotBlank @Size(min = 2, max = 100) String passengerName,

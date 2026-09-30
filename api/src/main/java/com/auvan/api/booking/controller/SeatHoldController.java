@@ -31,7 +31,6 @@ public class SeatHoldController {
         return seatHoldService.hold(UUID.fromString(jwt.getSubject()), request);
     }
 
-    /** Release is a POST because the browser CORS policy allows no DELETE. */
     @PostMapping("/{holdId}/release")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void release(@PathVariable UUID holdId, @AuthenticationPrincipal Jwt jwt) {

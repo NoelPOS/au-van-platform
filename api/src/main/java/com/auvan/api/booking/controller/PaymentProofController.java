@@ -21,11 +21,6 @@ public class PaymentProofController {
         this.proofs = proofs;
     }
 
-    /**
-     * Multipart, not a JSON body with base64 in it: the bytes stay bytes the
-     * whole way, and the browser sets its own boundary header. The updated
-     * booking comes back so the client needs no follow-up read.
-     */
     @PostMapping(path = "/api/v1/bookings/{bookingId}/payment-proof",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public BookingResponse submit(@PathVariable UUID bookingId,

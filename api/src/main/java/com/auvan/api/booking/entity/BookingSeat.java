@@ -12,10 +12,6 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.util.UUID;
 
-/**
- * One seat a booking bought. This survives cancellation, which deletes the
- * booking's {@code seat_claims} rows so that other students can take the seats.
- */
 @Entity
 @Table(name = "booking_seats", uniqueConstraints =
         @UniqueConstraint(name = "booking_seats_seat_unique", columnNames = {"booking_id", "trip_seat_id"}))

@@ -15,15 +15,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * One payment-proof submission. The image is in object storage and only its
- * key is here (ADR-009), so nothing that reads this table can hand out the
- * bytes — reaching them goes through the API and its own authorization.
- *
- * <p>Mirrored from {@code V5} under the same names, so the mapping and the
- * migration cannot describe this table differently without it showing in
- * review.
- */
 @Entity
 @Table(name = "payment_proofs", uniqueConstraints =
         @UniqueConstraint(name = "payment_proofs_object_key_unique", columnNames = "object_key"))
@@ -89,7 +80,6 @@ public class PaymentProof {
     public OffsetDateTime getReviewedAt() { return reviewedAt; }
     public String getReviewNote() { return reviewNote; }
 
-    /** A decided proof cannot be decided again; only this state may be reviewed. */
     public boolean isSubmitted() {
         return status == PaymentProofStatus.SUBMITTED;
     }
@@ -103,8 +93,6 @@ public class PaymentProof {
     }
 
     private void decide(PaymentProofStatus decision, UUID reviewerId, String note, OffsetDateTime now) {
-        // Reviewer and timestamp move together with the status, because
-        // payment_proofs_review_recorded refuses a decided row without them.
         this.status = decision;
         this.reviewedByUserId = reviewerId;
         this.reviewedAt = now;

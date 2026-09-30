@@ -33,12 +33,6 @@ public class BookingController {
         this.bookings = bookings;
     }
 
-    /**
-     * Confirms a hold. The body is {@code BookingResponse} as JSON, returned as
-     * the stored bytes rather than as an object, because a replay has to be the
-     * response that was sent the first time and not a fresh rendering of a
-     * booking that may since have been cancelled.
-     */
     @PostMapping
     public ResponseEntity<String> create(@RequestHeader(value = "Idempotency-Key", required = false) String key,
                                          @Valid @RequestBody CreateBookingRequest request,
@@ -60,10 +54,6 @@ public class BookingController {
         return bookings.get(UUID.fromString(jwt.getSubject()), bookingId);
     }
 
-    /**
-     * Cancel is a POST because the browser CORS policy allows no DELETE, and it
-     * returns the updated booking so the client needs no follow-up read.
-     */
     @PostMapping("/{bookingId}/cancel")
     public BookingResponse cancel(@PathVariable UUID bookingId, @AuthenticationPrincipal Jwt jwt) {
         return bookings.cancel(UUID.fromString(jwt.getSubject()), bookingId);

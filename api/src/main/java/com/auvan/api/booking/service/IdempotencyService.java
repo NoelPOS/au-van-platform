@@ -17,15 +17,6 @@ import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Remembers the response a critical write produced, so that a retry replays it
- * instead of writing again.
- *
- * <p>The response is kept as the bytes that were sent and replayed verbatim,
- * never rebuilt from the booking. Rebuilding would answer a retry with whatever
- * the booking looks like now, so a retry arriving after a cancellation would
- * return a cancelled booking under {@code 201 Created}.
- */
 @Service
 public class IdempotencyService {
     private final IdempotencyKeyRepository keys;
@@ -36,15 +27,8 @@ public class IdempotencyService {
         this.json = json;
     }
 
-    /** A response already sent for one request, ready to be sent again unchanged. */
     public record StoredResponse(int status, String body) { }
 
-    /**
-     * The stored response for this key, or empty when the key is new.
-     *
-     * @throws org.springframework.web.server.ResponseStatusException 409 when the
-     *         key was already used for a different payload
-     */
     @Transactional(readOnly = true)
     public Optional<StoredResponse> find(UUID userId, String endpoint, String key, String requestHash) {
         return keys.findByUserIdAndEndpointAndIdempotencyKey(userId, endpoint, key).map(stored -> {
@@ -56,37 +40,22 @@ public class IdempotencyService {
         });
     }
 
-    /**
-     * Stores the response inside the caller's transaction, so that the record
-     * and the booking it describes are committed together or not at all.
-     *
-     * <p>Deliberately not annotated {@code @Transactional}: this has to join
-     * {@link BookingWriter}'s transaction rather than open one of its own.
-     */
+    // Not @Transactional: joins the caller's transaction so the record commits with the booking.
     public StoredResponse record(UUID userId, String endpoint, String key, String requestHash, int status,
                                  Object response, OffsetDateTime now) {
         StoredResponse stored = new StoredResponse(status, json.writeValueAsString(response));
         try {
             keys.save(new IdempotencyKey(userId, endpoint, key, requestHash, stored.status(), stored.body(), now));
-            // @UuidGenerator is not an identity generator, so without this flush
-            // the insert would defer to the commit — long after this catch block
-            // has gone out of scope — and a duplicate key would become a 500.
+            // Flush inside the try: @UuidGenerator defers the insert past this catch.
             keys.flush();
         } catch (DataIntegrityViolationException | PessimisticLockingFailureException duplicate) {
-            // Depending on timing H2 reports contention on this row as a lock
-            // failure rather than as a constraint violation. Both mean the same
-            // thing here: someone else is writing this very key right now.
+            // H2 may report this race as a lock failure rather than a constraint violation.
             throw Problems.conflict("idempotency_conflict",
                     "That request is already being processed. Please retry.", duplicate);
         }
         return stored;
     }
 
-    /**
-     * A fingerprint of the validated request rather than of the raw bytes, so
-     * that two retries differing only in whitespace or field order are
-     * recognised as the same request.
-     */
     public String fingerprint(Object request) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

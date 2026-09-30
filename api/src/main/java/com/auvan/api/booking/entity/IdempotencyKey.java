@@ -10,20 +10,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * The response a critical write already produced, so that a retry of the same
- * request returns it again instead of writing a second time.
- *
- * <p>The response is stored rather than re-rendered. Re-rendering on replay
- * would return whatever the booking looks like now, so a retry that arrived
- * after a cancellation would answer {@code 201 Created} with a cancelled
- * booking.
- *
- * <p>{@code requestHash} is what tells a genuine retry from a key reused for a
- * different payload. The unique constraint on
- * {@code (user_id, endpoint, idempotency_key)} is what makes the write happen
- * at most once, so two racing duplicates cannot both be stored.
- */
 @Entity
 @Table(name = "idempotency_keys", uniqueConstraints = @UniqueConstraint(
         name = "idempotency_keys_scope_unique", columnNames = {"user_id", "endpoint", "idempotency_key"}))

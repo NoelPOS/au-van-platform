@@ -20,11 +20,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Reads seat state. Expiry is lazy: these methods compare {@code expires_at} to
- * the current time and write nothing, so an expired hold reads as available
- * whether or not anything has reclaimed its row yet.
- */
 @Service
 public class SeatAvailabilityService {
     private final TripRepository trips;
@@ -63,33 +58,12 @@ public class SeatAvailabilityService {
         return new TripSeatMapResponse(trip.getId(), trip.getDepartureAt(), trip.getFare(), seats);
     }
 
-    /**
-     * The seats of one trip that nothing is blocking right now, in seat order.
-     *
-     * <p>This is the promotion sweep's definition of "free" and it is the seat
-     * map's, because it is the same derivation: both read
-     * {@link #blockingClaimsBySeat}. ADR-011 asked for exactly that. A second,
-     * slightly different predicate in the promoter would let it promote onto a
-     * seat somebody is holding, {@code seat_claims_trip_seat_unique} would
-     * refuse the insert, and the bug would show up as a promotion that silently
-     * never happens rather than as an oversell — far harder to notice.
-     *
-     * <p>Expiry is lazy, so a seat whose hold has lapsed is free although the
-     * lapsed row is still sitting on it. Whoever takes the seat reclaims that
-     * row; this read writes nothing.
-     */
     @Transactional(readOnly = true)
     public List<TripSeat> freeSeatsOf(Trip trip, OffsetDateTime now) {
         Map<UUID, SeatClaim> blocking = blockingClaimsBySeat(trip.getId(), now);
         return trip.getSeats().stream().filter(seat -> !blocking.containsKey(seat.getId())).toList();
     }
 
-    /**
-     * The claims that are blocking a seat of this trip at {@code now}, by seat
-     * id. A seat missing from the map is free, by definition and by
-     * {@link SeatClaim#blocksSeatAt} — the one predicate every reader of seat
-     * state in this application goes through.
-     */
     private Map<UUID, SeatClaim> blockingClaimsBySeat(UUID tripId, OffsetDateTime now) {
         return claims.findByTripIdIn(List.of(tripId)).stream()
                 .filter(claim -> claim.blocksSeatAt(now))

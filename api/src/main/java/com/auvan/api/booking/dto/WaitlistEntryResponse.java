@@ -6,11 +6,6 @@ import com.auvan.api.booking.entity.WaitlistStatus;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * @param position where the student stands, counting only queued entries, or
- *                 {@code null} for an entry that has ended and therefore has no
- *                 place. It is derived on every read and never stored.
- */
 public record WaitlistEntryResponse(
         UUID id,
         UUID tripId,

@@ -12,14 +12,6 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * The one booking shape: creation, both reads, and cancellation all return it,
- * so the web client has a single type to parse.
- *
- * <p>The trip is denormalised deliberately. {@code GET /api/v1/trips} lists only
- * future active trips, so a past or cancelled trip could never be resolved
- * client-side for a row in "my bookings".
- */
 public record BookingResponse(
         UUID id,
         String reference,
@@ -32,13 +24,6 @@ public record BookingResponse(
         List<BookingEventResponse> events,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        /*
-         * When these seats are released if the booking is still unpaid, and
-         * null for one that never expires. Additive, and deliberately part of
-         * the response rather than left implicit: expiry is the first thing in
-         * this system that takes something away without the student acting, so
-         * the deadline has to be something they can see (ADR-010).
-         */
         OffsetDateTime paymentDeadlineAt) {
 
     public static BookingResponse from(Booking booking) {
@@ -64,7 +49,6 @@ public record BookingResponse(
         }
     }
 
-    /** Read from {@code booking_seats}, so it survives the cancellation that frees the seats. */
     public record BookedSeat(UUID seatId, String label) {
         static BookedSeat from(BookingSeat seat) {
             return new BookedSeat(seat.getTripSeat().getId(), seat.getTripSeat().getLabel());
