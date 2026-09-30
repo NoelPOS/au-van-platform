@@ -69,7 +69,7 @@ ADR-010 put every asynchronous side effect in `outbox_events`, written in the sa
 - A promotion whose window lapses is resolved by the same sweep: the entry becomes `EXPIRED`, an outbox row tells the student, and the seat is promoted to the next entry on a later pass.
 - `OutboxEventType` gains `WAITLIST_PROMOTED` and `WAITLIST_PROMOTION_EXPIRED`, recorded through `OutboxRecorder.record` inside the promoting transaction. Neither carries a `dedupe_key`: that column is unique across the whole table and is what `OutboxEventRepository.cancelScheduled` uses to identify a reminder, so a waitlist row with one could be killed by an unrelated booking cancellation.
 - `outbox_events.aggregate_id` now means "the thing this event is about", which for these two values is a waitlist entry rather than a booking. The column carries no foreign key by deliberate design, so this is a documentation change and not a schema one.
-- Operational visibility is an administrator-only surface at `/api/v1/admin/operations` showing, per trip, bookings by status, the waitlist queue with its promotions, and the `DEAD` outbox rows that `OutboxEventRepository.markDead` already records for exactly this purpose.
+- Operational visibility is an administrator-only surface at `/api/v1/admin/operations` showing, per trip, bookings by status, the waitlist queue with its promotions, and the `DEAD` outbox rows that `OutboxEventRepository.markDead` already records for exactly this purpose. The view is read-only: promotion, retry and cancellation each keep their single existing path.
 - **Redis is still not used, and that is still a decision.** ADR-010's sentence extends here unchanged: each entry's row lock decides who promotes it, so nothing needs a distributed lock.
 
 ### Delivery

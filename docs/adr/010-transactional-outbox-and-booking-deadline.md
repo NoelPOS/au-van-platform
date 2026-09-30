@@ -177,11 +177,15 @@ implements what.
 - A dispatcher claims a due row with one conditional `UPDATE`, sends outside any
   transaction, and records the outcome in a second transaction. The claim pushes
   `next_attempt_at` forward by a lease, so an unresolved claim becomes due again
-  without a second mechanism.
+  without a second mechanism. The claim, not the outcome, increments `attempts`,
+  so a send that kills its worker still exhausts the budget.
 - Retries back off exponentially from `outbox.backoff-base` to
   `outbox.backoff-cap`, and stop at `outbox.max-attempts` (five, the legacy's
   own ceiling), leaving the row `DEAD` with its last error. The schedule must
   multiply out to well under LINE's 24-hour retry-key window.
+- `cancelScheduled` withdraws `PENDING` rows that carry a `dedupe_key`, with no
+  due-time clause, so a reminder that has come due but is not yet claimed is
+  withdrawn too.
 - The trigger is an in-process `@Scheduled` poller, gated on a property that is
   off in tests. The dispatch entry point takes no scheduling concern of its own,
   so an SQS consumer or a separate worker process can call it unchanged.
@@ -192,7 +196,9 @@ implements what.
   implementation against the Messaging API, one recording fake in test sources.
   Each send carries the outbox row id as `X-Line-Retry-Key`. A LINE error that
   can never succeed — unknown recipient, bot not added as a friend — goes `DEAD`
-  on the first attempt rather than consuming the retry budget.
+  on the first attempt rather than consuming the retry budget. A LINE `409` means
+  the retry key was already accepted and counts as sent; `429`, `5xx` and no
+  response are transient; every other `4xx` is permanent.
 - Every booking carries `payment_deadline_at`, set to
   `min(now + booking.payment-window, departureAt - booking.departure-cutoff)` on
   creation and on rejection, and to `departureAt - booking.departure-cutoff`
@@ -207,6 +213,9 @@ implements what.
   established and ADR-009 reaffirmed.
 - The sweep also prunes `idempotency_keys` past a retention window, which ADR-008
   named as this issue's.
+- The `seat_claims` bulk deletes are `clearAutomatically`, which silently discards
+  unflushed changes, so a caller records its outbox row and flushes its pending
+  changes before calling one.
 
 ## Consequences
 
