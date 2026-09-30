@@ -7,8 +7,6 @@ spring:
     password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
-      # Flyway owns the schema. validate makes a mapping that disagrees with a
-      # migration fail at startup instead of being silently regenerated.
       ddl-auto: validate
   data:
     redis:
@@ -19,28 +17,18 @@ spring:
       enabled: true
   servlet:
     multipart:
-      # The container's backstop, deliberately above payment-proof.max-file-size
-      # so that every upload it accepts is answered by the application's own
-      # validation with a clean 400 and a machine-readable code. Bounded rather
-      # than unlimited: without a cap an absurd upload is buffered to disk in
-      # full before anything gets to reject it.
+      # Kept above payment-proof.max-file-size so the application answers oversize uploads.
       max-file-size: 8MB
       max-request-size: 8MB
   lifecycle:
-    # Sits under ECS's default 30s stopTimeout, so a task drains rather than
-    # being killed with requests still in flight.
+    # Under ECS's default 30s stopTimeout, so a task drains before it is killed.
     timeout-per-shutdown-phase: 20s
 
 server:
-  # The container receives SIGTERM directly (see api/Dockerfile); graceful is
-  # what makes it finish in-flight requests instead of dropping them.
   shutdown: graceful
 
 cors:
-  # Also read by management.endpoints.web.cors below, from the same variable,
-  # so the API's own CORS filter and the actuator's never drift apart. A comma
-  # in the value binds as multiple origins; never a wildcard here, since these
-  # requests carry an Authorization header.
+  # Shared with management.endpoints.web.cors; never a wildcard: requests carry Authorization.
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 auth:
@@ -51,18 +39,8 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: ${LINE_CHANNEL_ID:}
-    # Where a LIFF id token is sent to be verified, and the LINE LOGIN channel's
-    # host, not the Messaging one's -- notification.line.api-base-url below is
-    # that, and the two are separate channels on separate hosts by accident of
-    # LINE sharing one domain for both. Configurable for the same reason that
-    # one is: a test has to be able to point the real client at a server it
-    # controls (ADR-013), and the end-to-end compose overlay is the only thing
-    # in this repository that does.
-    #
-    # THIS DEFAULT IS A SECURITY CONTROL. Moved off LINE, this instance accepts
-    # whatever the other host asserts about a token. Nothing else weakens --
-    # LineTokenVerifierImpl still demands iss, aud and sub -- but the answer it
-    # checks comes from wherever this points.
+    # SECURITY CONTROL: moved off LINE, this instance trusts whatever that host says about a
+    # token (ADR-013). Only the end-to-end compose overlay points it elsewhere.
     api-base-url: ${LINE_LOGIN_API_BASE_URL:https://api.line.me}
   admin-bootstrap:
     line-subject: ${ADMIN_BOOTSTRAP_LINE_SUBJECT:}
@@ -70,93 +48,43 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
-  # A NEW product rule, not one ported from the legacy application, which
-  # creates an unpaid booking and never expires it (ADR-010). Two hours is long
-  # enough for a bank transfer and short enough to recycle a seat; an hour
-  # before departure is the point past which an unpaid seat helps nobody. A
-  # booking gets min(now + payment-window, departureAt - departure-cutoff), and
-  # only the departure bound once its proof is with an administrator.
   payment-window: PT2H
   departure-cutoff: PT1H
-  # How long a stored idempotency response stays replayable. It has to stay
-  # comfortably longer than any client's retry horizon: a key pruned while a
-  # retry could still arrive stops replaying and writes a second booking.
-  # ADR-008 accepted that this table grows and named the expiry sweep as the
-  # home for the prune.
+  # Must exceed any client's retry horizon: a pruned key lets a retry write a second booking.
   idempotency-key-retention: PT24H
   expiry:
-    # Every instance may sweep. Nothing coordinates them and nothing needs to:
-    # each booking's row lock decides who expires it, which is why this work
-    # needs no Redis lock (ADR-010).
     enabled: true
-    # A minute is well inside any window a student would notice and costs one
-    # indexed query against a table that is empty of overdue rows most of the
-    # time.
     poll-interval: PT1M
     batch-size: 50
   waitlist:
-    # Every instance may sweep, for the same reason booking.expiry.enabled
-    # above gives: each entry's row lock decides who promotes it (ADR-011).
     enabled: true
-    # How long a promoted student has to take the seat, capped at
-    # departure-cutoff before departure. Deliberately not hold-ttl: five
-    # minutes is calibrated for a student already in the seat map, and a
-    # promoted student has to notice a LINE push first.
     promotion-window: PT30M
     poll-interval: PT1M
     batch-size: 50
 
 outbox:
-  # How many due rows one poll takes. Small: a poll holds no lock and the next
-  # one is seconds away, so there is nothing to gain from a long batch.
   batch-size: 50
-  # The legacy application's own REMINDER_MAX_ATTEMPTS. Five attempts at the
-  # backoff below span about eight minutes, which is deliberately far inside
-  # LINE's twenty-four-hour retry-key window: a row still retrying after that
-  # window could produce a second message the student actually sees (ADR-010).
+  # With the backoff below, the retry schedule must finish well inside LINE's 24-hour
+  # retry-key window, or a late retry can send the student a second message (ADR-010).
   max-attempts: 5
   backoff-base: PT30S
   backoff-cap: PT1H
-  # How long a claim holds a row. A worker that dies mid-send leaves the row
-  # claimed; this is how long the message waits before another worker may take
-  # it, and it must stay comfortably longer than one send takes.
+  # Must stay longer than one send, or a second worker claims a row still being sent.
   lease: PT2M
   dispatch:
-    # Every instance may poll. Nothing coordinates them and nothing needs to:
-    # the conditional-UPDATE claim decides who gets a row, which is why this
-    # work needs no Redis lock (ADR-010) and why management.health.redis.enabled
-    # below stays false.
     enabled: true
     poll-interval: PT5S
 
 notification:
   line:
-    # Whether a LineMessageSender implementation exists at all. True by default
-    # so a deployment that forgets the token below fails loudly and leaves a
-    # dead letter, rather than silently telling nobody anything. Turn it off and
-    # BookingNotificationHandler records the omission and resolves the row,
-    # which is how the whole test suite runs with no channel and no credential.
     enabled: ${LINE_MESSAGING_ENABLED:true}
     api-base-url: ${LINE_MESSAGING_API_BASE_URL:https://api.line.me}
-    # A LINE MESSAGING API channel credential, and a DIFFERENT channel from
-    # auth.line.channel-id above, which is a LINE Login channel. If the two
-    # channels sit under different LINE providers, the sub stored as
-    # AppUser.lineSubject is not a valid push target and every send fails with a
-    # recipient error that looks like a bug in this code. README.md says so next
-    # to the variable; nothing here can detect it.
     channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
 
 payment-proof:
-  # A private bucket; nothing here is ever handed to a browser (ADR-009).
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}
   region: ${PAYMENT_PROOF_REGION:ap-southeast-1}
-  # Blank against AWS S3. Set to the local S3-compatible store for local
-  # development and compose; the client is the same either way. No credentials
-  # here: the AWS SDK's default chain reads them from the environment locally
-  # and from the task role in the deployed target.
   endpoint: ${PAYMENT_PROOF_ENDPOINT:}
-  # The legacy application's own ceiling. spring.servlet.multipart above is the
-  # container's backstop and sits deliberately higher.
   max-file-size: 5MB
 
 management:
@@ -169,12 +97,6 @@ management:
         allowed-methods: GET,POST
   health:
     redis:
-      # spring-boot-starter-data-redis is on the classpath and configured, but
-      # no application code uses Redis: ADR-003 made PostgreSQL the authority
-      # and seat holds shipped without it, and ADR-007's demo topology defaults
-      # ElastiCache off. The auto-configured indicator would therefore report
-      # the whole application DOWN wherever Redis is absent, failing every
-      # container health check for a dependency nothing calls. The database
-      # indicator stays enabled: an instance that cannot reach PostgreSQL
-      # should fail. Re-enable this with the first Redis-backed feature.
+      # Off because no code uses Redis yet and its indicator would report DOWN wherever Redis
+      # is absent. Re-enable this with the first Redis-backed feature.
       enabled: false

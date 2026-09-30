@@ -1,5 +1,6 @@
 # This file replaces the main application.yml outright in tests; it is not
 # merged with it. New configuration has to be added to both files.
+# The *.enabled: false flags keep the schedulers and the real LINE sender out of test contexts.
 spring:
   datasource:
     url: jdbc:h2:mem:au_van;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
@@ -7,8 +8,6 @@ spring:
     password:
   jpa:
     hibernate:
-      # Flyway owns the schema. validate makes a mapping that disagrees with a
-      # migration fail at startup instead of being silently regenerated.
       ddl-auto: validate
   data:
     redis:
@@ -19,19 +18,15 @@ spring:
       enabled: true
   servlet:
     multipart:
-      # Mirrors the main configuration; see the comment there.
       max-file-size: 8MB
       max-request-size: 8MB
   lifecycle:
     timeout-per-shutdown-phase: 20s
 
 server:
-  # Mirrors the main configuration; this file replaces it rather than merging
-  # with it, so a key added to one has to be added to the other.
   shutdown: graceful
 
 cors:
-  # Mirrors the main configuration's default; see the comment there.
   allowed-origins: http://localhost:5173
 
 auth:
@@ -41,11 +36,6 @@ auth:
     access-token-ttl: PT15M
   line:
     channel-id: test-channel-id
-    # Mirrors the main configuration's default; this file replaces it rather
-    # than merging with it, so a key added to one has to be added to the other.
-    # Deliberately the real host even here: no test reaches it, because
-    # LineTokenVerifierImplTests builds the verifier against a
-    # MockRestServiceServer instead, exactly as LineMessageSenderImplTests does.
     api-base-url: https://api.line.me
   admin-bootstrap:
     line-subject:
@@ -53,75 +43,36 @@ auth:
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4
-  # Mirrors the main configuration; this file replaces it rather than merging
-  # with it, so a key added to one has to be added to the other.
   payment-window: PT2H
   departure-cutoff: PT1H
   idempotency-key-retention: PT24H
   expiry:
-    # False, and this is the one value here that deliberately differs from the
-    # main configuration, for the reason outbox.dispatch.enabled below gives: a
-    # live sweep would cancel the booking and payment-proof concurrency tests'
-    # own fixtures mid-assertion. Tests call BookingExpiryService.sweep()
-    # directly; BookingExpirySchedulingIntegrationTests turns this back on in
-    # isolation to prove the scheduled path is really wired.
     enabled: false
     poll-interval: PT1M
     batch-size: 50
   waitlist:
-    # False, and deliberately different from the main configuration, for the
-    # reason booking.expiry.enabled above gives: a live promotion sweep would
-    # hand seats out under the booking and payment-proof concurrency tests'
-    # own fixtures mid-assertion. WaitlistPromotionScheduler reads this flag
-    # through @ConditionalOnProperty, so false leaves no scheduler bean at all.
-    # Tests call WaitlistPromotionService.sweep() directly;
-    # WaitlistPromotionSchedulingIntegrationTests turns this back on in
-    # isolation to prove the scheduled path is really wired.
     enabled: false
-    # Mirrors the main configuration; this file replaces it rather than merging
-    # with it, so a key added to one has to be added to the other.
     promotion-window: PT30M
     poll-interval: PT1M
     batch-size: 50
 
 outbox:
-  # Mirrors the main configuration; this file replaces it rather than merging
-  # with it, so a key added to one has to be added to the other.
   batch-size: 50
   max-attempts: 5
   backoff-base: PT30S
   backoff-cap: PT1H
   lease: PT2M
   dispatch:
-    # False, and this is the one value that deliberately differs from the main
-    # configuration. Every @SpringBootTest boots the full context, so a live
-    # poller would dispatch in the background while the booking and
-    # payment-proof concurrency tests are mid-assertion. Tests call
-    # OutboxDispatcher.dispatchBatch() directly;
-    # OutboxSchedulingIntegrationTests turns this back on in isolation to prove
-    # the scheduled path is really wired.
     enabled: false
     poll-interval: PT5S
 
 notification:
   line:
-    # False, and this is the one value here that deliberately differs from the
-    # main configuration: with no implementation of LineMessageSender the suite
-    # needs no LINE channel and no credential, exactly as the in-memory
-    # PaymentProofStorage lets it run with no bucket. Tests that need a sender
-    # register one — RecordingLineMessageSender for the dispatch paths, while
-    # LineMessageSenderImplTests and LineDeliveryIntegrationTests build the real
-    # LineMessageSenderImpl against a MockRestServiceServer so no request ever
-    # leaves the machine. LineMessagingWiringIntegrationTests is the one class
-    # that turns this back on, to prove the sender is really autoconfigured.
     enabled: false
     api-base-url: https://api.line.me
     channel-access-token:
 
 payment-proof:
-  # Mirrors the main configuration; this file replaces it rather than merging
-  # with it. No endpoint and no credentials: the tests substitute an in-memory
-  # PaymentProofStorage, so the S3 client is built but never called.
   bucket: test-payment-proofs
   region: ap-southeast-1
   endpoint:
@@ -130,7 +81,4 @@ payment-proof:
 management:
   health:
     redis:
-      # Mirrors the main configuration; see the comment there. The Redis port
-      # above is 0, so leaving the indicator on would report this application
-      # DOWN exactly as an absent ElastiCache does in the demo topology.
       enabled: false
