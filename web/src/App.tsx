@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { apiBaseUrl } from "./api-base-url";
-import { createLiffSession } from "./auth/liff-session";
-import { E2eSignIn } from "./auth/E2eSignIn";
-import { configuredLiffId, e2eAuthEnabled } from "./auth/liff-config";
-import type { AuthSession } from "./auth/session";
+import { apiBaseUrl } from "./services/apiBaseUrl";
+import { createLiffSession } from "./services/liffService";
+import { E2eSignIn } from "./components/E2eSignIn";
+import { configuredLiffId, e2eAuthEnabled } from "./services/liffConfig";
+import type { AuthSession } from "./services/authService";
 import { Button } from "./components/ui/Button";
-import { StudentBookingPage } from "./booking/StudentBookingPage";
-import { AdminPage } from "./admin/AdminPage";
+import { StudentBookingPage } from "./pages/StudentBookingPage";
+import { AdminPage } from "./components/AdminLayout";
 
 type HealthState = "checking" | "available" | "unavailable";
 
