@@ -79,6 +79,7 @@ public class BookingWriter {
     }
 
     private void assertConfirmable(List<SeatClaim> held, UUID userId, OffsetDateTime now) {
+        // Someone else's hold answers as not found, so a hold's existence never leaks.
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isOwnedBy(userId))) {
             throw Problems.notFound("hold_not_found", "Hold not found.");
         }
