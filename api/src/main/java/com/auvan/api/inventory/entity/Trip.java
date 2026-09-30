@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-// Mirrored from V2 under the same names, so the mapping and the migration
-// cannot describe this table differently without it showing in review.
 @Table(name = "trips", uniqueConstraints =
         @UniqueConstraint(name = "trips_vehicle_departure_unique",
                 columnNames = {"vehicle_id", "departure_at"}))

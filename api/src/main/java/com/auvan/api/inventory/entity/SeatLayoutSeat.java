@@ -13,8 +13,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 @Entity
-// Mirrored from V2 under the same names, so the mapping and the migration
-// cannot describe this table differently without it showing in review.
 @Table(name = "seat_layout_seats", uniqueConstraints = {
         @UniqueConstraint(name = "seat_layout_seats_label_unique",
                 columnNames = {"seat_layout_id", "label"}),
