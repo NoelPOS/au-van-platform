@@ -3,6 +3,7 @@ import {
   adminSubject,
   createTrip,
   goToOperations,
+  signIn,
   signInAsAdmin,
   studentSubject,
 } from "./helpers";
@@ -44,6 +45,31 @@ test.describe("the administrator journey", () => {
     // doing its job: with a sender configured against a channel that does not
     // exist, every notification this run produced would be a dead letter here.
     await expect(page.getByText("Nothing was given up on")).toBeVisible();
+  });
+
+  test("opens an administration page from its own address and goes back to it", async ({
+    page,
+  }) => {
+    await signIn(page, adminSubject, "/admin/payments");
+    await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/payments$/);
+
+    await goToOperations(page);
+    await expect(page).toHaveURL(/\/admin\/operations$/);
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/payments$/);
+  });
+
+  test("sends a student who opens an administration address to the booking page", async ({
+    page,
+  }) => {
+    await signIn(page, studentSubject(), "/admin/operations");
+    await expect(page.getByRole("heading", { name: "Book a seat" })).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("navigation", { name: "Administration" }),
+    ).toHaveCount(0);
   });
 
   /**

@@ -1,21 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import App from "./App";
 import { createLiffSession } from "./services/liffService";
+import { renderApp } from "./test/renderApp";
 
 vi.mock("./services/liffService", () => ({ createLiffSession: vi.fn() }));
-
-function renderApp() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>,
-  );
-}
 
 describe("App", () => {
   afterEach(() => {
@@ -97,7 +85,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Transport inventory" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Payment review" }));
+    fireEvent.click(screen.getByRole("link", { name: "Payment review" }));
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
   });
