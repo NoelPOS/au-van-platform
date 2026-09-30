@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "./ui/Button";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { EmptyRow, InventoryTable } from "./InventoryTable";
 import { ErrorMessage, FormActions, FormCard } from "./FormCard";
 import { useCreateSeatLayout, useUpdateSeatLayout } from "../hooks/useInventoryQueries";

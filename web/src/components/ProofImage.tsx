@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { paymentsApi } from "../services/paymentsApi";
 
 /**

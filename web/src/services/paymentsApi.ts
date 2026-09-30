@@ -1,5 +1,6 @@
 import { apiBaseUrl } from "./apiBaseUrl";
-import { authenticatedFetch, type AuthSession } from "./authService";
+import type { AuthSession } from "../types/auth";
+import { authenticatedFetch } from "./authService";
 import type { Booking } from "../types/booking";
 import type { PaymentProof } from "../types/payments";
 

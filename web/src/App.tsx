@@ -3,7 +3,7 @@ import { apiBaseUrl } from "./services/apiBaseUrl";
 import { createLiffSession } from "./services/liffService";
 import { E2eSignIn } from "./components/E2eSignIn";
 import { configuredLiffId, e2eAuthEnabled } from "./services/liffConfig";
-import type { AuthSession } from "./services/authService";
+import type { AuthSession } from "./types/auth";
 import { Button } from "./components/ui/Button";
 import { StudentBookingPage } from "./pages/StudentBookingPage";
 import { AdminPage } from "./components/AdminLayout";

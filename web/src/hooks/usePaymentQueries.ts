@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { paymentsApi } from "../services/paymentsApi";
 
 const paymentKeys = {

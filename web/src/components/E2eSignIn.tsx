@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "./ui/Button";
-import { exchangeLineIdToken, type AuthSession } from "../services/authService";
+import { exchangeLineIdToken } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 
 /**
  * Sign-in for the Playwright suite, and for nothing else (ADR-013).

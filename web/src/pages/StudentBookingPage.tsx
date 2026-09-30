@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { ApiError } from "../services/bookingApi";
 import {
   useAvailableTrips,

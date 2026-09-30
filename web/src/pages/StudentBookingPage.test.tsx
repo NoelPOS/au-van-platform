@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { formatDeparture } from "../utils/format";
 import { StudentBookingPage } from "./StudentBookingPage";
 import type { SeatState } from "../types/booking";

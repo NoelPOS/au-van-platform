@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { AdminInventoryPage } from "../pages/AdminInventoryPage";
 import { AdminOperationsPage } from "../pages/AdminOperationsPage";
 import { AdminPaymentReviewPage } from "../pages/AdminPaymentReviewPage";
