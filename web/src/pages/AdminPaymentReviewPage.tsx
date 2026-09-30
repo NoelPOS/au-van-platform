@@ -132,6 +132,7 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
                 {`${selected.passengerName} · ${selected.passengerPhone} · ${formatFare(selected.totalFare)}`}
               </p>
               <ProofImage
+                key={selected.id}
                 proofId={selected.id}
                 reference={selected.bookingReference}
                 session={session}
