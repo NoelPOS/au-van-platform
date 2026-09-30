@@ -73,12 +73,12 @@ exactly as the Vite dev proxy and `web/nginx.conf.template` already give it.
 Four ordered behaviours, which are the same contract `nginx.conf.template`
 implements for the container image:
 
-| Path | Origin | Cache policy | Origin request policy | Methods |
-|---|---|---|---|---|
-| `/api/*` | load balancer | `Managed-CachingDisabled` | `Managed-AllViewerExceptHostHeader` | all seven |
-| `/actuator/*` | load balancer | `Managed-CachingDisabled` | `Managed-AllViewerExceptHostHeader` | GET, HEAD |
-| `/assets/*` | web bucket | `Managed-CachingOptimized` | — | GET, HEAD |
-| default | web bucket | `Managed-CachingDisabled` | — | GET, HEAD |
+| Path | Origin | Cache policy | Origin request policy | Methods | Viewer function |
+|---|---|---|---|---|---|
+| `/api/*` | load balancer | `Managed-CachingDisabled` | `Managed-AllViewerExceptHostHeader` | all seven | — |
+| `/actuator/*` | load balancer | `Managed-CachingDisabled` | `Managed-AllViewerExceptHostHeader` | GET, HEAD | — |
+| `/assets/*` | web bucket | `Managed-CachingOptimized` | — | GET, HEAD | — |
+| default | web bucket | `Managed-CachingDisabled` | — | GET, HEAD | `spa-fallback` (viewer request) |
 
 The bottom two are the inverse of each other on purpose: Vite writes
 content-hashed filenames under `/assets`, so those are cached for a year, and
@@ -94,15 +94,20 @@ distribution-wide with no per-behaviour form, so mapping 403 and 404 to
 and 404s too, and the client would parse `index.html` where it expects a typed
 error body. `nginx.conf.template` scopes its `try_files` to `location /` and
 passes `^/(api|actuator)/` statuses through unchanged; having no mapping is
-what matches that. `default_root_object` serves the app at `/`, and the app has
-no client-side router, so nothing else needs one.
+what matches that. Client-side routes such as `/admin/payments` are served by
+`spa-fallback` instead, a CloudFront Function on the default behaviour only
+that rewrites any request whose last path segment has no file extension to
+`/index.html`, so the API behaviours never see it.
+`node --test infra/demo/spa-fallback.test.mjs` checks the rewrite and that
+placement.
 
 **This module now bills by the hour.** Applied and left running, it is roughly
 one Fargate task at 0.5 vCPU and 1 GB, one `db.t4g.micro` with 20 GB of gp3, one
 application load balancer — the largest single line, about $16 a month — one
 Secrets Manager secret at about $0.40, and CloudFront, which is request- and
-transfer-priced and costs a demo's worth of traffic. Apply `budget/` first and
-leave it applied; destroy this module when the demo is over. Every teardown-shaped
+transfer-priced and costs a demo's worth of traffic; its function adds $0.10
+per million default-behaviour requests. Apply `budget/` first and leave it
+applied; destroy this module when the demo is over. Every teardown-shaped
 argument in here (`force_delete`, `force_destroy`, `skip_final_snapshot`,
 `deletion_protection = false`, `backup_retention_period = 0`) is wrong for
 production and deliberate for a demo that has to come down in one command.

@@ -118,6 +118,14 @@ resource "aws_s3_bucket_policy" "web" {
 
 # --- The distribution -------------------------------------------------------
 
+resource "aws_cloudfront_function" "spa_fallback" {
+  name    = "${local.name_prefix}-spa-fallback"
+  runtime = "cloudfront-js-2.0"
+  comment = "Serves index.html for client-side routes on the default behaviour."
+  publish = true
+  code    = file("${path.module}/spa-fallback.js")
+}
+
 resource "aws_cloudfront_distribution" "main" {
   enabled         = true
   comment         = "${local.name_prefix} demo edge"
@@ -260,18 +268,15 @@ resource "aws_cloudfront_distribution" "main" {
     cache_policy_id = data.aws_cloudfront_cache_policy.caching_disabled.id
 
     viewer_protocol_policy = "redirect-to-https"
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_fallback.arn
+    }
   }
 
-  # There is deliberately no custom_error_response here. It is a
-  # distribution-level argument with no per-behaviour form, so a 403/404 ->
-  # 200 /index.html mapping would rewrite the API's own 403s and 404s too --
-  # web/src/booking/booking-api.ts:55 branches on response.ok and then parses
-  # a typed ApiError, so an authorization denial would reach the student as a
-  # JSON parse error. nginx.conf.template scopes its try_files to location /
-  # and passes ^/(api|actuator)/ statuses through unchanged; omitting the
-  # mapping is what actually matches that. default_root_object serves the app
-  # at /, and the app has no client-side router, so the only cost is that an
-  # unknown bucket path renders S3's denial rather than index.html.
+  # No custom_error_response: it is distribution-wide and would turn API 403s and
+  # 404s into index.html; the default behaviour's function serves client routes.
   restrictions {
     geo_restriction {
       restriction_type = "none"

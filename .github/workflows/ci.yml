@@ -171,6 +171,8 @@ jobs:
             terraform -chdir="$dir" validate || status=1
           done <<< "$modules"
           exit $status
+      - name: Test the CloudFront Function
+        run: node --test infra/demo/spa-fallback.test.mjs
 
   # Like `Infrastructure checks` above, this job deliberately holds no
   # credential: no registry login, no `docker push`, no `permissions:` block
