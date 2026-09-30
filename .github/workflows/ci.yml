@@ -235,6 +235,30 @@ jobs:
       - name: Start the whole stack
         run: docker compose up -d --wait
 
+      - name: Check that the object store has the bucket and checks signatures
+        run: |
+          # SigV4-signed, as the API's S3 client signs, with the pair the
+          # running api container actually holds, in application.yml's
+          # default region, which this job's .env leaves alone. A 200 proves
+          # the gateway created the bucket on start and accepts what the API
+          # will send; a 403 for a wrong secret proves it checks signatures at
+          # all, so the 200 means something.
+          key=$(docker compose exec -T api printenv AWS_ACCESS_KEY_ID)
+          secret=$(docker compose exec -T api printenv AWS_SECRET_ACCESS_KEY)
+          head_bucket() {
+            curl -sS -o /dev/null -w '%{http_code}' -I \
+              --aws-sigv4 'aws:amz:ap-southeast-1:s3' \
+              --user "$key:$1" \
+              -H 'x-amz-content-sha256: UNSIGNED-PAYLOAD' \
+              http://localhost:9000/au-van-payment-proofs
+          }
+          signed=$(head_bucket "$secret")
+          echo "HEAD bucket with the right secret: $signed"
+          [ "$signed" = "200" ]
+          wrong=$(head_bucket "not-the-secret")
+          echo "HEAD bucket with a wrong secret: $wrong"
+          [ "$wrong" = "403" ]
+
       - name: Check the API health endpoint
         run: curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'
 
@@ -298,9 +322,10 @@ jobs:
         run: docker compose down -v
 
   # The Playwright suite, against the whole stack: the real API, a real
-  # PostgreSQL, real MinIO, and the production web bundle served by nginx --
-  # plus the two things a Playwright run needs and a deployment must not have,
-  # both of them in compose.e2e.yaml and neither of them in compose.yaml.
+  # PostgreSQL, a real S3-compatible store, and the production web bundle
+  # served by nginx -- plus the two things a Playwright run needs and a
+  # deployment must not have, both of them in compose.e2e.yaml and neither of
+  # them in compose.yaml.
   #
   # It holds no LINE credential, needs no LIFF channel and makes no request
   # that leaves the runner: a stub answers LINE's verification endpoint and
