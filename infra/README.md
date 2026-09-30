@@ -292,7 +292,14 @@ to install it to review a change — CI runs them on every pull request.
 
 ## Never
 
-`terraform apply`, `terraform destroy` and every `aws` command are off limits
-to agents working in this repository. Infrastructure is written and checked
-here; it is deployed by a person, from a runbook, with the budget already in
-place.
+`terraform apply` and `terraform destroy` are off limits to agents working in
+this repository. Infrastructure is written and checked here; it is deployed by
+a person, from a runbook, with the budget already in place.
+
+`aws` commands are not denied, but they are not allowed either: each one
+stops at a permission prompt and runs only if the owner approves it there.
+That lets an agent read state, inspect logs and run a runbook step while the
+owner watches, and nothing reaches AWS without the owner saying yes to that
+exact command. Secret values are still the owner's alone. An agent never
+creates, fills or reads the SSM parameters above or any other credential, with
+or without a prompt; ADR-012 records why.
