@@ -1,5 +1,6 @@
 import { apiBaseUrl } from "./apiBaseUrl";
-import { authenticatedFetch, type AuthSession } from "./authService";
+import type { AuthSession } from "../types/auth";
+import { authenticatedFetch } from "./authService";
 import type { Seat, SeatLayout, Trip, VanRoute, Vehicle } from "../types/inventory";
 
 async function request<T>(

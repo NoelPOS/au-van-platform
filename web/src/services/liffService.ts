@@ -1,6 +1,7 @@
 import liff from "@line/liff";
 import { configuredLiffId } from "./liffConfig";
-import { exchangeLineIdToken, type AuthSession } from "./authService";
+import type { AuthSession } from "../types/auth";
+import { exchangeLineIdToken } from "./authService";
 
 export async function createLiffSession(): Promise<AuthSession> {
   const liffId = configuredLiffId();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../components/ui/Button";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { InventoryTabs, type InventoryTab } from "../components/InventoryTabs";
 import { useRoutes, useSeatLayouts, useTrips, useVehicles } from "../hooks/useInventoryQueries";
 import { RoutesSection } from "../components/RoutesSection";

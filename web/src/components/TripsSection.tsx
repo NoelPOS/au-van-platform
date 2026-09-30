@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "./ui/Button";
 import { StatusBadge } from "./ui/StatusBadge";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { EmptyRow, InventoryTable } from "./InventoryTable";
 import { ErrorMessage, FormActions, FormCard } from "./FormCard";
 import { useCreateTrip, useUpdateTrip } from "../hooks/useInventoryQueries";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuthSession } from "./authService";
+import type { AuthSession } from "../types/auth";
 import { inventoryApi } from "./inventoryApi";
 
 const session: AuthSession = {

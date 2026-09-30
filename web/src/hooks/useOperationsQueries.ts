@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { operationsApi } from "../services/operationsApi";
 
 const operationsKeys = {

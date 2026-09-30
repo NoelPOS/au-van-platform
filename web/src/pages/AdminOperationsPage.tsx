@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AuthSession } from "../services/authService";
+import type { AuthSession } from "../types/auth";
 import { formatDeparture } from "../utils/format";
 import { Button } from "../components/ui/Button";
 import { Panel } from "../components/ui/Panel";
