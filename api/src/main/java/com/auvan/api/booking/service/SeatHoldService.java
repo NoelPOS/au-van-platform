@@ -76,6 +76,7 @@ public class SeatHoldService {
     @Transactional
     public void release(UUID userId, UUID holdId) {
         List<SeatClaim> held = claims.findByHoldId(holdId);
+        // Someone else's hold answers as not found, so a hold's existence never leaks.
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
             throw Problems.notFound("hold_not_found", "Hold not found.");
         }

@@ -3,7 +3,6 @@ package com.auvan.api.inventory.service;
 import com.auvan.api.inventory.dto.CreateRouteRequest;
 import com.auvan.api.inventory.dto.RouteResponse;
 import com.auvan.api.inventory.dto.UpdateRouteRequest;
-import com.auvan.api.inventory.entity.RouteStatus;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import org.springframework.http.HttpStatus;
