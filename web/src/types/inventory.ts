@@ -41,10 +41,3 @@ export type Trip = {
   status: TripStatus;
   seats: Seat[];
 };
-
-export type Inventory = {
-  routes: VanRoute[];
-  seatLayouts: SeatLayout[];
-  vehicles: Vehicle[];
-  trips: Trip[];
-};
