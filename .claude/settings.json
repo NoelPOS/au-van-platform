@@ -31,6 +31,9 @@
       "Bash(scripts/setup-hooks.sh:*)",
       "Bash(git push --force-with-lease:*)"
     ],
+    "ask": [
+      "Bash(aws:*)"
+    ],
     "deny": [
       "Read(./**/.env)",
       "Read(./**/.env.local)",
@@ -44,7 +47,6 @@
       "Bash(git config core.hooksPath:*)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
-      "Bash(aws:*)",
       "Bash(terraform apply:*)",
       "Bash(terraform destroy:*)",
       "Bash(gh secret:*)",
