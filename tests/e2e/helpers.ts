@@ -4,17 +4,8 @@ import { adminSubject } from "./global-setup";
 
 export { adminSubject };
 
-/**
- * Shared steps for the two journeys.
- *
- * <p>**Everything starts at `/` and clicks its way in.** `App.tsx` and
- * `AdminPage.tsx` switch on React state rather than a router — "Local state
- * rather than a router: there are three destinations and no routing dependency"
- * — so there is no `/admin` to deep-link to, and a reload drops the session
- * along with the token held in it. Signing in again is therefore the only way
- * to refresh a page's data from outside it, and one journey below uses exactly
- * that when the administrator changes something the student has to see.
- */
+// Sessions live only in memory, so a reload means signing in again; one journey
+// relies on that to refresh what the student sees.
 
 let sequence = 0;
 
@@ -38,8 +29,12 @@ function departureInDays(days: number): string {
   return when.toISOString().slice(0, 16);
 }
 
-async function signIn(page: Page, subject: string): Promise<void> {
-  await page.goto("/");
+export async function signIn(
+  page: Page,
+  subject: string,
+  path = "/",
+): Promise<void> {
+  await page.goto(path);
   await page.getByLabel("End-to-end sign-in subject").fill(subject);
   await page.getByRole("button", { name: "Sign in as subject" }).click();
 }
@@ -62,7 +57,7 @@ export async function signInAsStudent(
 function adminDestination(page: Page, label: string) {
   return page
     .getByRole("navigation", { name: "Administration" })
-    .getByRole("button", { name: label });
+    .getByRole("link", { name: label });
 }
 
 function inventoryTab(page: Page, label: string) {

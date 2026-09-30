@@ -1,25 +1,12 @@
-import { useState } from "react";
-import type { AuthSession } from "../types/auth";
-import { AdminInventoryPage } from "../pages/AdminInventoryPage";
-import { AdminOperationsPage } from "../pages/AdminOperationsPage";
-import { AdminPaymentReviewPage } from "../pages/AdminPaymentReviewPage";
+import { NavLink, Outlet } from "react-router";
 
-type Destination = "inventory" | "payments" | "operations";
-
-const destinations: { id: Destination; label: string }[] = [
-  { id: "inventory", label: "Transport inventory" },
-  { id: "payments", label: "Payment review" },
-  { id: "operations", label: "Operations" },
+const destinations = [
+  { path: "/admin/inventory", label: "Transport inventory" },
+  { path: "/admin/payments", label: "Payment review" },
+  { path: "/admin/operations", label: "Operations" },
 ];
 
-/**
- * Everything an administrator can reach. Local state rather than a router:
- * there are three destinations and no routing dependency in this application,
- * the same way `InventoryTabs` already switches between its four sections.
- */
-export function AdminPage({ session }: { session: AuthSession }) {
-  const [destination, setDestination] = useState<Destination>("inventory");
-
+export function AdminLayout() {
   return (
     <>
       <nav
@@ -28,23 +15,19 @@ export function AdminPage({ session }: { session: AuthSession }) {
       >
         <div className="mx-auto flex max-w-6xl gap-2">
           {destinations.map((entry) => (
-            <button
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${destination === entry.id ? "border-brand bg-brand-soft text-brand" : "border-line bg-white text-muted hover:border-muted"}`}
-              key={entry.id}
-              onClick={() => setDestination(entry.id)}
+            <NavLink
+              className={({ isActive }) =>
+                `rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "border-brand bg-brand-soft text-brand" : "border-line bg-white text-muted hover:border-muted"}`
+              }
+              key={entry.path}
+              to={entry.path}
             >
               {entry.label}
-            </button>
+            </NavLink>
           ))}
         </div>
       </nav>
-      {destination === "inventory" && <AdminInventoryPage session={session} />}
-      {destination === "payments" && (
-        <AdminPaymentReviewPage session={session} />
-      )}
-      {destination === "operations" && (
-        <AdminOperationsPage session={session} />
-      )}
+      <Outlet />
     </>
   );
 }
