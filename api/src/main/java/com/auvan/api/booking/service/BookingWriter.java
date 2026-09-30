@@ -26,16 +26,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * The one transaction that turns a hold into a booking: the booking, its seats,
- * its first history entry, the claims that now carry it, and the idempotency
- * record all commit together or not at all.
- *
- * <p>It is a bean of its own rather than a method on {@link BookingService} so
- * that the orchestrator can stay outside any transaction. Once a constraint
- * violation is converted at flush the transaction is already rollback-only, so
- * the replay that follows a lost race has to run somewhere else entirely.
- */
 @Service
 public class BookingWriter {
     private final BookingRepository bookings;
@@ -57,18 +47,12 @@ public class BookingWriter {
     public IdempotencyService.StoredResponse create(UUID userId, String endpoint, String key, String requestHash,
                                                     CreateBookingRequest request) {
         OffsetDateTime now = OffsetDateTime.now();
-        // Locking read first, and every decision below is made from what it
-        // returned. Two confirmations of one hold both only UPDATE rows that
-        // already exist, so the unique constraint sees nothing wrong with them.
         List<SeatClaim> held = claims.lockByHoldId(request.holdId());
         assertConfirmable(held, userId, now);
 
         Trip trip = held.getFirst().getTripSeat().getTrip();
         assertBookable(trip, now);
 
-        // The deadline is written in this transaction, with the booking it
-        // bounds: a booking that committed without one would never expire and
-        // would hold its seats forever, which is the gap ADR-009 left open.
         Booking booking = new Booking(trip, userId, BookingReference.generate(now), request.passengerName(),
                 request.passengerPhone(), trip.getFare().multiply(BigDecimal.valueOf(held.size())),
                 properties.paymentDeadlineFor(trip.getDepartureAt(), now), now);
@@ -78,24 +62,15 @@ public class BookingWriter {
 
         try {
             bookings.save(booking);
-            // Mutating the managed rows the lock returned, rather than issuing a
-            // bulk update: a bulk update would run before the booking insert and
-            // break seat_claims' foreign key.
+            // Mutate the locked rows: a bulk update would run before the insert and break the FK.
             held.forEach(claim -> claim.attachTo(booking.getId()));
-            // Load-bearing. @UuidGenerator is not an identity generator, so the
-            // inserts would otherwise defer to the commit and this catch could
-            // never run; a lost race would escape as a 500.
+            // Flush inside the try: @UuidGenerator defers the insert past this catch.
             bookings.flush();
         } catch (DataIntegrityViolationException collision) {
             throw Problems.conflict("booking_creation_conflict",
                     "That booking could not be completed. Please try again.", collision);
         }
 
-        // Inside this transaction, which is the point: this method is where the
-        // outbox write belongs precisely because BookingService.create has no
-        // transaction of its own to join. Recording there would leave the row
-        // committed independently of the booking it describes — and every test
-        // that only counts rows would still pass.
         outbox.record(OutboxEventType.BOOKING_CREATED, booking.getId(), userId,
                 new BookingNotification(booking.getReference(), detail), now);
 
@@ -103,14 +78,7 @@ public class BookingWriter {
                 BookingResponse.from(booking), now);
     }
 
-    /**
-     * Three questions, three answers. {@code SeatClaim.isHeldBy} folds "booked"
-     * into "not yours", which would tell a student confirming their own hold
-     * twice that the hold never existed.
-     */
     private void assertConfirmable(List<SeatClaim> held, UUID userId, OffsetDateTime now) {
-        // Someone else's hold answers exactly as a hold that never existed, so
-        // the endpoint cannot be used to discover which hold ids are live.
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isOwnedBy(userId))) {
             throw Problems.notFound("hold_not_found", "Hold not found.");
         }

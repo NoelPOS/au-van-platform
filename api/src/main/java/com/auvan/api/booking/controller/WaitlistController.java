@@ -34,17 +34,11 @@ public class WaitlistController {
         return waitlistService.join(UUID.fromString(jwt.getSubject()), request);
     }
 
-    /** The caller's own entries only; the service scopes the query by owner. */
     @GetMapping
     public List<WaitlistEntryResponse> mine(@AuthenticationPrincipal Jwt jwt) {
         return waitlistService.mine(UUID.fromString(jwt.getSubject()));
     }
 
-    /**
-     * Leaving is a POST because the browser CORS policy allows no DELETE, the
-     * same reason releasing a seat hold is one. A DELETE here would pass every
-     * test in this repository and fail only in a real browser.
-     */
     @PostMapping("/{entryId}/leave")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leave(@PathVariable UUID entryId, @AuthenticationPrincipal Jwt jwt) {

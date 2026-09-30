@@ -14,15 +14,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * One claimed seat, either held for a few minutes or attached to a booking.
- * The unique constraint on {@code trip_seat_id} is what prevents overselling,
- * so a claim is released by deleting its row rather than by changing a status.
- * {@code bookingId} is a plain column until the booking entity exists.
- *
- * <p>The constraint is declared here as well as in {@code V3}, under the same
- * name, so the two descriptions of the table cannot drift apart.
- */
 @Entity
 @Table(name = "seat_claims", uniqueConstraints =
         @UniqueConstraint(name = "seat_claims_trip_seat_unique", columnNames = "trip_seat_id"))
@@ -71,19 +62,10 @@ public class SeatClaim {
         return bookingId != null;
     }
 
-    /** A booked seat is claimed forever; a hold only until it expires. */
     public boolean blocksSeatAt(OffsetDateTime moment) {
         return isBooked() || expiresAt.isAfter(moment);
     }
 
-    /**
-     * True only for an unbooked claim this user owns, expired or not.
-     *
-     * <p>Not for the confirmation path: it folds "booked" and "not yours" into
-     * one answer, which would tell a student confirming their own hold a second
-     * time that the hold does not exist. Confirmation asks the three questions
-     * separately.
-     */
     public boolean isHeldBy(UUID candidate) {
         return !isBooked() && userId.equals(candidate);
     }
@@ -96,7 +78,6 @@ public class SeatClaim {
         return !expiresAt.isAfter(moment);
     }
 
-    /** Turns a hold into a booked seat in place, so the seat is never unprotected. */
     public void attachTo(UUID bookingId) {
         this.bookingId = bookingId;
     }

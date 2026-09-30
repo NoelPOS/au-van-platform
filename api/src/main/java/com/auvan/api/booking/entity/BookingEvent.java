@@ -14,11 +14,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * One entry in a booking's history. {@code actorUserId} is nullable because #7
- * introduces staff actors and system-driven transitions, and the shape of the
- * response must not change when it does.
- */
 @Entity
 @Table(name = "booking_events")
 public class BookingEvent {
