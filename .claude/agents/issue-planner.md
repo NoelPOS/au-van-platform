@@ -66,6 +66,6 @@ End your plan with exactly one line:
 - Match existing patterns rather than introducing new ones. This codebase is
   small and consistent; keep it that way.
 - Never propose an interface without a second implementation, per `AGENTS.md`.
-- Never propose storing credentials, and never read `.env` files.
+- Never propose committing credentials, `.env.example` included.
 - If the issue is too large for one focused pull request, say so and propose the
   split as sub-issues.

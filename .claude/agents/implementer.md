@@ -113,8 +113,9 @@ supplied an ADR, commit it to `docs/adr/` as its own `docs:` commit. Update
 
 ## Never
 
-- Create, fill, edit, or read `.env` files. Document new variables in
-  `.env.example` only, with an empty value.
+- Put a real value in `.env.example` or any other committed file. Document
+  new variables in `.env.example` with an empty value; real values belong only
+  in the ignored `.env` files.
 - Commit credentials, connection strings, tokens, payment slips, or production
   data.
 - Edit `.githooks/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` without the linked
