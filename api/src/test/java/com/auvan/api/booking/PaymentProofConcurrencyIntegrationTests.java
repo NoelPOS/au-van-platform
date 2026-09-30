@@ -59,31 +59,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
-/**
- * Concurrency cover for a payment proof's whole life: the student's
- * submission, the administrator's decision, and a decision racing the
- * student's own cancellation. Like the two concurrency
- * classes before it, this one must not be {@code @Transactional}: a
- * test-managed transaction would put both threads on one connection and there
- * would be no race left to observe. Statuses are asserted from the thrown
- * {@link ResponseStatusException} rather than over HTTP, for the reason
- * {@link SeatHoldConcurrencyIntegrationTests} gives.
- *
- * <p>The test stubs the one repository call whose timing it needs to control,
- * so the interleaving a real race only sometimes produces happens every time.
- * The stub controls timing only; the production path runs in both threads.
- *
- * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * The {@code SELECT … FOR UPDATE} these paths decide behind is the same lock
- * {@link BookingConcurrencyPostgresTests} proves against a real PostgreSQL 17, in a
- * suite tagged {@code postgres} and excluded from {@code ./gradlew test}. These
- * particular races are deliberately not re-run there: the tagged suite asserts one
- * property per engine-specific guarantee rather than every class twice, which is
- * what keeps it short enough to be worth running on every pull request.
- */
+// Not @Transactional: a test transaction puts every thread on one connection and hides the race.
 @SpringBootTest
 class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport {
-    /** The port's in-memory side, exactly as {@link PaymentProofIntegrationTests} registers it. */
     @TestConfiguration
     static class FakeStorageConfiguration {
         @Bean
@@ -105,7 +83,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
     @Autowired
     private InMemoryPaymentProofStorage storage;
 
-    // A spy, not a mock: every call runs for real except the one the test stubs.
     @MockitoSpyBean
     private BookingRepository bookings;
 
@@ -147,14 +124,11 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         TripSeat seat = trip.getSeats().getFirst();
         booking.addSeat(seat);
         bookingId = bookings.save(booking).getId();
-        // The claim the cancellation frees, so the approve-versus-cancel race
-        // can assert what happened to the seats and not only to the status.
         SeatClaim claim = new SeatClaim(seat, student, UUID.randomUUID(), OffsetDateTime.now().plusMinutes(10));
         claim.attachTo(bookingId);
         claims.save(claim);
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         proofs.deleteAll();
@@ -167,20 +141,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         users.deleteAll();
     }
 
-    /**
-     * The row lock's whole purpose here. The eligibility check reads
-     * {@code status} and the submission writes it, and {@code payment_proofs}
-     * constrains only {@code object_key} — a fresh UUID per submission, so it
-     * never collides. Two submissions in flight at once would both read
-     * {@code PENDING_PAYMENT}, both pass the check, and both insert; the second
-     * has to read the booking <em>after</em> the first has committed, which is
-     * what the lock forces.
-     *
-     * <p>The rival is released one statement short of its own locking read, so
-     * it is at the lock while the winner is still inside its transaction. This
-     * is the retry the client fires before the first response arrives — the
-     * case a {@code 409} on an already-committed submission cannot cover.
-     */
     @Test
     void aSecondSubmissionInFlightIsRefusedAndOnlyOneProofExists() throws Exception {
         AtomicBoolean winner = new AtomicBoolean(true);
@@ -210,7 +170,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
                     });
         }
 
-        // One row, one object, and one transition: the loser wrote nothing.
         assertThat(proofs.count()).isOne();
         assertThat(storage.objects()).hasSize(1);
         assertThat(storage.objects().values()).singleElement()
@@ -221,21 +180,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
                         .isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW));
     }
 
-    /**
-     * The same race on the review side, and the reason
-     * {@link com.auvan.api.booking.repository.PaymentProofRepository#findBookingIdById}
-     * exists. The decision reads the proof's status and writes it, and nothing
-     * in the schema refuses a second write; only the booking's row lock makes
-     * the second administrator read the proof <em>after</em> the first has
-     * committed.
-     *
-     * <p>This is also what proves the persistence-context trap stays closed.
-     * If the service read the booking id by loading the {@code PaymentProof}
-     * entity instead of projecting it, the loser would hold that entity from
-     * before the lock, the post-lock read would hand the same instance back
-     * still saying {@code SUBMITTED}, and both approvals would go through —
-     * with the lock fully in place and looking like it was working.
-     */
     @Test
     void aSecondApprovalInFlightIsRefusedAndTheBookingIsConfirmedOnce() throws Exception {
         UUID proofId = submittedProofId();
@@ -257,12 +201,9 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
 
         assertThat(proofs.findById(proofId).orElseThrow().getStatus()).isEqualTo(PaymentProofStatus.APPROVED);
         assertThat(bookings.findById(bookingId).orElseThrow().getStatus()).isEqualTo(BookingStatus.CONFIRMED);
-        // One decision, so one entry in the history: a second approval that
-        // slipped through would show up here even if the status did not.
         assertThat(eventsOfType(BookingEventType.PAYMENT_APPROVED)).isOne();
     }
 
-    /** Two administrators disagreeing at once: one decision lands, not both. */
     @Test
     void anApprovalAndARejectionInFlightResolveToOneOutcome() throws Exception {
         UUID proofId = submittedProofId();
@@ -293,17 +234,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         assertThat(eventsOfType(BookingEventType.PAYMENT_REJECTED)).isZero();
     }
 
-    /**
-     * The student cancels while an administrator is approving. The cancellation
-     * holds the booking's row first, so the approval has to read what the
-     * cancellation committed and refuse — the booking never ends up approved
-     * with its seats already released.
-     *
-     * <p>This is the race {@code BookingService.cancel} took no lock for until
-     * this change. Without it the approval reads {@code PAYMENT_UNDER_REVIEW}
-     * from under the uncommitted cancellation, confirms a booking that is being
-     * cancelled, and leaves an {@code APPROVED} proof on it.
-     */
     @Test
     void anApprovalRacingAStudentCancellationIsRefusedRatherThanConfirmingAReleasedBooking() throws Exception {
         UUID proofId = submittedProofId();
@@ -312,8 +242,6 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         CountDownLatch atTheLock = new CountDownLatch(1);
 
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
-            // The approving administrator, released one statement short of its
-            // own locking read while the cancellation still holds the row.
             doAnswer(invocation -> {
                 atTheLock.countDown();
                 return real(invocation);
@@ -338,33 +266,18 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
                     });
         }
 
-        // One consistent final state: cancelled, seats released, and no
-        // approved payment sitting on a booking nobody is travelling on.
         assertThat(bookings.findById(bookingId).orElseThrow().getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertThat(claims.findByBookingId(bookingId)).isEmpty();
         assertThat(proofs.findById(proofId).orElseThrow().getStatus()).isEqualTo(PaymentProofStatus.SUBMITTED);
         assertThat(eventsOfType(BookingEventType.PAYMENT_APPROVED)).isZero();
     }
 
-    // Fixtures
-
-    /**
-     * Submits a proof the way a student does, so the booking really is under
-     * review and the row the races decide on really exists.
-     */
     private UUID submittedProofId() {
         assertThat(paymentProofs.submit(student, bookingId, jpeg("the-slip")).status())
                 .isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
         return proofs.findAll().getFirst().getId();
     }
 
-    /**
-     * Stubs the review path's lock so the rival is released one statement short
-     * of its own locking read: it is <em>at</em> the lock while the winner is
-     * still inside its transaction. This is the retry an administrator fires by
-     * double-clicking, which a {@code 409} on an already-committed decision
-     * cannot cover.
-     */
     private void releaseRivalAtTheLock(ExecutorService pool, Callable<BookingResponse> rival,
                                        AtomicReference<Future<BookingResponse>> loser) {
         AtomicBoolean winner = new AtomicBoolean(true);
@@ -381,22 +294,12 @@ class PaymentProofConcurrencyIntegrationTests extends AuthenticationTestSupport 
         }).when(bookings).lockById(bookingId);
     }
 
-    /** Counted through the student's own read, which is the only thing that exposes the history. */
     private long eventsOfType(BookingEventType type) {
         return bookingService.get(student, bookingId).events().stream()
                 .filter(event -> event.type() == type)
                 .count();
     }
 
-    /**
-     * Runs the call the stub intercepted for real.
-     *
-     * <p>{@code invocation.callRealMethod()} cannot do this for a Spring Data
-     * repository: the method is an interface method with no body, and the spy
-     * keeps the actual repository in its default answer rather than as a spied
-     * instance. Forwarding through that answer is how a stub that needs the
-     * real result — a locking read returning a managed booking — gets one.
-     */
     private static Object real(InvocationOnMock invocation) throws Throwable {
         return mockingDetails(invocation.getMock()).getMockCreationSettings().getDefaultAnswer().answer(invocation);
     }

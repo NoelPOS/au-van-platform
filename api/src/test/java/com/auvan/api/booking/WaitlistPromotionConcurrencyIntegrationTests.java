@@ -58,35 +58,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
-/**
- * The highest-risk part of #69: what happens when the promotion sweep and
- * somebody else reach the same seat, or the same entry, at the same moment.
- * Acceptance criterion 3 is the one on trial — a promotion must never oversell
- * a seat, never free a seat somebody has paid for, and never leave a hold
- * standing behind an entry that has ended.
- *
- * <p>Like the four concurrency classes before it, this one must
- * <strong>not</strong> be {@code @Transactional}: a test-managed transaction
- * would put both threads on one connection and there would be no race left to
- * observe.
- *
- * <p>Each test lets its rival commit while the promoter still believes what it
- * read a moment earlier — the interleaving a real race produces only sometimes,
- * made to happen every run. The stubs control timing only; the production path
- * runs in both threads.
- *
- * <p>The entries are written through the repository rather than through
- * {@code WaitlistService.join}, because joining a trip with a free seat is
- * refused and every test here needs both a queued student and a free seat.
- *
- * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * The {@code SELECT … FOR UPDATE} these paths decide behind is the same lock
- * {@link BookingConcurrencyPostgresTests} proves against a real PostgreSQL 17, in a
- * suite tagged {@code postgres} and excluded from {@code ./gradlew test}. These
- * particular races are deliberately not re-run there: the tagged suite asserts one
- * property per engine-specific guarantee rather than every class twice, which is
- * what keeps it short enough to be worth running on every pull request.
- */
+// Not @Transactional: a test transaction puts every thread on one connection and hides the race.
 @SpringBootTest
 class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSupport {
     @Autowired
@@ -104,8 +76,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
     @Autowired
     private BookingService bookingService;
 
-    // Spies, not mocks: every call runs for real, and the stubs exist only to
-    // decide when the rival gets to commit.
     @MockitoSpyBean
     private SeatAvailabilityService availability;
 
@@ -153,14 +123,11 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         rival = users.save(new AppUser("Urival-promorace", "Rival Student")).getId();
         UUID holder = users.save(new AppUser("Uholder-promorace", "Holding Student")).getId();
         contestedSeat = trip.getSeats().getFirst().getId();
-        // The second seat stays claimed throughout, so the only seat any of
-        // these tests can promote onto is the contested one.
         claims.save(new SeatClaim(trip.getSeats().get(1), holder, UUID.randomUUID(),
                 OffsetDateTime.now().plusHours(2)));
         entryId = waitlist.save(new WaitlistEntry(trip, student, 1, OffsetDateTime.now())).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         events.deleteAll();
@@ -175,15 +142,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         users.deleteAll();
     }
 
-    /**
-     * A student takes the seat through the ordinary hold path while the
-     * promoter is between reading availability and inserting its claim.
-     *
-     * <p>{@code seat_claims_trip_seat_unique} decides it, exactly as it decides
-     * two students racing for a seat today, and the promoter losing is an
-     * ordinary outcome rather than an error: the entry is left alone for the
-     * next sweep.
-     */
     @Test
     void aPromotionRacingADirectHoldLosesTheSeatAndLeavesTheEntryWaiting() throws Exception {
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
@@ -197,19 +155,11 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
                 .satisfies(claim -> assertThat(claim.getUserId()).isEqualTo(rival));
         assertThat(entry().getStatus()).isEqualTo(WaitlistStatus.WAITING);
         assertThat(events.count()).isZero();
-        // And the next sweep does not hand the seat out a second time: it is
-        // somebody else's now, so there is nothing free to promote onto.
         assertThat(promotion.sweep()).isZero();
         assertThat(entry().getStatus()).isEqualTo(WaitlistStatus.WAITING);
         assertThat(claimsOnTheContestedSeat()).hasSize(1);
     }
 
-    /**
-     * The seat was freed by a cancellation and two parties want it: the
-     * promoter, and a student who is confirming a hold on it. The promoter must
-     * never attach itself to a seat {@code BookingWriter.create} is in the
-     * middle of claiming.
-     */
     @Test
     void aPromotionRacingABookingConfirmationOnAFreedSeatLeavesExactlyOneClaim() throws Exception {
         UUID cancelled = book(rival, "key-promorace-first");
@@ -231,17 +181,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         assertThat(outboxOfType(OutboxEventType.WAITLIST_PROMOTED)).isEmpty();
     }
 
-    /**
-     * Two instances sweep at once and both name the same entry. Exactly one
-     * promotes; the other reads {@code PROMOTED} from behind the lock and does
-     * nothing.
-     *
-     * <p>Remove {@code @Lock(PESSIMISTIC_WRITE)} from
-     * {@code WaitlistEntryRepository.lockById} and the second sweeper reads
-     * {@code WAITING} from under the first's uncommitted promotion, tries to
-     * take the same seat, and fails on the unique constraint instead of
-     * returning {@code false}.
-     */
     @Test
     void twoSweepersRacingOneEntryPromoteItExactlyOnce() throws Exception {
         OffsetDateTime now = OffsetDateTime.now();
@@ -250,9 +189,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         AtomicBoolean firstLock = new AtomicBoolean(true);
 
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
-            // Both promoters lock through lockById. The first call is this
-            // thread's; the second is the pool's, and it waits on the row until
-            // this thread commits.
             doAnswer(invocation -> {
                 if (firstLock.compareAndSet(true, false)) {
                     Object locked = real(invocation);
@@ -273,12 +209,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         assertThat(outboxOfType(OutboxEventType.WAITLIST_PROMOTED)).hasSize(1);
     }
 
-    /**
-     * The student leaves the queue in the same instant the sweep gives them a
-     * seat. Their {@code leave} waits on the entry's row, reads the promotion
-     * the sweep just committed, and gives the seat back — an entry that has
-     * ended must not leave a hold standing behind it.
-     */
     @Test
     void aPromotionRacingTheStudentsOwnLeaveLeavesNoHoldBehindTheWithdrawnEntry() throws Exception {
         AtomicReference<Future<?>> leaving = new AtomicReference<>();
@@ -305,20 +235,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         assertThat(claimsOnTheContestedSeat()).isEmpty();
     }
 
-    /**
-     * The promoter planned to reclaim a lapsed hold and a confirmation sold
-     * that very row in between.
-     *
-     * <p>{@code SeatClaimRepository.deleteByIdIn} matches on
-     * {@code booking_id is null}, so the delete simply frees nothing and the
-     * insert that follows loses to the unique constraint. Widen that guard and
-     * the promoter deletes a seat somebody has paid for, which this test is the
-     * only thing that would notice.
-     *
-     * <p>The promoter is swept for ten minutes from now: that is how a real
-     * promoter comes to plan this reclaim at all — it reads one {@code now},
-     * and the confirmation it is racing started while the hold was still live.
-     */
     @Test
     void aPromoterDoesNotReclaimASeatAConfirmationHasJustSold() throws Exception {
         UUID holdId = holds.hold(rival, new CreateSeatHoldRequest(trip.getId(), List.of(contestedSeat))).holdId();
@@ -326,8 +242,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         AtomicBoolean firstRead = new AtomicBoolean(true);
 
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
-            // The rival commits after the promoter has read the row it means to
-            // reclaim and before it issues the delete.
             doAnswer(invocation -> {
                 Object onSeats = real(invocation);
                 if (firstRead.compareAndSet(true, false)) {
@@ -351,12 +265,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         assertThat(outboxOfType(OutboxEventType.WAITLIST_PROMOTED)).isEmpty();
     }
 
-    // Fixtures
-
-    /**
-     * Lets the rival take the contested seat, and commit, while the promoter
-     * still holds the availability reading that said the seat was free.
-     */
     private void releaseTheRivalOnceThePromoterHasReadAvailability(ExecutorService pool, Callable<?> rivalAction) {
         AtomicBoolean firstRead = new AtomicBoolean(true);
         doAnswer(invocation -> {
@@ -389,14 +297,6 @@ class WaitlistPromotionConcurrencyIntegrationTests extends AuthenticationTestSup
         return events.findAll().stream().filter(event -> event.getEventType() == type).toList();
     }
 
-    /**
-     * Runs the call the stub intercepted for real.
-     *
-     * <p>{@code invocation.callRealMethod()} cannot do this for a Spring Data
-     * repository: the method is an interface method with no body, and the spy
-     * keeps the actual repository in its default answer rather than as a spied
-     * instance.
-     */
     private static Object real(InvocationOnMock invocation) throws Throwable {
         return mockingDetails(invocation.getMock()).getMockCreationSettings().getDefaultAnswer().answer(invocation);
     }

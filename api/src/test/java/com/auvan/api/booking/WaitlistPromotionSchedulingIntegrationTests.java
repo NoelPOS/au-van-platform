@@ -35,23 +35,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Both sides of the promotion scheduling gate.
- *
- * <p>With {@code booking.waitlist.enabled} turned back on, a seat whose hold
- * has lapsed really is promoted by the scheduler with nothing in this test
- * calling {@code sweep()}. Every other class calls the sweep directly, so
- * without this one the wiring — the {@code @Scheduled} method, the
- * poll-interval binding, the conditional bean — would be entirely unproven.
- *
- * <p>The property is set here and nowhere else, so this is the only context in
- * the suite with a live promoter in it. That isolation is the point, and its
- * other half is
- * {@code WaitlistPromotionIntegrationTests.theSchedulerIsNotWiredUnderTheTestConfiguration}:
- * under the ordinary test configuration there is no scheduler bean at all, so
- * no background sweep can hand a seat out under a booking-concurrency fixture
- * mid-assertion.
- */
 @SpringBootTest
 @TestPropertySource(properties = {
         "booking.waitlist.enabled=true",
@@ -97,7 +80,6 @@ class WaitlistPromotionSchedulingIntegrationTests extends AuthenticationTestSupp
         student = users.save(new AppUser("Ustudent-promo-schedule", "Waiting Student")).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         events.deleteAll();
@@ -113,8 +95,6 @@ class WaitlistPromotionSchedulingIntegrationTests extends AuthenticationTestSupp
     @Test
     void theScheduledSweepPromotesAWaitingStudentWithoutAnybodyCallingIt() throws Exception {
         UUID holder = users.save(new AppUser("Uholder-promo-schedule", "Holding Student")).getId();
-        // A hold that lapsed with nothing running, which is how a seat most
-        // often comes free (ADR-006).
         claims.save(new SeatClaim(trip.getSeats().getFirst(), holder, UUID.randomUUID(),
                 OffsetDateTime.now().minusMinutes(1)));
         UUID entryId = waitlist.save(new WaitlistEntry(trip, student, 1, OffsetDateTime.now())).getId();
@@ -126,13 +106,11 @@ class WaitlistPromotionSchedulingIntegrationTests extends AuthenticationTestSupp
                 .satisfies(claim -> assertThat(claim.getUserId()).isEqualTo(student));
     }
 
-    /** The conditional bean really is conditional, and this is the context that turned it on. */
     @Test
     void theSchedulerExistsOnlyBecauseThisClassTurnedItOn() {
         assertThat(context.getBeanNamesForType(WaitlistPromotionScheduler.class)).hasSize(1);
     }
 
-    /** Polls rather than sleeping a fixed time, so a slow machine waits longer and a fast one does not. */
     private WaitlistEntry awaitPromotion(UUID entryId) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MILLIS;
         while (System.currentTimeMillis() < deadline) {

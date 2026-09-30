@@ -47,26 +47,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doAnswer;
 
-/**
- * The two booking guards that only a real PostgreSQL can be said to prove, and
- * that {@link BookingConcurrencyIntegrationTests}' own Javadoc says it cannot.
- *
- * <p>The first is {@code SELECT … FOR UPDATE}. Two confirmations of one hold both
- * merely {@code UPDATE} rows that already exist, so
- * {@code seat_claims_trip_seat_unique} is satisfied by each of them and nothing in
- * the schema objects to two bookings sharing a seat. What refuses the second one is
- * PostgreSQL's READ COMMITTED behaviour under a row lock: the loser blocks on the
- * winner's lock and, once it is granted, reads the <em>committed</em> row rather
- * than the version its own snapshot began with. That re-read is the entire guard,
- * and no assertion on H2 has ever exercised it.
- *
- * <p>The second is {@code booking_id is null} in {@code deleteByIdIn}, under real
- * MVCC: a reclaim that selected its rows before a confirmation committed must
- * refuse to free the seat that confirmation sold.
- *
- * <p>Must not be {@code @Transactional}: a test-managed transaction would put every
- * thread on one connection and there would be no race left to observe.
- */
 @SpringBootTest
 class BookingConcurrencyPostgresTests extends PostgresTestSupport {
     private static final int CONTENDERS = 8;
@@ -77,8 +57,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
     @Autowired
     private SeatHoldService seatHoldService;
 
-    // A spy, not a mock: every call runs for real unless a test stubs the one
-    // lookup whose timing it needs to control.
     @MockitoSpyBean
     private SeatClaimRepository claims;
 
@@ -115,7 +93,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         student = users.save(new AppUser("Upg-booking", "Student")).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         claims.deleteAll();
@@ -128,19 +105,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         users.deleteAll();
     }
 
-    /**
-     * Eight simultaneous confirmations of one hold. Exactly one booking exists
-     * afterwards and the other seven are refused with the documented code.
-     *
-     * <p>No stubbing and no latch beyond the starting gun: the lock itself makes
-     * this deterministic. Seven threads queue on the winner's row lock, and each is
-     * granted it only after the winner has committed, at which point the re-read
-     * shows a claim that already carries a booking. Take
-     * {@code @Lock(LockModeType.PESSIMISTIC_WRITE)} off
-     * {@code SeatClaimRepository.lockByHoldId} and the reads stop queueing: several
-     * threads read the same unbooked claim, each writes its own booking, and
-     * {@code booking_seats_seat_unique} is no help because it is scoped per booking.
-     */
     @Test
     void eightSimultaneousConfirmationsOfOneHoldLeaveExactlyOneBooking() throws Exception {
         UUID holdId = seatHoldService
@@ -154,8 +118,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
 
         try (ExecutorService pool = Executors.newFixedThreadPool(CONTENDERS)) {
             for (int index = 0; index < CONTENDERS; index++) {
-                // A key of its own each, so nothing here is answered from the
-                // idempotency record: every thread reaches the hold's row lock.
                 String key = "pg-confirm-" + index;
                 pool.execute(() -> {
                     try {
@@ -188,17 +150,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
                 }));
     }
 
-    /**
-     * A reclaim must not free a seat that has just been sold.
-     *
-     * <p>Re-selecting seats deletes the caller's existing holds on the trip, chosen
-     * from a read taken earlier in the transaction. A confirmation that commits in
-     * between turns one of those rows into a booked seat, and the delete would still
-     * match it by id. The row lock does not help — the reclaimer simply waits and
-     * then deletes the sold row — so {@code booking_id is null} in the delete is the
-     * only thing that refuses, and here it is refusing against real MVCC rather than
-     * an emulation of it.
-     */
     @Test
     void reSelectingSeatsCannotFreeAClaimSoldBetweenTheCandidateReadAndTheDelete() {
         TripSeat sold = seats.get(0);
@@ -206,9 +157,6 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         UUID holdId = seatHoldService
                 .hold(student, new CreateSeatHoldRequest(trip.getId(), List.of(sold.getId()))).holdId();
         AtomicReference<UUID> bookingId = new AtomicReference<>();
-        // A true reading, taken while the claim really was an unbooked hold. It is
-        // what the reclaim would have read, and it is stale by the time the delete
-        // it feeds runs.
         List<SeatClaim> mine = claims.findHoldsOnTripBy(trip.getId(), student);
 
         doAnswer(invocation -> {
@@ -225,13 +173,10 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         assertThat(claims.count()).isEqualTo(2);
     }
 
-    // Fixtures
-
     private static CreateBookingRequest request(UUID holdId) {
         return new CreateBookingRequest(holdId, "Somchai P.", "0812345678");
     }
 
-    /** Confirms the hold from outside the caller's transaction, and waits for it. */
     private UUID confirmOnAnotherThread(UUID holdId) throws Exception {
         try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
             pool.submit(() -> bookingService.create(student, "other-thread-key", request(holdId)))

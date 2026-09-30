@@ -40,21 +40,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Both sides of the expiry scheduling gate.
- *
- * <p>With {@code booking.expiry.enabled} turned back on, an overdue booking
- * really is expired by the scheduler with nothing in this test calling
- * {@code sweep()}. Every other class calls the sweep directly, so without this
- * one the wiring — the {@code @Scheduled} method, the poll-interval binding, the
- * conditional bean — would be entirely unproven.
- *
- * <p>The property is set here and nowhere else, so this is the only context in
- * the suite with a live sweeper in it. That isolation is the point, and the
- * second test is the half that protects everyone else: under the ordinary test
- * configuration there is no scheduler bean at all, so no background sweep can
- * cancel a booking-concurrency fixture mid-assertion.
- */
 @SpringBootTest
 @TestPropertySource(properties = {
         "booking.expiry.enabled=true",
@@ -112,7 +97,6 @@ class BookingExpirySchedulingIntegrationTests extends AuthenticationTestSupport 
         student = users.save(new AppUser("Ustudent-expiry-schedule", "Student")).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         events.deleteAll();
@@ -140,18 +124,11 @@ class BookingExpirySchedulingIntegrationTests extends AuthenticationTestSupport 
         assertThat(claims.findByBookingId(bookingId)).isEmpty();
     }
 
-    /**
-     * The gate from the side that matters to everyone else's tests. Remove
-     * {@code @ConditionalOnProperty} from {@code BookingExpiryScheduler} and the
-     * bean exists in every {@code @SpringBootTest} in the suite; the assertion
-     * below is the only thing in the repository that would notice.
-     */
     @Test
     void theSchedulerExistsOnlyBecauseThisClassTurnedItOn() {
         assertThat(context.getBeanNamesForType(BookingExpiryScheduler.class)).hasSize(1);
     }
 
-    /** Polls rather than sleeping a fixed time, so a slow machine waits longer and a fast one does not. */
     private Booking awaitExpiry(UUID bookingId) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MILLIS;
         while (System.currentTimeMillis() < deadline) {

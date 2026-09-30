@@ -59,15 +59,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The administrator's review endpoints end to end, against the in-memory
- * storage the port exists for. Every failure asserts the machine-readable
- * {@code code} as well as the status, matching the rest of this module.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
-    /** The port's in-memory side, exactly as {@link PaymentProofIntegrationTests} registers it. */
     @TestConfiguration
     static class FakeStorageConfiguration {
         @Bean
@@ -137,12 +131,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         bookingId = bookingIdFrom(confirm(holdOn(seats.get(0)), "key-1"));
     }
 
-    /**
-     * In foreign-key order, and in both hooks, as the other booking tests do.
-     * {@code payment_proofs} now references {@code app_users} through
-     * {@code reviewed_by_user_id} as well, so the proofs still have to go
-     * before the users.
-     */
     @AfterEach
     void clearData() {
         proofs.deleteAll();
@@ -155,8 +143,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         routes.deleteAll();
         users.deleteAll();
     }
-
-    // Success path
 
     @Test
     void theQueueListsSubmittedProofsOldestFirstWithTheBookingContextToDecideOn() throws Exception {
@@ -183,18 +169,10 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
 
         approve(proofIdOf(bookingId), null).andExpect(status().isOk());
 
-        // A decided proof is out of the queue.
         queue().andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].bookingId").value(secondBooking));
     }
 
-    /**
-     * The acceptance criterion in prose, for the administrator's half: nothing
-     * the review screen receives can be used to reach an image without going
-     * back through the API, the same assertion
-     * {@link PaymentProofIntegrationTests#theResponseCarriesNoObjectKeyBucketOrUrl}
-     * makes for the student's.
-     */
     @Test
     void theQueueCarriesNoObjectKeyBucketOrUrl() throws Exception {
         submit(bookingId, jpeg("the-slip"));
@@ -215,7 +193,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         byte[] returned = mockMvc.perform(get(image(proofIdOf(bookingId))).header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_JPEG))
-                // A bank slip does not belong in a shared cache.
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(header().string("Content-Disposition", "inline"))
                 .andReturn().getResponse().getContentAsByteArray();
@@ -241,8 +218,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         assertThat(decided.getReviewedByUserId()).isEqualTo(adminId);
         assertThat(decided.getReviewedAt()).isNotNull();
         assertThat(decided.getReviewNote()).isNull();
-        // The transition reached the database, not only the response body, and
-        // the student's own read of their booking sees it.
         mockMvc.perform(get("/api/v1/bookings/" + bookingId).header("Authorization", bearer(studentToken)))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
     }
@@ -263,8 +238,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         PaymentProof decided = proofs.findById(proofId).orElseThrow();
         assertThat(decided.getStatus()).isEqualTo(PaymentProofStatus.REJECTED);
         assertThat(decided.getReviewNote()).isEqualTo("The slip is too blurred to read.");
-        // ADR-009: rejection does not release the seats, which is the only
-        // thing that makes resubmitting against the same booking possible.
         assertThat(claims.findByBookingId(UUID.fromString(bookingId))).hasSize(1);
     }
 
@@ -283,8 +256,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         PaymentProof rejected = proofs.findById(rejectedId).orElseThrow();
         assertThat(rejected.getStatus()).isEqualTo(PaymentProofStatus.REJECTED);
         assertThat(rejected.getReviewNote()).isEqualTo("The slip is too blurred to read.");
-        // Only the resubmission is waiting for a decision; the rejected row is
-        // history and stays out of the queue.
         String body = queue().andExpect(jsonPath("$.length()").value(1))
                 .andReturn().getResponse().getContentAsString();
         UUID waiting = UUID.fromString(JsonPath.read(body, "$[0].id"));
@@ -294,13 +265,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
     }
 
-    // Failure paths
-
-    /**
-     * All four endpoints, not one. The {@code /api/v1/admin/**} prefix is the
-     * only thing granting the rule, so a controller mapped one path segment
-     * wrong silently becomes student-reachable.
-     */
     @Test
     void aStudentTokenIsForbiddenOnEveryReviewEndpoint() throws Exception {
         submit(bookingId, jpeg("the-slip"));
@@ -415,12 +379,9 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.code").value("review_note_too_long"));
 
         assertNothingWasDecided();
-        // The ceiling itself is accepted, so the refusal above is the length
-        // and not the note.
         reject(proofId, "n".repeat(500)).andExpect(status().isOk());
     }
 
-    /** An image that is gone answers without the SDK's own exception text. */
     @Test
     void anImageThatCannotBeReadAnswersWithoutNamingTheBucket() throws Exception {
         submit(bookingId, jpeg("the-slip"));
@@ -436,23 +397,13 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
                 .doesNotContain("bucket");
     }
 
-    /**
-     * The database's own backstop under {@code PaymentProof.decide}. No code
-     * path can produce a decided row with no reviewer on it, which is exactly
-     * why the constraint is asserted with raw SQL: nothing else would notice if
-     * {@code V6} stopped declaring it.
-     */
     @Test
     void theSchemaRefusesADecidedProofThatDoesNotSayWhoDecidedIt() {
-        // The same row as SUBMITTED goes in, so the refusal below is the
-        // decision-without-a-reviewer and not the insert itself.
         insertProof("SUBMITTED");
 
         assertThatThrownBy(() -> insertProof("APPROVED")).isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> insertProof("REJECTED")).isInstanceOf(DataIntegrityViolationException.class);
     }
-
-    // Fixtures
 
     private void insertProof(String status) {
         jdbc.update("""
@@ -508,12 +459,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         return "Bearer " + token;
     }
 
-    /**
-     * The booking's proof that is still waiting for a decision, read off the
-     * queue rather than out of the repository: {@code PaymentProof.booking} is
-     * lazy, and touching it on a detached row outside a transaction is a
-     * different failure entirely from the one a test is trying to show.
-     */
     private UUID proofIdOf(String booking) throws Exception {
         String body = queue().andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         List<String> ids = JsonPath.read(body, "$[?(@.bookingId == '" + booking + "')].id");
@@ -568,11 +513,6 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
                 .andReturn().getResponse().getContentAsString(), "$.id");
     }
 
-    /**
-     * An administrator is a promoted student: the exchange endpoint only ever
-     * mints a student, so the role has to be granted and a second token taken
-     * afterwards, as {@code TransportInventoryIntegrationTests} already does.
-     */
     private String tokenFor(String idToken, String lineSubject, boolean administrator) throws Exception {
         when(lineTokenVerifier.verify(idToken)).thenReturn(new VerifiedLineIdentity(lineSubject, "Test User"));
         String response = mockMvc.perform(post("/api/v1/auth/line/exchange")

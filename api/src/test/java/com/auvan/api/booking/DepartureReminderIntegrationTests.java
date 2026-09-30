@@ -58,19 +58,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
-/**
- * Departure reminders: when they are scheduled, when they are deliberately not,
- * and what withdraws them.
- *
- * <p>A reminder is an outbox row whose {@code next_attempt_at} is in the
- * future, so everything here is about three facts on that row — its due time,
- * its {@code dedupe_key}, and whether it still exists by the time it comes due.
- *
- * <p>Not {@code @Transactional}: the dispatch paths must run outside any
- * transaction, and a reminder's whole point is that it survives the commit that
- * scheduled it. Rows are aged with {@link JdbcTemplate} rather than by waiting,
- * for the reason {@code OutboxIntegrationTests} gives.
- */
 @SpringBootTest
 class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
     @TestConfiguration
@@ -162,7 +149,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         administrator = users.save(new AppUser("Uadmin-reminder", "Administrator")).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         events.deleteAll();
@@ -177,12 +163,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         users.deleteAll();
     }
 
-    // Scheduling
-
-    /**
-     * Approval is where a trip becomes something to be reminded about, and both
-     * offsets are still ahead of a booking approved three days out.
-     */
     @Test
     void approvingABookingSchedulesBothDepartureRemindersForTheStudent() {
         Trip trip = tripDepartingIn(Duration.ofDays(3));
@@ -190,7 +170,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(reminderOfType(OutboxEventType.DEPARTURE_REMINDER_24H)).satisfies(event -> {
             assertThat(event.getAggregateId()).isEqualTo(bookingId);
-            // The student, never the administrator who approved it.
             assertThat(event.getRecipientUserId()).isEqualTo(student);
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
             assertThat(event.getAttempts()).isZero();
@@ -206,13 +185,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         });
     }
 
-    /**
-     * The legacy's rule at {@code reminder.service.ts:77}, and the reason it
-     * exists: a row due in the past is a row due <em>now</em>, so queueing the
-     * twenty-four hour reminder for a booking approved twelve hours before
-     * departure would fire it immediately, announcing a full day's notice the
-     * student has not got. Delete the skip and this reddens.
-     */
     @Test
     void aReminderWhoseMomentHasAlreadyPassedIsNotQueuedAtAll() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofHours(12)), "key-twelve");
@@ -221,7 +193,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
                 .containsExactly(OutboxEventType.DEPARTURE_REMINDER_1H);
     }
 
-    /** Both moments gone, so there is nothing to schedule and nothing is. */
     @Test
     void aBookingApprovedInsideTheLastHourGetsNoReminderAtAll() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofMinutes(30)), "key-thirty");
@@ -229,11 +200,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         assertThat(remindersOf(bookingId)).isEmpty();
     }
 
-    /**
-     * Idempotence, ported from the legacy's {@code unique (bookingId, type)}:
-     * scheduling the same reminders again is a no-op rather than a second
-     * message.
-     */
     @Test
     void schedulingTheSameRemindersAgainLeavesOneRowPerOffset() {
         Trip trip = tripDepartingIn(Duration.ofDays(3));
@@ -246,14 +212,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         assertThat(remindersOf(bookingId)).hasSize(2);
     }
 
-    /**
-     * The constraint underneath that idempotence, which is what actually holds
-     * when two transactions try it at once — the {@code existsByDedupeKey} read
-     * above only keeps them from reaching it. Drop
-     * {@code outbox_events_dedupe_key_unique} from {@code V7} and this reddens:
-     * the second row is simply stored, and a student gets two of the same
-     * reminder.
-     */
     @Test
     void theDedupeKeyIsUniqueSoASecondRowCarryingItCannotBeStoredAtAll() {
         Trip trip = tripDepartingIn(Duration.ofDays(3));
@@ -265,8 +223,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(remindersOf(bookingId)).hasSize(2);
     }
-
-    // Delivery
 
     @Test
     void aReminderIsNotDispatchedBeforeItsTimeAndIsDispatchedAfterIt() {
@@ -289,19 +245,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         assertThat(remindersOf(bookingId)).hasSize(2);
     }
 
-    // Withdrawal
-
-    /**
-     * The failure this prevents is concrete: without it a student who cancelled
-     * a confirmed booking is told, hours later, that their trip departs in an
-     * hour. Delete the {@code reminders.cancel} call from
-     * {@code BookingService.cancel} and this reddens.
-     *
-     * <p>The second assertion is the other half, and the reason
-     * {@code cancelScheduled} is scoped to rows carrying a dedupe key: the
-     * cancellation's own message is written in the same transaction and the
-     * student does still need it.
-     */
     @Test
     void cancellingABookingKillsItsUnsentRemindersAndLeavesItsCancellationMessageAlone() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofDays(3)), "key-cancel");
@@ -316,33 +259,17 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         assertThat(eventsOfType(OutboxEventType.BOOKING_CANCELLED)).singleElement().satisfies(cancelled ->
                 assertThat(cancelled.getStatus()).isEqualTo(OutboxStatus.PENDING));
 
-        // And nothing due ever reaches the student for the reminders.
         dueAt(remindersOf(bookingId).getFirst().getId(), OffsetDateTime.now().minusSeconds(1));
         dispatcher.dispatchBatch();
         assertThat(sender.messages()).noneSatisfy(message ->
                 assertThat(message.text()).contains("departs in"));
     }
 
-    /**
-     * The window the withdrawal used to miss. A reminder comes due the moment
-     * its {@code next_attempt_at} passes, but no worker holds it until the next
-     * poll claims it, so for up to one {@code poll-interval} it sits
-     * {@code PENDING} and due. Cancelling in that window has to withdraw it —
-     * otherwise the very next poll delivers "your trip departs in 1 hour" for a
-     * booking cancelled seconds earlier, which is the failure
-     * {@code cancelScheduled} exists to prevent.
-     *
-     * <p>Put {@code and event.nextAttemptAt > :now} back into
-     * {@code OutboxEventRepository.cancelScheduled} and this reddens: the row
-     * stays {@code PENDING} and the dispatch below puts the reminder on the
-     * wire. Nothing else in the suite notices that clause either way.
-     */
     @Test
     void aReminderAlreadyDueButNotYetClaimedIsStillWithdrawnByCancellation() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofDays(3)), "key-due-cancel");
         OutboxEvent reminder = reminderOfType(OutboxEventType.DEPARTURE_REMINDER_1H);
         drainDueNotifications();
-        // Due, and still nobody's: exactly the state a poll interval leaves it in.
         dueAt(reminder.getId(), OffsetDateTime.now().minusSeconds(1));
         assertThat(events.findById(reminder.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
 
@@ -353,21 +280,11 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
             assertThat(withdrawn.getLastError()).contains("no longer eligible");
         });
 
-        // And the poll that would have claimed it finds nothing to send.
         dispatcher.dispatchBatch();
         assertThat(sender.messages()).noneSatisfy(message ->
                 assertThat(message.text()).contains("departs in"));
     }
 
-    /**
-     * The same withdrawal on the expiry path. Today a booking cannot both carry
-     * a reminder and be expirable — reminders are scheduled at approval, which
-     * leaves the booking {@code CONFIRMED}, and the sweep only takes the three
-     * unpaid statuses — so the fixture schedules the reminder against an unpaid
-     * booking directly. The hook is symmetry rather than a live path, and the
-     * pull request says so; what this proves is that it works if a future
-     * transition ever makes the two overlap.
-     */
     @Test
     void expiringABookingKillsItsUnsentReminders() {
         Trip trip = tripDepartingIn(Duration.ofDays(3));
@@ -385,20 +302,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
                 assertThat(expired.getStatus()).isEqualTo(OutboxStatus.PENDING));
     }
 
-    /**
-     * The clause that scopes the withdrawal to reminders, in the case where it
-     * is the only thing doing the work.
-     *
-     * <p>A state-change notification that failed once is {@code PENDING} with
-     * its {@code next_attempt_at} pushed into the future by the backoff —
-     * indistinguishable, on those two columns alone, from a scheduled reminder.
-     * So a withdrawal that selected only on status and due time would kill a
-     * message the student is still owed, and a booking cancelled while its
-     * approval notification was backing off would silently never deliver it.
-     * Drop {@code and event.dedupeKey is not null} from
-     * {@code OutboxEventRepository.cancelScheduled} and this reddens; nothing
-     * else in this class would notice.
-     */
     @Test
     void aStateChangeNotificationBackingOffAfterAFailureIsNotWithdrawnWithTheReminders() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofDays(3)), "key-backoff");
@@ -418,11 +321,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
                 assertThat(reminder.getStatus()).isEqualTo(OutboxStatus.DEAD));
     }
 
-    /**
-     * A reminder that has already gone is not resurrected as a dead letter, and
-     * one another worker holds is left for the claim that holds it. Only
-     * {@code PENDING} rows are withdrawn, whatever their due time.
-     */
     @Test
     void aReminderThatHasAlreadyBeenSentIsNotTouchedByTheWithdrawal() {
         UUID bookingId = approvedBooking(tripDepartingIn(Duration.ofDays(3)), "key-sent");
@@ -435,8 +333,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(events.findById(reminder.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
     }
-
-    // Fixtures
 
     private UUID approvedBooking(Trip trip, String idempotencyKey) {
         UUID bookingId = createBooking(trip, idempotencyKey, trip.getSeats().getFirst());
@@ -455,33 +351,21 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
                 .map(Booking::getId).findFirst().orElseThrow();
     }
 
-    /**
-     * Sends the state-change notifications an approval leaves behind — the
-     * booking, the submitted proof, the approval itself — so that what a later
-     * {@code dispatchBatch()} does is attributable to the reminder alone.
-     */
     private void drainDueNotifications() {
         while (dispatcher.dispatchBatch() > 0) {
-            // Until nothing is due.
         }
         sender.reset();
     }
 
-    /** Ages a row by writing its due time directly; nothing here injects a {@code Clock}. */
     private void dueAt(UUID eventId, OffsetDateTime when) {
         jdbc.update("update outbox_events set next_attempt_at = ? where id = ?", when, eventId);
     }
 
-    /** The same, for a booking's payment deadline, so the sweep has something to take. */
     private void overdue(UUID bookingId) {
         jdbc.update("update bookings set payment_deadline_at = ? where id = ?",
                 OffsetDateTime.now().minusMinutes(5), bookingId);
     }
 
-    /**
-     * A second row carrying a dedupe key that is already taken, written straight
-     * at the table so nothing above the constraint can absorb it.
-     */
     @Transactional
     void insertRowCarrying(String dedupeKey) {
         jdbc.update("""
@@ -513,7 +397,6 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         return new MockMultipartFile("file", "slip.jpg", "image/jpeg", content.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** One trip per test, so each can choose how close to departure it sits. */
     private Trip tripDepartingIn(Duration untilDeparture) {
         layoutSequence++;
         VanRoute route = routes.save(new VanRoute("AU", "Asok", new BigDecimal("35.00"), 45));

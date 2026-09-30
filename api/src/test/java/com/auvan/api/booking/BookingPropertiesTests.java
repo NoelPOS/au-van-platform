@@ -8,12 +8,6 @@ import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The deadline arithmetic, which is the only thing {@link BookingProperties}
- * does. {@code promotionDeadlineFor} is exercised here rather than through the
- * sweep because the sweep is issue #69: this branch owns the rule, so this
- * branch has to prove it.
- */
 class BookingPropertiesTests {
     private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-09-22T08:00:00Z");
 
@@ -27,20 +21,11 @@ class BookingPropertiesTests {
         assertThat(properties.promotionDeadlineFor(NOW.plusDays(1), NOW)).isEqualTo(NOW.plusMinutes(30));
     }
 
-    /**
-     * The window is not the only bound. A trip departing inside it gets the
-     * shorter deadline, so a promotion never outlives the seat's usefulness.
-     */
     @Test
     void aPromotionIsCutShortByTheDepartureBound() {
         assertThat(properties.promotionDeadlineFor(NOW.plusMinutes(70), NOW)).isEqualTo(NOW.plusMinutes(10));
     }
 
-    /**
-     * A trip already past its departure bound produces a deadline in the past,
-     * which is the point: ADR-011 makes that trip promote nobody rather than
-     * having the arithmetic hide it.
-     */
     @Test
     void aTripInsideTheDepartureCutoffGetsADeadlineThatHasAlreadyPassed() {
         assertThat(properties.promotionDeadlineFor(NOW.plusMinutes(20), NOW)).isBefore(NOW);

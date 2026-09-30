@@ -50,12 +50,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The booking endpoints end to end. Every failure asserts the machine-readable
- * {@code code} as well as the status, because this endpoint answers 409 for
- * seven different conditions and the status alone tells a client nothing about
- * what to do next.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class BookingIntegrationTests extends AuthenticationTestSupport {
@@ -103,11 +97,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         studentId = users.findByLineSubject("Ustudent").orElseThrow().getId();
     }
 
-    /**
-     * In foreign-key order, and in both hooks. Bookings outlive this class, and
-     * one leftover row blocks the {@code users.deleteAll()} that every other
-     * integration test starts with.
-     */
     @AfterEach
     void clearData() {
         claims.deleteAll();
@@ -120,13 +109,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         users.deleteAll();
     }
 
-    // Success paths
-
-    /**
-     * Confirming a hold secures the seats; it no longer pays for them. ADR-009
-     * made the payment review the only path to {@code CONFIRMED}, so the
-     * booking this returns is {@code PENDING_PAYMENT}.
-     */
     @Test
     void confirmingAHoldReturnsTheBookingItsSeatsAndItsFirstHistoryEntry() throws Exception {
         String holdId = holdOn(seats.get(0), seats.get(1));
@@ -154,7 +136,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         assertThat(bookings.count()).isOne();
     }
 
-    /** The price comes from the trip and the seats held, never from the client. */
     @Test
     void theTotalFareIsDerivedFromTheTripAndTheSeatsHeld() throws Exception {
         String holdId = holdOn(seats.get(0));
@@ -185,18 +166,12 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andReturn().getResponse().getContentAsString();
 
-        // Byte for byte, with nothing in it for the client to branch on.
         assertThat(replayed).isEqualTo(first);
         assertThat(bookings.count()).isOne();
         assertThat(idempotencyKeys.count()).isOne();
         assertThat(claims.count()).isEqualTo(2);
     }
 
-    /**
-     * The stored response is replayed, not rebuilt. Rebuilding would answer a
-     * retry that arrives after a cancellation with a cancelled booking under
-     * {@code 201 Created}.
-     */
     @Test
     void aReplayAfterACancellationStillReturnsTheResponseThatWasSent() throws Exception {
         String holdId = holdOn(seats.get(0));
@@ -250,13 +225,9 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.events[0].type").value("CREATED"))
                 .andExpect(jsonPath("$.events[1].type").value("CANCELLED"))
                 .andExpect(jsonPath("$.events[1].detail").value("Cancelled and released seats A1, A2."))
-                // booking_seats is not seat_claims, so the booking still says
-                // what was booked even though the claims are gone.
                 .andExpect(jsonPath("$.seats.length()").value(2));
 
         assertThat(claims.count()).isZero();
-        // The cancellation and its event really reached the database, rather
-        // than only the response body.
         mockMvc.perform(authenticated(get("/api/v1/bookings/" + bookingId)))
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.events.length()").value(2));
@@ -270,8 +241,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
 
         hold(otherToken, seats.get(0)).andExpect(status().isCreated());
     }
-
-    // Failure paths
 
     @Test
     void aConfirmationWithoutAnIdempotencyKeyIsRejected() throws Exception {
@@ -300,7 +269,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         assertThat(bookings.count()).isOne();
     }
 
-    /** Two requests that differ only in field order are the same request. */
     @Test
     void aRetryWhosePayloadOnlyDiffersInShapeIsStillAReplay() throws Exception {
         String holdId = holdOn(seats.get(0));
@@ -345,10 +313,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         assertThat(bookings.count()).isOne();
     }
 
-    /**
-     * Someone else's hold answers exactly as a hold that never existed, so a
-     * stranger cannot tell a live hold id from an imaginary one.
-     */
     @Test
     void confirmingSomeoneElsesHoldIsNotFoundAndLeavesItAlone() throws Exception {
         String holdId = holdOn(seats.get(0));
@@ -458,10 +422,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isUnauthorized());
     }
 
-    /**
-     * The seat-hold errors gained the same {@code code} member in this change,
-     * so the web client has one error idiom across the whole booking flow.
-     */
     @Test
     void theSeatHoldErrorsCarryTheSameCodeMember() throws Exception {
         hold(studentToken, seats.get(0)).andExpect(status().isCreated());
@@ -479,8 +439,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.code").value("trip_not_found"));
     }
 
-    // Fixtures
-
     private Trip createTrip(String vehicleCode, OffsetDateTime departureAt, TripStatus status) {
         VanRoute route = routes.save(new VanRoute("AU", "Asok", new BigDecimal("35.00"), 45));
         List<SeatLayoutSeat> layoutSeats = new ArrayList<>();
@@ -494,7 +452,6 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
         return trips.save(created);
     }
 
-    /** Cancels or reschedules the trip after a hold on it already exists. */
     private void retimeTrip(OffsetDateTime departureAt, TripStatus status) {
         Trip stored = trips.findById(trip.getId()).orElseThrow();
         stored.update(departureAt, status);
