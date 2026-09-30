@@ -39,6 +39,8 @@ openssl rand -base64 24
 
 Paste the generated value after `POSTGRES_PASSWORD=` in `.env`.
 
+For the local object store, generate an access key pair -- run `openssl rand -hex 16` twice -- and set the two values as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in the ignored root `.env`. The `object-store` service refuses to start without them; [Payment-proof storage](#payment-proof-storage) explains why.
+
 For the authentication boundary, also generate a JWT signing key with `openssl rand -base64 32` and set it as `JWT_SECRET` in the ignored root `.env`. Add `LINE_CHANNEL_ID` only when you are ready to test a real LIFF token exchange. `VITE_LIFF_ID` belongs in the ignored `web/.env`; LINE channel secrets never belong in the frontend. `CORS_ALLOWED_ORIGINS` defaults to the Vite dev server and needs no change locally; add the LIFF tunnel's origin to it, comma-separated, only when testing through one -- never a wildcard, since these requests carry an `Authorization` header.
 
 ## Bootstrap the initial administrator
@@ -107,9 +109,11 @@ whatever `PAYMENT_PROOF_BUCKET` names) every time it starts. It is private and
 has no console: nothing outside the API ever reads it, and no URL to it is
 ever sent to a browser.
 
-Neither `./gradlew test` nor CI needs any of this. The tests substitute an
+`./gradlew test` and API checks need none of this. The tests substitute an
 in-memory implementation of the storage port, so the suite still runs with no
-container and no credential.
+container and no credential. Container checks and End-to-end checks do start
+the object store, and each supplies its own pair: Container checks generates
+one into its `.env`, and `compose.e2e.yaml` sets a fixed fixture pair.
 
 ## LINE Messaging
 
