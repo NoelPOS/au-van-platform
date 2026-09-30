@@ -6,7 +6,7 @@ This document records behaviour found in the legacy `NoelPOS/AU-Van` Next.js rep
 
 | Area | Legacy implementation | Rebuild disposition |
 | --- | --- | --- |
-| Web experiences | Next.js App Router with admin pages and mobile-focused LIFF route group | Rebuild in React route groups: `/admin/*` and `/liff/*` |
+| Web experiences | Next.js App Router with admin pages and mobile-focused LIFF route group | Rebuilt as one React app on React Router: `/` for students (the LIFF entry) and `/admin/*` for staff |
 | API | Next.js Route Handlers | Rebuild as Spring Boot REST API |
 | Persistence | MongoDB + Mongoose | Migrate to PostgreSQL |
 | Authentication | Admin credentials/session; LIFF LINE ID-token flow | Spring Security with separate admin and LINE identity flows |

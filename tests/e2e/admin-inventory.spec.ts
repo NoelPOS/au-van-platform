@@ -75,13 +75,10 @@ test.describe("the administrator journey", () => {
   /**
    * The failure path that matters most on this screen.
    *
-   * <p>`OperationsAdminController`'s own Javadoc says the `/api/v1/admin/**`
-   * path prefix is the <em>only</em> thing enforcing `ROLE_ADMIN` behind it, and
-   * that a mistyped segment "would quietly publish one student's queue position,
-   * another's booking counts and every delivery failure in the system to any
-   * signed-in student, and nothing would fail". `OperationsIntegrationTests`
-   * covers it at the API layer; this covers it against the deployed stack, with
-   * a token minted the way a real student's is.
+   * <p>`SecurityConfiguration`'s `/api/v1/admin/**` matcher is the only thing
+   * enforcing `ROLE_ADMIN` on these paths. `OperationsIntegrationTests` covers
+   * it at the API layer; this covers it against the deployed stack, with a token
+   * minted the way a real student's is.
    *
    * <p>The administrator's own 200 on the same paths is asserted alongside, so
    * a 403 caused by the path simply not existing cannot pass as authorization.

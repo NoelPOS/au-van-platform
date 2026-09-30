@@ -299,7 +299,7 @@ jobs:
           # container, so this greps the same bytes a visitor is sent.
           if grep -rn 'auvan-e2e-sign-in' ./served; then
             echo "The served bundle carries the end-to-end sign-in control." >&2
-            echo "web/src/auth/liff-config.ts explains why e2eAuthEnabled has" >&2
+            echo "web/src/services/liffConfig.ts explains why e2eAuthEnabled has" >&2
             echo "to stay a module-level constant for this to hold." >&2
             exit 1
           fi
