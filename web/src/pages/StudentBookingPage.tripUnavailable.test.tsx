@@ -22,8 +22,6 @@ describe("StudentBookingPage", () => {
       409,
     );
 
-    // Found by role, not by text: the notice is an error and has to reach a
-    // screen reader as one the moment it appears.
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "That trip is no longer available. Choose another.",
     );
@@ -31,9 +29,6 @@ describe("StudentBookingPage", () => {
   });
 
   it("drops the withdrawn trip from the list the student lands back on", async () => {
-    // The message alone is not the remedy: with the application-wide thirty
-    // second staleTime and the trips query permanently mounted, the refetch in
-    // the transition is the only thing taking the dead trip off the list.
     let tripsRequested = 0;
     stubApi({
       trips: () => {

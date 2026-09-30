@@ -8,7 +8,7 @@ import { ProofImage } from "../components/ProofImage";
 import { useApproveProof, usePaymentProofs, useRejectProof } from "../hooks/usePaymentQueries";
 import type { PaymentProof } from "../types/payments";
 
-/** Mirrors the API's own ceiling; its 400 is the backstop. */
+// Mirrors the API's own ceiling; its 400 is the backstop.
 const maxNoteLength = 500;
 
 export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
@@ -20,8 +20,6 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
   const reject = useRejectProof(session);
 
   const queue = proofs.data ?? [];
-  // Derived from the list rather than held in state, so a proof another
-  // administrator decided meanwhile simply closes on the next refresh.
   const selected = queue.find((proof) => proof.id === reviewing) ?? null;
   const busy = approve.isPending || reject.isPending;
   const failure = approve.error ?? reject.error ?? null;
@@ -37,8 +35,6 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
   async function decide(decision: "approve" | "reject") {
     if (!selected) return;
     const trimmed = note.trim();
-    // Rejecting without a reason is refused before anything goes out: the
-    // student is being asked to send a better slip and cannot without one.
     if (decision === "reject" && trimmed === "") {
       setNoteError("Say why the slip was rejected, so the student can fix it.");
       return;
@@ -50,8 +46,6 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
       setReviewing(null);
       setNote("");
     } catch {
-      // The message is rendered from the mutation's own error below, and the
-      // slip stays open so the decision can be retried.
     }
   }
 

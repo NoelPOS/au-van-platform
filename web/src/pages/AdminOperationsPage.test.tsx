@@ -170,10 +170,8 @@ describe("AdminOperationsPage", () => {
     expect(screen.getByText("#1")).toBeInTheDocument();
     expect(screen.getByText("Malee K.")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
-    // Promoted, with the window the student has to act in.
     expect(screen.getByText("PROMOTED")).toBeInTheDocument();
     expect(screen.getByText(/Offer ends/)).toBeInTheDocument();
-    // An entry that has ended is still listed and holds no place.
     expect(screen.getByText("WITHDRAWN")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.getByText(/2 of 2 seats claimed/)).toBeInTheDocument();
@@ -210,7 +208,6 @@ describe("AdminOperationsPage", () => {
       await screen.findByText("Could not load this trip"),
     ).toBeInTheDocument();
     expect(screen.getByText("Trip not found.")).toBeInTheDocument();
-    // The dead letters are a separate read and are unaffected by it.
     expect(screen.getByText("BOOKING_CANCELLED")).toBeInTheDocument();
   });
 

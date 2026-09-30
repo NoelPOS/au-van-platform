@@ -15,14 +15,6 @@ import { formatDeparture } from "../utils/format";
 const fieldClass =
   "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-normal text-ink outline-none focus:border-brand";
 
-/**
- * What an operator can see, and nothing they can press.
- *
- * <p>Every promotion, retry and release already has an owner — the promotion
- * sweep, the outbox dispatcher, the expiry sweep — so this screen reports and
- * those mechanisms act. There is deliberately no button here to promote a
- * student or re-send a dead letter.
- */
 export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const [tripId, setTripId] = useState<string | null>(null);
   const trips = useTrips(session);

@@ -7,11 +7,6 @@ const operationsKeys = {
   deadLetters: ["operations", "dead-letters"] as const,
 };
 
-/**
- * One trip's operational picture. Nothing is read until a trip is chosen: the
- * screen opens with no trip selected, and `enabled` is what keeps it from
- * asking the API about the empty string.
- */
 export function useTripOperations(session: AuthSession, tripId: string | null) {
   return useQuery({
     queryKey: operationsKeys.trip(tripId ?? ""),

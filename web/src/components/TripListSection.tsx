@@ -44,8 +44,6 @@ export function TripListSection({
       <ul className="flex flex-col gap-3">
         {trips.map((trip) => {
           const summary = `${formatDeparture(trip.departureAt)} · ${formatFare(trip.fare)} · `;
-          // The waitlist exists only for a trip nobody can book. A trip with a
-          // seat free is a trip to book, and the API refuses a join on one.
           if (trip.availableSeats > 0) {
             return (
               <li key={trip.id}>
@@ -65,8 +63,7 @@ export function TripListSection({
               </li>
             );
           }
-          // A full trip is a block rather than a button: it carries the join
-          // and leave controls, and a button inside a button is invalid.
+          // A block, not a button: it holds the waitlist buttons, and buttons cannot nest.
           const entry = waitlist.find((queued) => queued.tripId === trip.id);
           return (
             <li key={trip.id}>

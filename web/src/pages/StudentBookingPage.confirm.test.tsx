@@ -69,7 +69,6 @@ describe("StudentBookingPage", () => {
       ),
     ).toBeInTheDocument();
 
-    // Without a fresh key the student retries under the rejected one forever.
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
     expect(keys).toHaveLength(2);
@@ -95,9 +94,6 @@ describe("StudentBookingPage", () => {
       await screen.findByText("The service is unavailable."),
     ).toBeInTheDocument();
 
-    // The abandoned attempt's key must not travel onto a different hold: the
-    // payload would differ and the server would reject a retry the student
-    // cannot act on.
     fireEvent.click(screen.getByRole("button", { name: "Change seats" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Seat A1, available" }),
@@ -118,12 +114,8 @@ describe("StudentBookingPage", () => {
   });
 
   it("points an already-used hold at my bookings rather than the seat map", async () => {
-    // The 201 the student never saw is a real booking, so the message has to
-    // land somewhere that shows it.
     let bookingsRequested = 0;
     stubApi({
-      // Empty on first load: only the refetch can put the hidden booking on
-      // screen, so the message and the list agree.
       bookings: () => {
         bookingsRequested += 1;
         return json(bookingsRequested === 1 ? [] : [booking]);

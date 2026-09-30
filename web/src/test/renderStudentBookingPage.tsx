@@ -57,8 +57,7 @@ export function stubApi(routes: Routes = {}) {
 }
 
 export function renderPage() {
-  // The same defaults the application runs with, so a seat map served from
-  // cache would show up here.
+  // The application's own defaults, so a seat map served from cache shows up here.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 30_000 } },
   });
@@ -69,12 +68,8 @@ export function renderPage() {
   );
 }
 
-/**
- * Advances faked timers and lets React settle. RTL's own waiters cannot do
- * this: `waitFor` and `findBy*` look for a global `jest`, never find one under
- * Vitest, and then wait on an interval that the fake clock has frozen. The
- * trailing millisecond flushes the query client's own batched notification.
- */
+// RTL's waitFor and findBy* stall under Vitest's fake timers, so advance the
+// clock here; the trailing millisecond flushes React Query's batched notify.
 export async function tick(milliseconds = 0) {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(milliseconds);

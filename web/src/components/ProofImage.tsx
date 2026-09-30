@@ -2,16 +2,6 @@ import { useEffect, useState } from "react";
 import type { AuthSession } from "../types/auth";
 import { paymentsApi } from "../services/paymentsApi";
 
-/**
- * The payment slip itself. The image is fetched with the administrator's token
- * and rendered from an object URL, because the browser sends no `Authorization`
- * header for an `<img src>` and the endpoint would answer 401.
- *
- * <p>The object URL is revoked when the component goes away; without that
- * every slip looked at leaks one for the life of the tab. The caller keys this
- * component on the proof, so a different slip is a fresh mount and the effect
- * never has to reset state it did not set.
- */
 export function ProofImage({
   session,
   proofId,

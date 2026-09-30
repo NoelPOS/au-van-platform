@@ -51,8 +51,6 @@ describe("booking API client", () => {
       ["/api/v1/bookings", "POST"],
       ["/api/v1/waitlist", "GET"],
       ["/api/v1/waitlist", "POST"],
-      // A POST, not a DELETE: the API's CORS policy allows no DELETE, so a
-      // DELETE would work behind the dev proxy and fail in a real browser.
       ["/api/v1/waitlist/waitlist-1/leave", "POST"],
     ]);
     const bookingRequest = fetcher.mock.calls[4][1] as RequestInit;
@@ -62,8 +60,6 @@ describe("booking API client", () => {
   });
 
   it("posts a payment proof as multipart without a JSON content type", async () => {
-    // The shared request() helper always sets application/json; a multipart
-    // body has to bypass it so the browser writes its own boundary header.
     const fetcher = vi.fn().mockImplementation(() => Promise.resolve(json({})));
     vi.stubGlobal("fetch", fetcher);
     const slip = new File(["slip-bytes"], "slip.jpg", { type: "image/jpeg" });

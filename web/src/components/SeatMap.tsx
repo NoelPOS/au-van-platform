@@ -15,7 +15,6 @@ const stateText: Record<TripSeat["state"], string> = {
   BOOKED: "booked",
 };
 
-/** Seat state is carried by colour, so every seat spells its state out. */
 function seatState(seat: TripSeat, selected: boolean): string {
   return selected ? "selected" : stateText[seat.state];
 }

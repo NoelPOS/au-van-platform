@@ -155,13 +155,8 @@ describe("AdminInventoryPage", () => {
     const offered = Array.from(
       (screen.getByLabelText("Status") as HTMLSelectElement).options,
     ).map((option) => option.value);
-    // TripStatus in web/src/inventory/types.ts is "ACTIVE" | "CANCELLED";
-    // any other offered value is one Jackson cannot deserialise into the
-    // API's own TripStatus enum.
     expect(offered).toEqual(["ACTIVE", "CANCELLED"]);
 
-    // Submitting resets the form to create mode, so each offered status is
-    // proven independently by re-entering edit mode.
     for (const status of offered) {
       fireEvent.click(screen.getByRole("button", { name: "Edit" }));
       fireEvent.change(screen.getByLabelText("Status"), {
@@ -169,9 +164,7 @@ describe("AdminInventoryPage", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "Save trip" }));
 
-      // The form round-trips departureAt through a minute-precision
-      // datetime-local input, so the resubmitted value gains ":00.000Z"
-      // rather than reproducing the fixture's "Z" literally.
+      // datetime-local is minute-precision, so the resubmitted value gains ":00.000Z".
       await vi.waitFor(() =>
         expect(fetcher).toHaveBeenCalledWith(
           expect.stringContaining("/trips/trip-1"),

@@ -39,9 +39,6 @@ describe("StudentBookingPage", () => {
   });
 
   it("lists the new booking in my bookings on the confirmation step", async () => {
-    // The confirmation step renders My bookings, so a list still showing the
-    // pre-booking state is visibly wrong: the booking has to be invalidated
-    // into it.
     let bookingsRequested = 0;
     stubApi({
       bookings: () => {
@@ -55,8 +52,6 @@ describe("StudentBookingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
     expect(await screen.findByText("Seats reserved")).toBeInTheDocument();
-    // Only My bookings renders the seats-and-fare line, so this is the list
-    // rather than the confirmation panel beside it.
     expect(
       await screen.findByText("Seat A1 · 35.00 THB"),
     ).toBeInTheDocument();
@@ -145,8 +140,6 @@ describe("StudentBookingPage", () => {
   });
 
   it("asks the student to sign in again when the hold is refused as expired", async () => {
-    // The sign-in screen replaces the page, so a 401 mid-flow needs no notice
-    // of its own in the failure handler.
     await holdFailsWith(null, 401);
 
     expect(await screen.findByText("Sign in again")).toBeInTheDocument();
@@ -182,8 +175,6 @@ describe("StudentBookingPage", () => {
     renderPage();
 
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    // Waiting for payment is neither the success colour nor the failure one
-    // the badge falls back to for anything it does not recognise.
     expect(screen.getByText("PENDING_PAYMENT")).toHaveClass("text-amber-800");
     expect(screen.getByText(/^AU → Mega Bangna · /)).toBeInTheDocument();
     expect(screen.getByText("Seat A1 · 35.00 THB")).toBeInTheDocument();

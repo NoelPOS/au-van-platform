@@ -10,12 +10,8 @@ function format(milliseconds: number): string {
   return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
 }
 
-/**
- * Counts down to the server's expiry instant. Every tick recomputes from
- * `expiresAt` instead of decrementing, so a throttled timer in a backgrounded
- * LINE browser costs smoothness rather than accuracy. Give it the expiry as a
- * `key`: a fresh hold is a fresh countdown.
- */
+// Recomputed from expiresAt on every tick because a backgrounded LINE browser
+// throttles timers; callers key it on expiresAt so a new hold restarts it.
 export function HoldCountdown({
   expiresAt,
   onExpire,

@@ -8,11 +8,6 @@ describe("end-to-end sign-in", () => {
     vi.unstubAllGlobals();
   });
 
-  /**
-   * The subject goes to the ordinary exchange endpoint as an id token, and
-   * nowhere else. There is no second endpoint and no token minted in the
-   * browser: the API verifies this string exactly as it verifies a real one.
-   */
   it("exchanges the typed subject through the ordinary LINE exchange endpoint", async () => {
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,
@@ -45,11 +40,6 @@ describe("end-to-end sign-in", () => {
     );
   });
 
-  /**
-   * A subject the API refuses is refused here too. This is the case that proves
-   * the control is not a bypass: it holds no key and mints nothing, so a
-   * verification host that will not vouch for the subject ends the sign-in.
-   */
   it("reports a subject the API refuses and signs nobody in", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     const onSignedIn = vi.fn();

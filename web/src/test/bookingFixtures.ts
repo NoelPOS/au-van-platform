@@ -26,7 +26,6 @@ export const otherTrip = {
   departureAt: "2026-10-01T03:00:00Z",
 };
 
-/** A trip nobody can book, which is the only kind the waitlist appears on. */
 export const fullTrip = {
   ...trip,
   id: "trip-full",
@@ -46,8 +45,6 @@ export const waitlistEntry = {
 export const booking = {
   id: "booking-1",
   reference: "AUV-260921-7KQ2M4XR",
-  // A new booking is PENDING_PAYMENT: ADR-009 made the payment review the
-  // only path to CONFIRMED.
   status: "PENDING_PAYMENT",
   trip: {
     id: "trip-1",
@@ -67,16 +64,10 @@ export const booking = {
       createdAt: "2026-09-21T10:01:12Z",
     },
   ],
-  // The payment window, two hours after this booking was made (ADR-010).
   paymentDeadlineAt: "2026-09-21T12:01:12Z",
   createdAt: "2026-09-21T10:01:12Z",
 };
 
-/**
- * What the sweep leaves behind: the status is CANCELLED, the same as a booking
- * the student cancelled themselves, and only the EXPIRED event says otherwise.
- * A terminal booking carries no deadline.
- */
 export const expiredBooking = {
   ...booking,
   id: "booking-expired",
@@ -88,14 +79,12 @@ export const expiredBooking = {
     {
       type: "EXPIRED",
       detail: "Expired unpaid and released seats A1.",
-      // Nobody asked for this, so there is no actor.
       actorUserId: null,
       createdAt: "2026-09-21T12:01:12Z",
     },
   ],
 };
 
-/** What the student sees after an administrator has sent the slip back. */
 export const rejectedBooking = {
   ...booking,
   status: "PAYMENT_REJECTED",
@@ -104,7 +93,6 @@ export const rejectedBooking = {
     {
       type: "PAYMENT_REJECTED",
       detail: "The slip is too blurred to read.",
-      // An administrator's id, on the student's own booking.
       actorUserId: "admin-id",
       createdAt: "2026-09-21T11:02:00Z",
     },
