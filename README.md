@@ -54,17 +54,17 @@ set +a
 
 The command creates that local user if needed, or promotes the existing user to `ADMIN`. It is safe to run again. Never expose this operation as a public API endpoint.
 
-Start PostgreSQL, Redis, and MinIO:
+Start PostgreSQL, Redis, and the object store:
 
 ```sh
-docker compose up -d postgres redis minio
+docker compose up -d postgres redis object-store
 ```
 
 If you started PostgreSQL before creating `.env`, recreate the local database so it receives the new password. This deletes local development data only:
 
 ```sh
 docker compose down -v
-docker compose up -d postgres redis minio
+docker compose up -d postgres redis object-store
 ```
 
 In separate terminals, start the API and web app. Spring Boot uses the database password exported from the ignored root `.env` file:
@@ -88,23 +88,24 @@ The frontend runs at `http://localhost:5173` and displays the result of the API 
 ## Payment-proof storage
 
 Payment-proof images live in a private S3 bucket (ADR-009): AWS S3 in the
-deployed target, MinIO locally, one client either way. MinIO starts with its
-own `minioadmin` / `minioadmin` default, so put that pair in the ignored root
-`.env` as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` -- the AWS SDK's
-default credentials chain is what reads them. `PAYMENT_PROOF_BUCKET` and
-`PAYMENT_PROOF_REGION` have working defaults; set `PAYMENT_PROOF_ENDPOINT` to
-`http://localhost:9000` only when running the API on the host with `./gradlew
-bootRun`, since `compose.yaml` already points the `api` container at the MinIO
-service.
+deployed target, an S3-compatible store locally, one client either way. The
+local store is the `object-store` service in `compose.yaml`, the Versity S3
+Gateway; that file's comment says why it replaced MinIO.
 
-The bucket is not created for you. Once, after MinIO is up, open the console at
-<http://localhost:9001>, sign in with those credentials, and create a bucket
-named `au-van-payment-proofs`. Leave it private: nothing outside the API ever
-reads it, and no URL to it is ever sent to a browser.
+Generate a credential pair yourself -- `openssl rand -hex 16`, once for each
+-- and put it in the ignored root `.env` as `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`. The object store takes that pair as its root
+credential and refuses to start without it, and the API signs with the same
+pair through the AWS SDK's default credentials chain. `PAYMENT_PROOF_BUCKET`
+and `PAYMENT_PROOF_REGION` have working defaults; set `PAYMENT_PROOF_ENDPOINT`
+to `http://localhost:9000` only when running the API on the host with
+`./gradlew bootRun`, since `compose.yaml` already points the `api` container
+at the `object-store` service.
 
-The one exception is the end-to-end stack, which cannot ask anyone to open a
-console: `compose.e2e.yaml` creates the same bucket with a one-shot `mc mb`
-service before the API starts.
+The bucket is created for you: the store makes `au-van-payment-proofs` (or
+whatever `PAYMENT_PROOF_BUCKET` names) every time it starts. It is private and
+has no console: nothing outside the API ever reads it, and no URL to it is
+ever sent to a browser.
 
 Neither `./gradlew test` nor CI needs any of this. The tests substitute an
 in-memory implementation of the storage port, so the suite still runs with no
@@ -154,17 +155,18 @@ recorded and attempted and land as dead letters; set `LINE_MESSAGING_ENABLED` to
 ## Run the whole stack in containers
 
 The two `Dockerfile`s build the API and the production web bundle, and
-`compose.yaml` runs them next to PostgreSQL, Redis, and MinIO. Nothing here is
-deployed anywhere and no registry is involved.
+`compose.yaml` runs them next to PostgreSQL, Redis, and an S3-compatible object
+store. Nothing here is deployed anywhere and no registry is involved.
 
 ```sh
 docker compose up -d --wait
 ```
 
-It reads the same ignored root `.env`, so `POSTGRES_PASSWORD` and `JWT_SECRET`
-have to be set first: the API refuses to start without a signing key, and
-Flyway needs the database. The API answers on `http://localhost:8080` and the
-production web build on `http://localhost:8081`.
+It reads the same ignored root `.env`, so `POSTGRES_PASSWORD`, `JWT_SECRET`, and
+the `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` pair have to be set first: the
+API refuses to start without a signing key, Flyway needs the database, and the
+object store refuses to start without its credential. The API answers on
+`http://localhost:8080` and the production web build on `http://localhost:8081`.
 
 That second port serves the bundle and proxies `/api` and `/actuator` to the
 API, so the browser sees a single origin. This is the same contract the Vite
@@ -193,18 +195,19 @@ Run validation locally with `cd web && npm run lint && npm run test && npm run b
 administrator building a route, a van, its seats and a departure and then
 reviewing a payment slip, and a student booking a seat, sending a slip and being
 told what happened — against the whole stack: the real API, a real PostgreSQL,
-real MinIO, and the production web bundle served by nginx.
+a real S3-compatible store, and the production web bundle served by nginx.
 
 `compose.e2e.yaml` is an overlay on `compose.yaml`, not a replacement. It adds a
 stand-in for LINE's verification endpoint and points `auth.line.api-base-url` at
-it, creates the payment-proof bucket, shortens `booking.hold-ttl` so a test can
-watch a hold lapse, and builds the web image with `VITE_E2E_AUTH=true`, which
-adds a sign-in control that needs no LINE channel. **None of that reaches a real
-image**: `ADR-013` explains why, and CI asserts it.
+it, gives the object store and the API a fixture credential pair, shortens
+`booking.hold-ttl` so a test can watch a hold lapse, and builds the web image
+with `VITE_E2E_AUTH=true`, which adds a sign-in control that needs no LINE
+channel. **None of that reaches a real image**: `ADR-013` explains why, and CI
+asserts it.
 
-It needs the same ignored root `.env` the container stack does — only
-`POSTGRES_PASSWORD` and `JWT_SECRET` — and no LINE credential, no LIFF channel
-and no network egress.
+It needs only `POSTGRES_PASSWORD` and `JWT_SECRET` in the ignored root `.env`
+— the overlay supplies the object store's credentials — and no LINE
+credential, no LIFF channel and no network egress.
 
 ```sh
 docker compose -f compose.yaml -f compose.e2e.yaml up -d --wait --build
