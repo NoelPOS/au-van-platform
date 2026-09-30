@@ -49,7 +49,6 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private TripRepository trips;
 
-    // seat_claims references trip_seats, so claims have to go before the trips do.
     @Autowired
     private SeatClaimRepository claims;
 
@@ -119,13 +118,6 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
-    /**
-     * Regression guard for Hibernate's flush ordering: with the removal and the
-     * re-add in one flush, the replacement rows go in before the rows they
-     * replace come out and collide on {@code seat_layout_seats_label_unique}.
-     * Only the migrated schema declares that constraint, so this test could not
-     * fail while Hibernate was generating the schema from the mappings.
-     */
     @Test
     void aSeatLayoutCanBeUpdatedWithTheSeatLabelsItAlreadyHas() throws Exception {
         String adminToken = tokenFor("admin-token", "Uadmin", true);

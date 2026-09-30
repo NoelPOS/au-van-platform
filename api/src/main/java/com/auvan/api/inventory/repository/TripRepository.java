@@ -14,7 +14,6 @@ public interface TripRepository extends JpaRepository<Trip, UUID> {
     boolean existsByVehicleIdAndDepartureAt(UUID vehicleId, OffsetDateTime departureAt);
     boolean existsByVehicleIdAndDepartureAtAndIdNot(UUID vehicleId, OffsetDateTime departureAt, UUID id);
 
-    /** Trips a student can still book, with route and seats fetched so a listing costs one query. */
     @Query("""
             select trip from Trip trip
             join fetch trip.route

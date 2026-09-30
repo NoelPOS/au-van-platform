@@ -49,11 +49,8 @@ public class SeatLayoutService {
         List<SeatLayoutSeat> replacements = toSeats(request.seats());
         seatLayout.rename(name);
         seatLayout.removeSeats();
-        // seat_layout_seats_label_unique is checked row by row, and Hibernate
-        // orders inserts ahead of deletes within one flush, so a replacement
-        // seat reusing a label would collide with the row it replaces. Flushing
-        // the removal on its own sends the deletes first, for the same reason
-        // the seat hold path deletes reclaimed claims in bulk before inserting.
+        // Flush the removal first: Hibernate orders inserts before deletes, so a reused label
+        // would collide with the row it replaces.
         seatLayouts.flush();
         seatLayout.addSeats(replacements);
         return SeatLayoutResponse.from(seatLayout);

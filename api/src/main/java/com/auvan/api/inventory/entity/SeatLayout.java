@@ -42,11 +42,6 @@ public class SeatLayout {
         this.name = name;
     }
 
-    /**
-     * Orphan-removes every seat. Replacing a layout's seats is two steps rather
-     * than one because the removal has to reach the database before the
-     * replacements are added; see {@code SeatLayoutService.update}.
-     */
     public void removeSeats() {
         this.seats.clear();
     }
