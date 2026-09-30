@@ -39,23 +39,15 @@ services:
       timeout: 3s
       retries: 20
 
-  # The payment-proof bucket, which README.md otherwise tells you to create by
-  # hand in the MinIO console. The student journey's upload step fails without
-  # it, and "create it by hand" is not something an automated run can do.
-  #
-  # minioadmin/minioadmin is the image's own default, as compose.yaml's comment
-  # on the minio service records; it is not a credential this repository chose.
-  minio-init:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: ['sh', '-c']
-    command:
-      - >-
-        mc alias set e2e http://minio:9000 minioadmin minioadmin &&
-        mc mb --ignore-existing e2e/au-van-payment-proofs
-    restart: 'no'
+  # The payment-proof store, given a credential pair here so that a fresh
+  # checkout can run this suite with nothing in .env but POSTGRES_PASSWORD and
+  # JWT_SECRET. Fixture values, named for what they are, in the same way as
+  # e2e-login-channel above: nothing outside this stack ever accepts them. The
+  # api service below signs with the same pair.
+  object-store:
+    environment:
+      ROOT_ACCESS_KEY_ID: e2e-object-store-key
+      ROOT_SECRET_ACCESS_KEY: e2e-object-store-secret
 
   api:
     environment:
@@ -90,17 +82,14 @@ services:
       # cancel a booking underneath an assertion. The sweeps are left ON rather
       # than disabled: the E2E stack should be the real stack.
       BOOKING_PAYMENT_WINDOW: PT2H
-      # MinIO's own defaults again, read by the AWS SDK's credentials chain.
-      # Here rather than in the environment file so that a fresh checkout can
-      # run this suite with nothing in .env but POSTGRES_PASSWORD and
-      # JWT_SECRET.
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      # The object-store fixture pair above, read by the AWS SDK's credentials
+      # chain. A service-level value wins over env_file, as LINE_CHANNEL_ID's
+      # does.
+      AWS_ACCESS_KEY_ID: e2e-object-store-key
+      AWS_SECRET_ACCESS_KEY: e2e-object-store-secret
     depends_on:
       fake-line:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
 
   web:
     build:
