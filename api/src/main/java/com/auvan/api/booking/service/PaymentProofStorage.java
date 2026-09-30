@@ -2,9 +2,9 @@ package com.auvan.api.booking.service;
 
 /**
  * Where a payment-proof image goes. One production implementation talks S3
- * (AWS in the deployed target, MinIO locally and in {@code compose.yaml}); a
- * second, in-memory one lives in test sources so the submit path can be
- * exercised — and made to fail — without a bucket.
+ * (AWS in the deployed target, the local S3-compatible store locally and in
+ * {@code compose.yaml}); a second, in-memory one lives in test sources so the
+ * submit path can be exercised — and made to fail — without a bucket.
  *
  * <p>Nothing here returns a URL. ADR-009 rejected the legacy application's
  * public-URL shape outright: every byte crosses the API, so the only way to

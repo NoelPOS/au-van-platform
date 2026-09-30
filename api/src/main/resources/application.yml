@@ -150,10 +150,10 @@ payment-proof:
   # A private bucket; nothing here is ever handed to a browser (ADR-009).
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}
   region: ${PAYMENT_PROOF_REGION:ap-southeast-1}
-  # Blank against AWS S3. Set to the MinIO service for local development and
-  # compose; the client is the same either way. No credentials here: the AWS
-  # SDK's default chain reads them from the environment locally and from the
-  # task role in the deployed target.
+  # Blank against AWS S3. Set to the local S3-compatible store for local
+  # development and compose; the client is the same either way. No credentials
+  # here: the AWS SDK's default chain reads them from the environment locally
+  # and from the task role in the deployed target.
   endpoint: ${PAYMENT_PROOF_ENDPOINT:}
   # The legacy application's own ceiling. spring.servlet.multipart above is the
   # container's backstop and sits deliberately higher.

@@ -9,8 +9,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
  * The S3 implementation, used against AWS S3 in the deployed target and
- * against MinIO locally and in CI — the same client either way, per ADR-009,
- * with only the endpoint differing.
+ * against the local S3-compatible store locally and in CI — the same client
+ * either way, per ADR-009, with only the endpoint differing.
  *
  * <p>Named for its backend rather than {@code PaymentProofStorageImpl}: the
  * port has a second implementation in test sources, so "Impl" would say less

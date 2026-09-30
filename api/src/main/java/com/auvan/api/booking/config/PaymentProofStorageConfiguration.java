@@ -21,8 +21,9 @@ public class PaymentProofStorageConfiguration {
     S3Client paymentProofS3Client(PaymentProofProperties properties) {
         S3ClientBuilder builder = S3Client.builder().region(Region.of(properties.region()));
         if (properties.endpoint() != null && !properties.endpoint().isBlank()) {
-            // MinIO serves one host for every bucket, so the bucket has to be
-            // the first path segment rather than a subdomain.
+            // The local S3-compatible store serves one host for every bucket,
+            // so the bucket has to be the first path segment rather than a
+            // subdomain.
             builder.endpointOverride(URI.create(properties.endpoint())).forcePathStyle(true);
         }
         return builder.build();

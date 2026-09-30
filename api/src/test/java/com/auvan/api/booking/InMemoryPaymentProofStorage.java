@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * The port's second implementation, and the reason it is a port at all: the
  * submit path can be exercised, and made to fail, without a bucket anywhere.
- * {@code ./gradlew test} therefore needs no MinIO container and no credential,
- * which is the same posture the rest of this suite already has.
+ * {@code ./gradlew test} therefore needs no object-store container and no
+ * credential, which is the same posture the rest of this suite already has.
  */
 public class InMemoryPaymentProofStorage implements PaymentProofStorage {
     public record StoredObject(String contentType, byte[] content) { }
