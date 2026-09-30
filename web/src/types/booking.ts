@@ -130,3 +130,7 @@ export type Booking = {
   paymentDeadlineAt: string | null;
   createdAt: string;
 };
+
+export type BookingStep = "trips" | "seats" | "details" | "confirmed";
+
+export type Notice = { tone: "error" | "status"; message: string };
