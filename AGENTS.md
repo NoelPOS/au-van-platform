@@ -44,6 +44,13 @@ Before planning or changing the project, read `AGENTS.md`, `README.md`, `docs/pr
 - Prefer small, reviewable commits using Conventional Commits.
 - Never commit credentials, connection strings, access tokens, payment slips, or production data.
 
+## Simplicity
+
+- **Comments are near-zero.** Write one only where deleting it would let a competent reader introduce a real bug: a security control, the reason for a lock or ordering, or a non-obvious external constraint. Keep it to one or two lines. Never restate a name, parameter, or what the code plainly does; never record design history or alternatives (that is an ADR's job); never cite issue numbers.
+- **Files stay small.** React components and pages under about 200 lines, test files under about 300 (split by behaviour), Java classes under about 300.
+- **The web app uses a classic flat layout.** `web/src/` holds `App.tsx`, `main.tsx`, `components/` (with `ui/` for primitives), `pages/`, `hooks/`, `services/` (API calls, auth, LIFF), `types/`, `utils/`, `assets/`, and `test/`. No per-feature folders. Navigation uses React Router.
+- **No unused files**, including leftover framework-template assets.
+
 ## Documentation rules
 
 - `docs/` is the source of truth for approved scope and architecture.

@@ -58,6 +58,9 @@ Any one of these is `REQUEST_CHANGES`:
 - An empty interface, or an interface with one implementation and no
   substitution need.
 - A test was disabled, skipped, or weakened to make the build pass.
+- New or changed code breaks the **Simplicity** section of `AGENTS.md`: a
+  comment outside the allowed kind, a file over its size limit, a web file
+  outside the flat layout, or an unused file.
 - A commit carries a `Co-Authored-By` trailer, a body, or non-Conventional
   formatting; or the pull-request body contains "Generated with Claude Code" or
   any other tool attribution.

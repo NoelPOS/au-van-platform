@@ -42,6 +42,10 @@ When two designs both work, ship the one a new reader understands faster. Do not
 add abstraction, configurability, or indirection for needs that do not exist
 yet.
 
+Before every push, check the diff against the **Simplicity** section of
+`AGENTS.md`: near-zero comments, file size limits, the flat web layout, and no
+unused files.
+
 Per `AGENTS.md`: introduce an interface only when substitution is actually
 useful, name its implementation `XImpl`, and never create empty interfaces for
 controllers, entities, DTOs, configuration, or Spring Data repositories.
