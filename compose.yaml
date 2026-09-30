@@ -28,28 +28,45 @@ services:
   # API the deployed target's bucket does (ADR-009), so the application talks
   # to one client either way.
   #
-  # Pulled from quay.io rather than Docker Hub: an anonymous pull of
-  # docker.io/minio/minio is refused, and neither a fresh checkout nor CI is
-  # logged in to anything.
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ':9001'
-    # No MINIO_ROOT_USER/MINIO_ROOT_PASSWORD, so the image's own
-    # minioadmin/minioadmin applies: a local development default is not a
-    # credential worth committing a value for. Put the same pair in .env as
-    # AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the API to use.
+  # Versity S3 Gateway, serving the S3 API over a plain directory (its posix
+  # backend). Chosen because it pulls anonymously from Docker Hub, which
+  # neither a fresh checkout nor CI is logged in to; it is Apache-2.0 and
+  # about 31 MB; it checks every SigV4 signature against the root credentials
+  # below, so a wrong key fails here the way it would against AWS; it serves
+  # buckets path-style, which is what PaymentProofStorageConfiguration asks
+  # for; and a bucket is just a top-level directory, so `mkdir` creates the
+  # payment-proof bucket on every start and no one-shot init job is needed.
+  #
+  # MinIO was dropped (#88): quay.io/minio/minio now answers 401 to an
+  # anonymous pull, docker.io/minio/minio was already refused, and the
+  # upstream repository was archived after its last push on 2026-04-24.
+  object-store:
+    image: versity/versitygw:v1.8.0@sha256:30292fc2eeacc67a36993b01f7a7a5e3361a19cced0e80c1d71cfa2a4b0a2499
+    entrypoint: ['sh', '-c']
+    command:
+      - >-
+        mkdir -p /data/${PAYMENT_PROOF_BUCKET:-au-van-payment-proofs} &&
+        exec versitygw --port :9000 --health /health posix /data
+    environment:
+      # The same pair the API reads from .env through the AWS SDK's default
+      # credentials chain. The gateway refuses to start with either one blank.
+      ROOT_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      ROOT_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      # Must be the region the API signs with: SigV4 puts it in the signature,
+      # so a mismatch rejects every request.
+      VGW_REGION: ${PAYMENT_PROOF_REGION:-ap-southeast-1}
     ports:
-      # 9000 is the S3 API, 9001 the console the bucket is created from.
       - '9000:9000'
-      - '9001:9001'
     volumes:
-      - minio-data:/data
+      # A named volume rather than a bind mount: the posix backend keeps object
+      # metadata in extended attributes and refuses to start on a directory
+      # that cannot hold them.
+      - object-store-data:/data
     healthcheck:
-      # `mc` ships in the image and `local` is its own preconfigured alias.
-      test: ['CMD', 'mc', 'ready', 'local']
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9000/health']
+      interval: 2s
+      timeout: 3s
+      retries: 20
 
   api:
     build:
@@ -61,13 +78,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATA_REDIS_HOST: redis
-      PAYMENT_PROOF_ENDPOINT: http://minio:9000
+      PAYMENT_PROOF_ENDPOINT: http://object-store:9000
     ports:
       - '8080:8080'
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      object-store:
         condition: service_healthy
       # Started alongside, not waited on. No application code uses Redis yet
       # (ADR-003, ADR-007) and its health indicator is disabled, so making the
@@ -90,4 +107,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  minio-data:
+  object-store-data:

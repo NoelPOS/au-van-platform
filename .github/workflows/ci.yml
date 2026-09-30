@@ -215,6 +215,8 @@ jobs:
             echo "JWT_SECRET=$(openssl rand -base64 32)"
             echo "LINE_CHANNEL_ID="
             echo "ADMIN_BOOTSTRAP_LINE_SUBJECT="
+            echo "AWS_ACCESS_KEY_ID=$(openssl rand -hex 16)"
+            echo "AWS_SECRET_ACCESS_KEY=$(openssl rand -hex 16)"
           } > .env
 
       - name: Build both images
