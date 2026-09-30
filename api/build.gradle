@@ -35,7 +35,8 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	// Payment-proof object storage (ADR-009). The same client serves AWS S3 in
-	// the deployed target and MinIO locally; only the endpoint differs.
+	// the deployed target and the local S3-compatible store; only the endpoint
+	// differs.
 	implementation platform('software.amazon.awssdk:bom:2.46.7')
 	implementation 'software.amazon.awssdk:s3'
 	runtimeOnly 'org.postgresql:postgresql'
