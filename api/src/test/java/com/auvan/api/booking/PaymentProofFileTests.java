@@ -14,11 +14,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * What a payment proof is allowed to be. These rules are the only thing
- * standing between a student's file picker and the bucket, so each one is
- * asserted from both sides.
- */
 class PaymentProofFileTests {
     private static final long FIVE_MEGABYTES = 5L * 1024 * 1024;
 
@@ -31,7 +26,6 @@ class PaymentProofFileTests {
         assertThat(accepted.extension()).isIn(".jpg", ".png", ".webp");
     }
 
-    /** A browser may send either, and neither is a different image. */
     @ParameterizedTest
     @ValueSource(strings = {"IMAGE/JPEG", "image/jpeg; charset=binary"})
     void theDeclaredTypeIsNormalisedBeforeItIsMatched(String contentType) {
@@ -60,7 +54,6 @@ class PaymentProofFileTests {
                 .satisfies(thrown -> assertProblem(thrown, HttpStatus.BAD_REQUEST, "payment_proof_too_large"));
     }
 
-    /** An empty upload would otherwise reach the {@code size_bytes > 0} check clause as a 500. */
     @Test
     void anEmptyFileIsRefused() {
         assertThatThrownBy(() -> PaymentProofFile.assertSizeWithin(0, FIVE_MEGABYTES))
@@ -68,10 +61,6 @@ class PaymentProofFileTests {
                 .satisfies(thrown -> assertProblem(thrown, HttpStatus.BAD_REQUEST, "payment_proof_empty"));
     }
 
-    /**
-     * Two submissions in the same millisecond still get different keys, so one
-     * proof can never overwrite another's image.
-     */
     @Test
     void everyObjectKeyIsUniqueAndFiledUnderItsBooking() {
         UUID bookingId = UUID.randomUUID();

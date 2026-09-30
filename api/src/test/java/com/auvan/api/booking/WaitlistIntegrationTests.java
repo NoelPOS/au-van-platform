@@ -56,11 +56,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Joining, leaving, and reading a place in a full trip's queue. Nothing here
- * promotes anybody: the sweep that does is issue #69, and
- * {@code booking.waitlist.enabled} is false in the test configuration.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class WaitlistIntegrationTests extends AuthenticationTestSupport {
@@ -85,9 +80,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private SeatClaimRepository claims;
 
-    // A spy, not a mock: every call runs for real unless a test stubs the one
-    // lookup whose timing it needs to control, exactly as
-    // {@code SeatHoldConcurrencyIntegrationTests} treats {@code SeatClaimRepository}.
     @MockitoSpyBean
     private WaitlistEntryRepository waitlist;
 
@@ -110,17 +102,11 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         otherToken = tokenFor("other-token", "Uother");
     }
 
-    /**
-     * Waitlist rows point at trips and users, so one left behind blocks the
-     * {@code trips.deleteAll()} every other integration test starts with.
-     */
     @AfterEach
     void clearWaitlist() {
         waitlist.deleteAll();
         claims.deleteAll();
     }
-
-    // Success paths
 
     @Test
     void joiningAFullTripReturnsTheFirstPlaceAndTheNextStudentTheSecond() throws Exception {
@@ -139,11 +125,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         assertThat(waitlist.count()).isEqualTo(2);
     }
 
-    /**
-     * A student tapping the button again is the same join, not a second place
-     * and not a second row. The row count is the assertion that matters: the
-     * queue is one row per student per trip, forever.
-     */
     @Test
     void joiningTwiceReturnsTheSameEntryRatherThanASecondOne() throws Exception {
         String first = entryIdFrom(join(studentToken, fullTrip, 1).andExpect(status().isCreated()));
@@ -152,7 +133,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         join(studentToken, fullTrip, 1)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(first))
-                // Still first: a repeated join must not cost a place.
                 .andExpect(jsonPath("$.position").value(1));
         assertThat(waitlist.count()).isEqualTo(2);
     }
@@ -170,7 +150,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(waitlist.findById(UUID.fromString(entryId)).orElseThrow().getStatus())
                 .isEqualTo(WaitlistStatus.WITHDRAWN);
-        // The row survives; only the place is given up.
         assertThat(waitlist.count()).isEqualTo(2);
         mockMvc.perform(get("/api/v1/waitlist").header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isOk())
@@ -193,7 +172,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$[0].position").value(2));
     }
 
-    /** A withdrawn entry is nobody's place, so it is not in the caller's list. */
     @Test
     void aWithdrawnEntryDropsOutOfTheStudentsOwnRead() throws Exception {
         String entryId = entryIdFrom(join(studentToken, fullTrip, 1).andExpect(status().isCreated()));
@@ -205,11 +183,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
-    /**
-     * ADR-011's accepted consequence of a plain unique constraint: there is one
-     * row per student per trip, so coming back reuses it with a fresh
-     * {@code joinedAt} and costs the student their place.
-     */
     @Test
     void rejoiningAfterLeavingReusesTheRowAndGoesToTheBack() throws Exception {
         String entryId = entryIdFrom(join(studentToken, fullTrip, 1).andExpect(status().isCreated()));
@@ -226,8 +199,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         assertThat(waitlist.count()).isEqualTo(2);
     }
 
-    // Failure paths
-
     @Test
     void joiningATripThatStillHasFreeSeatsIsRefused() throws Exception {
         Trip roomy = createTrip("VAN-W2", OffsetDateTime.now().plusDays(2), TripStatus.ACTIVE);
@@ -239,19 +210,12 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         assertThat(waitlist.count()).isZero();
     }
 
-    /**
-     * One expired hold is enough: expiry is lazy, so the seat is free whether or
-     * not anything has reclaimed the row, and a queue is not needed for it.
-     */
     @Test
     void joiningATripWhoseOnlyFreeSeatIsALapsedHoldIsRefused() throws Exception {
         Trip lapsing = createTrip("VAN-W3", OffsetDateTime.now().plusDays(3), TripStatus.ACTIVE);
         UUID holder = users.save(new AppUser("Uforgetful", "Forgetful Student")).getId();
         List<TripSeat> seats = lapsing.getSeats();
         claims.save(new SeatClaim(seats.get(0), holder, UUID.randomUUID(), OffsetDateTime.now().plusHours(2)));
-        // A hold that lapsed with nothing running: expiry is lazy (ADR-006), so
-        // this seat is free although its row is still there, and a student who
-        // could simply take it must not be queued behind it.
         claims.save(new SeatClaim(seats.get(1), holder, UUID.randomUUID(), OffsetDateTime.now().minusMinutes(1)));
 
         join(studentToken, lapsing, 1)
@@ -308,11 +272,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.code").value("trip_not_found"));
     }
 
-    /**
-     * Someone else's entry answers 404, not 403, so a stranger cannot tell a
-     * live entry id from an imaginary one by the status they get back — the same
-     * idiom {@code SeatHoldService.release} uses for a hold.
-     */
     @Test
     void leavingSomeoneElsesEntryAnswersAsOneThatDoesNotExistAndLeavesItStanding() throws Exception {
         String entryId = entryIdFrom(join(studentToken, fullTrip, 1).andExpect(status().isCreated()));
@@ -336,12 +295,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.detail").value("Waitlist entry not found."));
     }
 
-    /**
-     * The table's own backstop, reached through the repository because no
-     * endpoint can produce a second row: the join path's lookup reuses the one
-     * that exists. ADR-006's rule against partial indexes is why this is a plain
-     * constraint and therefore why H2 enforces it here at all.
-     */
     @Test
     void theUniqueConstraintRefusesASecondRowForTheSameStudentAndTrip() {
         UUID student = users.findByLineSubject("Ustudent").orElseThrow().getId();
@@ -352,19 +305,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
-    /**
-     * Two tabs joining at once both miss the lookup and both insert. The unique
-     * constraint decides, and the loser has to be told to refresh rather than
-     * handed a 500 saying the join failed when they are in fact queued — the
-     * rule {@code SeatHoldConcurrencyIntegrationTests} states for a seat. One
-     * refresh is enough, because the join is idempotent: the next one finds the
-     * winner's row and returns the place the student already holds.
-     *
-     * <p>No second thread and no barrier, for the reason that class gives: the
-     * rival row is committed first and the lookup is stubbed to answer exactly
-     * what it truly would have answered a moment earlier, so the interleaving a
-     * real race only sometimes produces happens every time.
-     */
     @Test
     void aJoinThatLosesTheRaceToInsertIsAConflictRatherThanACrash() {
         UUID student = users.findByLineSubject("Ustudent").orElseThrow().getId();
@@ -377,8 +317,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
                     assertThat(conflict.getReason()).contains("refresh");
                 });
 
-        // The winner's row stands alone: the loser's insert was refused by the
-        // constraint, not applied beside it.
         assertThat(waitlist.findAll()).singleElement()
                 .satisfies(entry -> assertThat(entry.getId()).isEqualTo(rival.getId()));
     }
@@ -393,8 +331,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         mockMvc.perform(post("/api/v1/waitlist/" + UUID.randomUUID() + "/leave"))
                 .andExpect(status().isUnauthorized());
     }
-
-    // Fixtures
 
     private void clearEverything() {
         waitlist.deleteAll();
@@ -419,7 +355,6 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         return trips.save(created);
     }
 
-    /** Claims every seat for somebody else, which is what "full" means here. */
     private void fillEverySeatOf(Trip trip) {
         UUID holder = users.save(new AppUser("Uholder-" + trip.getId(), "Holding Student")).getId();
         OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(2);

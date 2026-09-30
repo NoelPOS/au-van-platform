@@ -54,20 +54,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The payment-proof submission endpoint end to end, against the in-memory
- * storage the port exists for. Every failure asserts the machine-readable
- * {@code code} as well as the status, matching the rest of this module.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class PaymentProofIntegrationTests extends AuthenticationTestSupport {
-    /**
-     * Substituted rather than mocked, so the tests can assert what actually
-     * reached storage — and, for the failure path, that nothing did. A nested
-     * {@code @TestConfiguration} is registered on top of the application's own
-     * configuration, and {@code @Primary} is what makes the port resolve to it.
-     */
     @TestConfiguration
     static class FakeStorageConfiguration {
         @Bean
@@ -130,7 +119,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
         bookingId = bookingIdFrom(confirm(studentToken, holdOn(seats.get(0)), "key-1"));
     }
 
-    /** In foreign-key order, and in both hooks, as the booking tests already do. */
     @AfterEach
     void clearData() {
         proofs.deleteAll();
@@ -143,8 +131,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
         routes.deleteAll();
         users.deleteAll();
     }
-
-    // Success path
 
     @Test
     void submittingAProofStoresTheImageAndPutsTheBookingUnderReview() throws Exception {
@@ -165,19 +151,13 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
             assertThat(proof.getSizeBytes()).isEqualTo("the-slip".length());
             assertThat(proof.getObjectKey()).startsWith("payment-proofs/" + bookingId + "/").endsWith(".jpg");
         });
-        // The bytes really reached storage, under the key the row records.
         assertThat(storage.objects()).containsOnlyKeys(stored.getFirst().getObjectKey());
         assertThat(storage.objects().get(stored.getFirst().getObjectKey()).content())
                 .isEqualTo("the-slip".getBytes(StandardCharsets.UTF_8));
-        // And the transition reached the database, not only the response body.
         mockMvc.perform(authenticated(get("/api/v1/bookings/" + bookingId)))
                 .andExpect(jsonPath("$.status").value("PAYMENT_UNDER_REVIEW"));
     }
 
-    /**
-     * The acceptance criterion in prose: nothing the browser receives can be
-     * used to reach the image without going back through the API.
-     */
     @Test
     void theResponseCarriesNoObjectKeyBucketOrUrl() throws Exception {
         String body = submit(studentToken, bookingId, jpeg("the-slip"))
@@ -190,9 +170,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
                 .doesNotContain("https://");
     }
 
-    // Failure paths
-
-    /** Another student's booking answers exactly as one that does not exist. */
     @Test
     void submittingAgainstAnotherStudentsBookingIsNotFoundAndChangesNothing() throws Exception {
         String otherToken = tokenFor("other-token", "Uother");
@@ -275,10 +252,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
         assertNothingSubmitted(BookingStatus.PENDING_PAYMENT);
     }
 
-    /**
-     * A bucket that cannot be reached leaves no half-submitted booking behind,
-     * and answers without the SDK's own exception text.
-     */
     @Test
     void aStorageFailureLeavesTheBookingExactlyAsItWas() throws Exception {
         storage.failEveryStore();
@@ -294,8 +267,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.events.length()").value(1));
     }
-
-    // Fixtures
 
     private void assertNothingSubmitted(BookingStatus expected) {
         assertThat(proofs.count()).isZero();

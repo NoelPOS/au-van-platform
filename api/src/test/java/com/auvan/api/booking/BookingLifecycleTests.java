@@ -18,16 +18,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Where a booking starts and how a payment proof moves it. ADR-009 made the
- * review the only path to {@code CONFIRMED}, so creation producing a confirmed
- * booking is the regression this class exists to catch.
- */
 class BookingLifecycleTests {
     private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-09-21T10:00:00Z");
-    /** What booking.payment-window would give a booking made at {@link #NOW}. */
     private static final OffsetDateTime DEADLINE = NOW.plusHours(2);
-    /** What the departure cutoff would give it: an hour before {@code NOW.plusDays(1)}. */
     private static final OffsetDateTime DEPARTURE_BOUND = NOW.plusDays(1).minusHours(1);
 
     @Test
@@ -47,12 +40,8 @@ class BookingLifecycleTests {
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
         assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(3));
-        // Bounded by departure, not by a fresh timer: a slow reviewer must not
-        // cost the student their booking (ADR-010).
         assertThat(booking.getPaymentDeadlineAt()).isEqualTo(DEPARTURE_BOUND);
         assertThat(booking.isUnderPaymentReview()).isTrue();
-        // A resubmission arrives from a rejection, not from a booking already
-        // sitting in front of an administrator.
         assertThat(booking.isAwaitingPaymentProof()).isFalse();
     }
 
@@ -76,23 +65,15 @@ class BookingLifecycleTests {
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
         assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(9));
         assertThat(booking.isUnderPaymentReview()).isFalse();
-        // Terminal, so it carries no deadline and can never be expirable.
         assertThat(booking.getPaymentDeadlineAt()).isNull();
         assertThat(booking.isExpirable(NOW.plusYears(1))).isFalse();
     }
 
-    /**
-     * The predicate the sweep decides on behind the row lock, and the one thing
-     * about it that is not obvious: a null deadline is never expirable, which is
-     * what {@code NULL} means on the column and the right answer for every
-     * terminal row.
-     */
     @Test
     void onlyANonTerminalBookingWhoseDeadlineHasPassedIsExpirable() {
         Booking booking = newBooking();
 
         assertThat(booking.isExpirable(DEADLINE.minusSeconds(1))).isFalse();
-        // The boundary belongs to the sweep: the predicate is deadline <= now.
         assertThat(booking.isExpirable(DEADLINE)).isTrue();
         assertThat(booking.isExpirable(DEADLINE.plusSeconds(1))).isTrue();
 
@@ -100,11 +81,6 @@ class BookingLifecycleTests {
         assertThat(booking.isExpirable(DEADLINE.plusHours(1))).isFalse();
     }
 
-    /**
-     * ADR-010 rejected a separate {@code EXPIRED} status: the seats are released
-     * and the booking is over either way, so expiry lands on {@code CANCELLED}
-     * and the reason lives in the history instead.
-     */
     @Test
     void anExpiredBookingIsCancelledAndCarriesNoDeadlineToExpireAgainst() {
         Booking booking = newBooking();
@@ -117,10 +93,6 @@ class BookingLifecycleTests {
         assertThat(booking.isAwaitingPaymentProof()).isFalse();
     }
 
-    /**
-     * Rejection is not a dead end (ADR-009): the booking keeps its seats and
-     * accepts another proof, which is the whole of the resubmission gate.
-     */
     @Test
     void aRejectedBookingAcceptsAnotherProof() {
         Booking booking = newBooking();
@@ -130,7 +102,6 @@ class BookingLifecycleTests {
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_REJECTED);
         assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(9));
-        // A fresh window: a student told to send a better slip needs time to.
         assertThat(booking.getPaymentDeadlineAt()).isEqualTo(NOW.plusMinutes(9).plusHours(2));
         assertThat(booking.isAwaitingPaymentProof()).isTrue();
         assertThat(booking.isUnderPaymentReview()).isFalse();

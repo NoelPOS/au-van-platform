@@ -52,17 +52,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * The administrator's operational view end to end: a trip's bookings by
- * status, the queue standing behind it with whatever promotions it holds, and
- * the outbound work the dispatcher gave up on.
- *
- * <p>The promotion sweep that would produce a {@code PROMOTED} entry in a
- * running application is issue #69 and does not exist on this branch. The
- * fixture writes the status and the two promotion columns directly, which is
- * exactly what this view has to cope with: it reports whatever the columns say
- * rather than assuming any particular state is unreachable.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class OperationsIntegrationTests extends AuthenticationTestSupport {
@@ -122,12 +111,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         thirdStudent = users.save(new AppUser("Uthird", "Nattapong S.")).getId();
     }
 
-    /**
-     * Waitlist rows, claims and bookings all point at trips, so one left behind
-     * blocks the {@code trips.deleteAll()} every other integration test starts
-     * with — the same reason {@link WaitlistIntegrationTests} clears up after
-     * itself.
-     */
     @AfterEach
     void clearUp() {
         outbox.deleteAll();
@@ -136,14 +119,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         bookings.deleteAll();
     }
 
-    // Success paths
-
-    /**
-     * The whole of acceptance criterion 6 for a trip, against a fixture that
-     * carries all three shapes at once: bookings spread across statuses, a
-     * queue holding a waiting entry, a promoted one and a withdrawn one, and a
-     * dead letter in the outbox.
-     */
     @Test
     void theTripViewReportsBookingsByStatusAndTheQueueWithItsPromotions() throws Exception {
         book(trip, firstStudent, "AUV-OP-0001", BookingStatus.CONFIRMED);
@@ -165,16 +140,12 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.destination").value("Asok"))
                 .andExpect(jsonPath("$.tripStatus").value("ACTIVE"))
                 .andExpect(jsonPath("$.totalSeats").value(2))
-                // Every status is reported, the empty ones included, so an
-                // operator never has to tell "none" from "not shown".
                 .andExpect(jsonPath("$.bookingsByStatus.length()").value(5))
                 .andExpect(jsonPath("$.bookingsByStatus[?(@.status == 'CONFIRMED')].count").value(1))
                 .andExpect(jsonPath("$.bookingsByStatus[?(@.status == 'PENDING_PAYMENT')].count").value(1))
                 .andExpect(jsonPath("$.bookingsByStatus[?(@.status == 'CANCELLED')].count").value(2))
                 .andExpect(jsonPath("$.bookingsByStatus[?(@.status == 'PAYMENT_UNDER_REVIEW')].count").value(0))
                 .andExpect(jsonPath("$.bookingsByStatus[?(@.status == 'PAYMENT_REJECTED')].count").value(0))
-                // Join order, ended entries included, positions counting only
-                // the queued ones — the same rule the student's own read uses.
                 .andExpect(jsonPath("$.waitlist.length()").value(3))
                 .andExpect(jsonPath("$.waitlist[0].entryId").value(waiting.toString()))
                 .andExpect(jsonPath("$.waitlist[0].status").value("WAITING"))
@@ -187,19 +158,11 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.waitlist[1].displayName").value("Malee K."))
                 .andExpect(jsonPath("$.waitlist[1].promotionHoldId").value(holdId.toString()))
                 .andExpect(jsonPath("$.waitlist[1].promotionExpiresAt").isNotEmpty())
-                // Withdrawn: still listed, because an operator asking "where did
-                // they go" needs to see it, and holding no place at all.
                 .andExpect(jsonPath("$.waitlist[2].entryId").value(withdrawn.toString()))
                 .andExpect(jsonPath("$.waitlist[2].status").value("WITHDRAWN"))
                 .andExpect(jsonPath("$.waitlist[2].position").doesNotExist());
     }
 
-    /**
-     * A claim that has simply lapsed does not block its seat, and this view
-     * counts claimed seats by the same rule the seat map does — an operator
-     * reading a trip as full while a student books the seat it was not counting
-     * is the whole point of there being one predicate rather than two.
-     */
     @Test
     void claimedSeatsCountsOnlyTheClaimsThatStillBlockTheirSeat() throws Exception {
         UUID holder = users.save(new AppUser("Uholder", "Holding Student")).getId();
@@ -214,13 +177,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.claimedSeats").value(1));
     }
 
-    /**
-     * The dead-letter view is the other half of criterion 6, and it reports
-     * only the rows the dispatcher actually gave up on: a {@code PENDING} row
-     * is waiting its turn and an {@code IN_FLIGHT} one is being sent right now,
-     * and sending an operator after either is sending them after work that is
-     * going to arrive on its own.
-     */
     @Test
     void theDeadLetterViewReportsOnlyTheRowsTheDispatcherGaveUpOn() throws Exception {
         OffsetDateTime now = OffsetDateTime.now();
@@ -245,11 +201,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$[0].processedAt").isNotEmpty());
     }
 
-    /**
-     * The trip scope is the whole of the booking and queue reads, and nothing
-     * downstream would notice it missing: every count and every row would still
-     * be a real count and a real row, just of the wrong trip.
-     */
     @Test
     void theTripViewReportsThisTripsBookingsAndQueueAndNotAnotherTrips() throws Exception {
         book(trip, firstStudent, "AUV-OP-0005", BookingStatus.CONFIRMED);
@@ -290,16 +241,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
-    // Failure paths
-
-    /**
-     * Both paths, not one. The {@code /api/v1/admin/**} prefix is the only
-     * thing granting the rule — there is no method-level annotation behind it —
-     * so a controller mapped one segment wrong silently publishes every
-     * student's queue position and every delivery failure to any signed-in
-     * student. This is the check {@code PaymentProofAdminController}'s javadoc
-     * insists on, applied to this controller.
-     */
     @Test
     void aStudentTokenIsForbiddenOnEveryOperationsEndpoint() throws Exception {
         mockMvc.perform(get(tripPath(trip)).header("Authorization", bearer(studentToken)))
@@ -322,8 +263,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("trip_not_found"));
     }
-
-    // Fixtures
 
     private void clearData() {
         outbox.deleteAll();
@@ -349,12 +288,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         return "Bearer " + token;
     }
 
-    /**
-     * A booking in whatever state the test needs, moved there by the entity's
-     * own transitions rather than by driving hold, confirm, submit and review
-     * for each one: this view reads statuses, and the fixture would otherwise
-     * be several times longer than the assertions it feeds.
-     */
     private void book(Trip subject, UUID userId, String reference, BookingStatus status) {
         OffsetDateTime now = OffsetDateTime.now();
         Booking booking = new Booking(subject, userId, reference, "Somchai P.", "0812345678",
@@ -373,13 +306,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         return waitlist.saveAndFlush(new WaitlistEntry(subject, userId, seatsWanted, joinedAt)).getId();
     }
 
-    /**
-     * A promotion, written straight at the columns. {@link WaitlistEntry} has
-     * no transition into {@code PROMOTED} on this branch — the sweep that adds
-     * one is #69 — and this track must not reach into that work to test its
-     * own read. What the view has to survive is a row in any valid state, which
-     * is exactly what this produces.
-     */
     private void promote(UUID entryId, UUID holdId, OffsetDateTime expiresAt) {
         jdbc.update("update waitlist_entries set status = ?, promotion_hold_id = ?, promotion_expires_at = ?, "
                         + "updated_at = ? where id = ?",
@@ -392,22 +318,8 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         waitlist.saveAndFlush(entry);
     }
 
-    /**
-     * A dead letter produced the way the dispatcher produces one — claimed,
-     * then given up on — rather than by writing {@code DEAD} at the column.
-     * {@code markDead} only moves an {@code IN_FLIGHT} row, so a fixture that
-     * skipped the claim would be testing a state the application cannot reach.
-     *
-     * <p>The row is recorded a minute in the past rather than at {@code now}.
-     * {@link com.auvan.api.outbox.repository.OutboxEventRepository#claim}
-     * selects on {@code nextAttemptAt <= :now}, and a row written at the same
-     * instant it is claimed sits on that boundary: the column keeps fewer
-     * decimal places than a nanosecond clock produces, so on a machine with
-     * one the stored value can come back a shade later than the {@code now}
-     * being compared against and the claim silently matches nothing. Making
-     * the row plainly due is the same thing {@code OutboxIntegrationTests}
-     * does with its own {@code dueAt} helper.
-     */
+    // Recorded a minute back: the column keeps less precision than the clock, so a row
+    // written and claimed at the same now can read as not yet due.
     private UUID deadLetter(UUID aggregateId, UUID recipient, String error) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID id = outbox.save(new OutboxEvent(OutboxEventType.BOOKING_CANCELLED, aggregateId, recipient,
@@ -430,11 +342,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         return trips.save(created);
     }
 
-    /**
-     * An administrator is a promoted student: the exchange endpoint only ever
-     * mints a student, so the role has to be granted and a second token taken
-     * afterwards, as {@code PaymentProofReviewIntegrationTests} already does.
-     */
     private String tokenFor(String idToken, String lineSubject, boolean administrator) throws Exception {
         when(lineTokenVerifier.verify(idToken)).thenReturn(new VerifiedLineIdentity(lineSubject, "Test User"));
         String response = mockMvc.perform(post("/api/v1/auth/line/exchange")

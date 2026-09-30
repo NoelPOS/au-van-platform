@@ -107,15 +107,11 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         studentToken = tokenFor("student-token", "Ustudent");
     }
 
-    // Bookings outlive this class's own cleanup, and a leftover row would block
-    // the trips.deleteAll() that every other integration test starts with.
     @AfterEach
     void clearBookings() {
         claims.deleteAll();
         deleteBookings();
     }
-
-    // Success paths
 
     @Test
     void catalogueListsBookableTripsWithTheirRemainingSeats() throws Exception {
@@ -186,10 +182,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.seats[1].state").value("HELD_BY_YOU"));
     }
 
-    /**
-     * Regression guard for Hibernate's flush ordering: without an explicit flush
-     * between the release and the re-insert, this collides with the caller's own row.
-     */
     @Test
     void reSelectingASeatTheCallerAlreadyHoldsSucceeds() throws Exception {
         hold(studentToken, seats.get(0), seats.get(1)).andExpect(status().isCreated());
@@ -208,7 +200,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$.seats[0].state").value("AVAILABLE"));
         mockMvc.perform(authenticated(get("/api/v1/trips")))
                 .andExpect(jsonPath("$[0].availableSeats").value(4));
-        // The read derived the state and changed nothing; the row is still there.
         assertThat(claims.count()).isOne();
     }
 
@@ -232,7 +223,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(jsonPath("$[0].availableSeats").value(3));
     }
 
-    /** ADR-006: a booked claim blocks its seat whatever {@code expires_at} says. */
     @Test
     void aBookedClaimStillBlocksItsSeatAfterTheHoldWindowHasPassed() throws Exception {
         hold(studentToken, seats.get(0)).andExpect(status().isCreated());
@@ -245,15 +235,10 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         hold(otherToken, seats.get(0))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value(containsString("refresh")));
-        // Not even the student who booked it can take it back as a hold.
         hold(studentToken, seats.get(0)).andExpect(status().isConflict());
         assertThat(claims.count()).isOne();
     }
 
-    /**
-     * Once a claim carries a booking it stops being the caller's hold, so the
-     * release endpoint cannot be used to give away a seat that has been paid for.
-     */
     @Test
     void aHoldThatHasBecomeABookingCanNoLongerBeReleased() throws Exception {
         String holdId = holdIdFrom(hold(studentToken, seats.get(0)).andExpect(status().isCreated()));
@@ -277,8 +262,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         mockMvc.perform(authenticated(get("/api/v1/trips/" + trip.getId() + "/seats")))
                 .andExpect(jsonPath("$.seats[0].state").value("AVAILABLE"));
     }
-
-    // Failure paths
 
     @Test
     void aSecondStudentHoldingTheSameSeatIsToldToRefresh() throws Exception {
@@ -356,10 +339,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isNotFound());
     }
 
-    /**
-     * Someone else's hold answers 404, not 403, so that a stranger cannot tell a
-     * live hold id from an imaginary one by the status they get back.
-     */
     @Test
     void someoneElsesHoldReadsAsMissingAndSurvivesTheAttempt() throws Exception {
         String holdId = holdIdFrom(hold(studentToken, seats.get(0)).andExpect(status().isCreated()));
@@ -403,8 +382,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isUnauthorized());
     }
 
-    // Fixtures
-
     private Trip createTrip(String vehicleCode, OffsetDateTime departureAt, TripStatus status) {
         return createTrip(vehicleCode, departureAt, status, 4);
     }
@@ -422,11 +399,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         return trips.save(created);
     }
 
-    /**
-     * Attaches a booking to the seat's claim, which no endpoint in this issue can
-     * do. {@code V3} gives {@code seat_claims.booking_id} a foreign key to
-     * {@code bookings}, so the claim has to point at a row that exists.
-     */
     private void bookTheClaimOn(TripSeat seat, OffsetDateTime expiresAt) {
         UUID bookingId = insertBooking();
         transactions.executeWithoutResult(status -> entityManager.createQuery("""
@@ -440,7 +412,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 .executeUpdate());
     }
 
-    /** The row {@code seat_claims.booking_id}'s foreign key needs, and nothing more. */
     private UUID insertBooking() {
         UUID userId = users.findByLineSubject("Ustudent").orElseThrow().getId();
         return bookings.saveAndFlush(new Booking(trip, userId, "AUV-000000-" + reference(), "Test Student",
@@ -448,7 +419,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
                 OffsetDateTime.now())).getId();
     }
 
-    /** {@code bookings_reference_unique} is real, so every fixture needs its own. */
     private static String reference() {
         return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
@@ -457,7 +427,6 @@ class SeatHoldIntegrationTests extends AuthenticationTestSupport {
         bookings.deleteAll();
     }
 
-    /** Writes a claim that expired a minute ago, which no API call can produce. */
     private void expireAHoldOn(TripSeat seat) {
         UUID owner = users.save(new AppUser("Uexpired", "Forgetful Student")).getId();
         claims.save(new SeatClaim(seat, owner, UUID.randomUUID(), OffsetDateTime.now().minusMinutes(1)));

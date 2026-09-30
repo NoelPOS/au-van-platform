@@ -40,25 +40,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The seat-hold race, on the engine that actually decides it.
- *
- * <p>{@link SeatHoldConcurrencyIntegrationTests} runs the same race on H2 and
- * keeps its fast feedback, but its own Javadoc records what it cannot do: H2
- * "surfaces unique-key contention as a constraint violation or as a lock timeout
- * depending on timing, and only the first becomes a 409", so it can only assert
- * the status of whichever losers happened to fail the first way. PostgreSQL has
- * no such ambiguity. A second inserter on {@code seat_claims_trip_seat_unique}
- * waits for the winner to commit and is then refused with a unique violation —
- * always that, never a lock timeout — so <em>every</em> loser here must arrive at
- * the same 409 and the same code, and this class asserts it for all seven.
- *
- * <p>That is the behavioural gain over the H2 class, not a re-run of it.
- *
- * <p>Must not be {@code @Transactional}, for the reason every concurrency class
- * here gives: a test-managed transaction would put all eight threads on one
- * connection and there would be no race left to observe.
- */
 @SpringBootTest
 class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
     private static final int CONTENDERS = 8;
@@ -99,7 +80,6 @@ class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
         }
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         claims.deleteAll();
@@ -110,17 +90,6 @@ class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
         users.deleteAll();
     }
 
-    /**
-     * Eight students, one seat, one winner — and seven refusals that are all the
-     * same refusal.
-     *
-     * <p>The losers arrive by two routes: the optimistic read in
-     * {@link SeatHoldService} catches those that start after the winner has
-     * committed, and {@code seat_claims_trip_seat_unique} catches the rest at the
-     * flush. Both are translated to {@code seat_taken}, and on PostgreSQL both are
-     * reached deterministically, so the assertion covers all seven rather than the
-     * subset the H2 class has to settle for.
-     */
     @Test
     void eightStudentsRacingForOneSeatLeaveOneHoldAndSevenIdenticalConflicts() throws Exception {
         UUID contendedSeat = seats.getFirst().getId();
@@ -136,9 +105,6 @@ class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
                 UUID ownSeat = seats.get(index + 1).getId();
                 pool.execute(() -> {
                     try {
-                        // Warm the whole path on a seat nobody else wants, so the
-                        // contended attempt is not competing with class loading,
-                        // JIT, and connection setup on other threads.
                         warmUp(student, ownSeat);
                         ready.countDown();
                         start.await();
@@ -160,8 +126,6 @@ class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
         assertThat(claims.findBySeatIdIn(List.of(contendedSeat)))
                 .singleElement()
                 .satisfies(claim -> assertThat(claim.getTripSeat().getId()).isEqualTo(contendedSeat));
-        // Every loser, not merely the ones that failed a particular way. This is
-        // the line the H2 class cannot write.
         assertThat(losses).hasSize(CONTENDERS - 1);
         assertThat(losses).allSatisfy(loss -> assertThat(loss)
                 .isInstanceOfSatisfying(ResponseStatusException.class, conflict -> {
@@ -170,7 +134,6 @@ class SeatHoldConcurrencyPostgresTests extends PostgresTestSupport {
                 }));
     }
 
-    /** Holds and immediately releases a seat of this thread's own, leaving no claim behind. */
     private void warmUp(UUID student, UUID ownSeat) {
         SeatHoldResponse hold = seatHoldService.hold(student, new CreateSeatHoldRequest(trip.getId(), List.of(ownSeat)));
         seatHoldService.release(student, hold.holdId());
