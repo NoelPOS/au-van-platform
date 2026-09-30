@@ -26,7 +26,7 @@ COPY . .
 RUN test ! -e .env && test ! -e .env.local && test ! -e .env.production
 
 # VITE_API_BASE_URL is deliberately absent, and adding it here would be a bug.
-# web/src/api-base-url.ts falls back to "", which makes every call relative and
+# web/src/services/apiBaseUrl.ts falls back to "", which makes every call relative and
 # same-origin, and the serving layer routes /api and /actuator: the Vite dev
 # proxy, the nginx configuration below, and ADR-007's CloudFront behaviour are
 # three implementations of that one contract. An ARG for it would default to
@@ -44,7 +44,7 @@ ENV VITE_LIFF_ID=$VITE_LIFF_ID
 # The Playwright suite's sign-in control, and the only build argument here that
 # must never be set for a real image (ADR-013). compose.e2e.yaml sets it to
 # "true"; nothing else does. The default is an empty string rather than absent
-# so the build is identical either way, and web/src/auth/liff-config.ts compares
+# so the build is identical either way, and web/src/services/liffConfig.ts compares
 # for the exact string "true" for that reason.
 #
 # An image built without it contains none of that code: the flag is inlined, the

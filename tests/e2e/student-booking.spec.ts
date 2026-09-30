@@ -190,7 +190,7 @@ test.describe("the student journey", () => {
   });
 
   /**
-   * Two students for one seat. `StudentBookingPage` derives availability from
+   * Two students for one seat. `useBookingFlow` derives availability from
    * the latest seat-map poll on every render, so there are two honest outcomes
    * depending on whether the poll or the click lands first: the seat is pruned
    * out of the selection, or the hold itself is refused. Both are the same

@@ -202,7 +202,7 @@ resource "aws_cloudfront_distribution" "main" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  # The same pair, for the same reason. web/src/App.tsx fetches
+  # The same pair, for the same reason. web/src/pages/SignInPage.tsx fetches
   # /actuator/health from the browser -- apiBaseUrl is "" unless
   # VITE_API_BASE_URL is set, so the request is same-origin -- and
   # nginx.conf.template routes ^/(api|actuator)/ for the container image. Omit
@@ -211,8 +211,8 @@ resource "aws_cloudfront_distribution" "main" {
   # would be reporting on the bucket and the request would never reach the API
   # at all. That is the whole of what this behaviour establishes -- that the
   # request gets to the API rather than being answered at the edge. It says
-  # nothing about what the API then answers: web/src/App.tsx:22 sets the panel
-  # from response.ok alone, so an API that answers 404 or 403 on
+  # nothing about what the API then answers: web/src/pages/SignInPage.tsx sets
+  # the panel from response.ok alone, so an API that answers 404 or 403 on
   # /actuator/health still reads as down, which is an actuator question and
   # not a routing one. Wrong in the deployed demo and nowhere else -- not
   # locally, and not in Container checks, which curls the API container
