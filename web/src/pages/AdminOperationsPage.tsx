@@ -1,35 +1,19 @@
 import { useState } from "react";
+import { DeadLettersTable } from "../components/DeadLettersTable";
+import { TripOperationsPanel } from "../components/TripOperationsPanel";
+import { Button } from "../components/ui/Button";
+import { FailurePanel } from "../components/ui/FailurePanel";
+import { Panel } from "../components/ui/Panel";
+import { useRoutes, useTrips } from "../hooks/useInventoryQueries";
+import {
+  useDeadLetters,
+  useTripOperations,
+} from "../hooks/useOperationsQueries";
 import type { AuthSession } from "../types/auth";
 import { formatDeparture } from "../utils/format";
-import { Button } from "../components/ui/Button";
-import { Panel } from "../components/ui/Panel";
-import { StatusBadge } from "../components/ui/StatusBadge";
-import {
-  EmptyRow,
-  InventoryTable,
-} from "../components/InventoryTable";
-import { useRoutes, useTrips } from "../hooks/useInventoryQueries";
-import { useDeadLetters, useTripOperations } from "../hooks/useOperationsQueries";
-import type { WaitlistPlace } from "../types/operations";
 
 const fieldClass =
   "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-normal text-ink outline-none focus:border-brand";
-
-function Failure({ title, error }: { title: string; error: Error }) {
-  return (
-    <Panel className="border-red-200 p-5">
-      <strong className="block text-ink">{title}</strong>
-      <span className="mt-1 block text-muted" role="alert">
-        {error.message}
-      </span>
-    </Panel>
-  );
-}
-
-/** A place, or a dash for an entry that has ended and holds none. */
-function place(entry: WaitlistPlace): string {
-  return entry.position === null ? "—" : `#${entry.position}`;
-}
 
 /**
  * What an operator can see, and nothing they can press.
@@ -129,107 +113,20 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
       )}
       {operations.error && (
         <div className="mb-8">
-          <Failure
+          <FailurePanel
             title="Could not load this trip"
             error={operations.error}
           />
         </div>
       )}
 
-      {trip && (
-        <section className="mb-10 grid items-start gap-5 lg:grid-cols-2">
-          <div className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-ink">
-              {`${trip.origin} → ${trip.destination} · ${formatDeparture(trip.departureAt)}`}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              {`${trip.claimedSeats} of ${trip.totalSeats} seats claimed`}
-              {" · "}
-              <StatusBadge value={trip.tripStatus} />
-            </p>
-          </div>
-          <InventoryTable headings={["Booking status", "Count"]}>
-            {trip.bookingsByStatus.map((row) => (
-              <tr className="border-t border-line" key={row.status}>
-                <td className="px-4 py-3">
-                  <StatusBadge value={row.status} />
-                </td>
-                <td className="px-4 py-3 text-muted">{row.count}</td>
-              </tr>
-            ))}
-          </InventoryTable>
-          <InventoryTable
-            headings={["Place", "Student", "Seats", "Status", "Joined"]}
-          >
-            {trip.waitlist.length === 0 && (
-              <EmptyRow
-                columns={5}
-                title="Nobody is waiting"
-                detail="Students join the queue once every seat is claimed."
-              />
-            )}
-            {trip.waitlist.map((entry) => (
-              <tr className="border-t border-line" key={entry.entryId}>
-                <td className="px-4 py-3 font-semibold text-ink">
-                  {place(entry)}
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  {entry.displayName ?? entry.userId}
-                </td>
-                <td className="px-4 py-3 text-muted">{entry.seatsWanted}</td>
-                <td className="px-4 py-3">
-                  <StatusBadge value={entry.status} />
-                  {entry.promotionExpiresAt && (
-                    <span className="mt-1 block text-xs text-muted">
-                      {`Offer ends ${formatDeparture(entry.promotionExpiresAt)}`}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-muted">
-                  {formatDeparture(entry.joinedAt)}
-                </td>
-              </tr>
-            ))}
-          </InventoryTable>
-        </section>
-      )}
+      {trip && <TripOperationsPanel trip={trip} />}
 
-      <h2 className="mb-3 text-lg font-bold text-ink">Dead letters</h2>
-      {deadLetters.isPending && (
-        <p className="text-sm text-muted">Loading dead letters…</p>
-      )}
-      {deadLetters.error && (
-        <Failure
-          title="Could not load dead letters"
-          error={deadLetters.error}
-        />
-      )}
-      {deadLetters.data && (
-        <InventoryTable
-          headings={["Event", "About", "Attempts", "Last error", "Given up"]}
-        >
-          {deadLetters.data.length === 0 && (
-            <EmptyRow
-              columns={5}
-              title="Nothing was given up on"
-              detail="A notification appears here only once its attempts are spent."
-            />
-          )}
-          {deadLetters.data.map((letter) => (
-            <tr className="border-t border-line" key={letter.id}>
-              <td className="px-4 py-3 font-semibold text-ink">
-                {letter.eventType}
-              </td>
-              <td className="px-4 py-3 text-muted">{letter.aggregateId}</td>
-              <td className="px-4 py-3 text-muted">{letter.attempts}</td>
-              <td className="px-4 py-3 text-muted">{letter.lastError ?? "—"}</td>
-              <td className="px-4 py-3 text-muted">
-                {letter.processedAt ? formatDeparture(letter.processedAt) : "—"}
-              </td>
-            </tr>
-          ))}
-        </InventoryTable>
-      )}
+      <DeadLettersTable
+        error={deadLetters.error}
+        letters={deadLetters.data}
+        loading={deadLetters.isPending}
+      />
     </main>
   );
 }
