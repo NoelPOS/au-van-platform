@@ -25,10 +25,6 @@ async function request<T>(session: AuthSession, path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-/**
- * Reads only. There is no mutation here and there is nothing to add one to:
- * every endpoint under `/api/v1/admin/operations` is a `GET`.
- */
 export const operationsApi = {
   loadTrip: (session: AuthSession, tripId: string) =>
     request<TripOperations>(session, `/trips/${tripId}`),

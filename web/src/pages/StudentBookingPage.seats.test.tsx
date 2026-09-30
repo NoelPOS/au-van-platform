@@ -35,8 +35,6 @@ describe("StudentBookingPage", () => {
       screen.getByRole("button", { name: "Seat B2, booked" }),
     ).toBeDisabled();
 
-    // The name carries the state and `aria-pressed` carries the toggle, so a
-    // screen reader reads the same thing twice over rather than not at all.
     expect(
       screen.getByRole("button", { name: "Seat A1, available", pressed: false }),
     ).toBeInTheDocument();
@@ -96,8 +94,6 @@ describe("StudentBookingPage", () => {
       await screen.findByRole("button", { name: "Seat A1, held by someone else" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
-    // Nothing is selected any more, so holding again would send an empty
-    // request the server would only reject.
     expect(
       screen.getByRole("button", { name: "Hold these seats" }),
     ).toBeDisabled();
@@ -138,8 +134,6 @@ describe("StudentBookingPage", () => {
     await tick(10_000);
 
     expect(seatsRequested).toBeGreaterThan(1);
-    // Nothing the student did takes the seat away, so the only way they learn
-    // about it is the live region announcing itself.
     expect(
       screen.getAllByRole("status").map((region) => region.textContent),
     ).toContain(

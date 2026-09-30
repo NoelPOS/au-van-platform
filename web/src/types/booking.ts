@@ -1,9 +1,4 @@
 export type SeatState = "AVAILABLE" | "HELD" | "HELD_BY_YOU" | "BOOKED";
-/**
- * A booking now starts at `PENDING_PAYMENT` and only an approved payment proof
- * reaches `CONFIRMED` (ADR-009). `PAYMENT_REJECTED` is not a dead end: the
- * booking keeps its seats and the student can send another slip.
- */
 export type BookingStatus =
   | "PENDING_PAYMENT"
   | "PAYMENT_UNDER_REVIEW"
@@ -11,12 +6,6 @@ export type BookingStatus =
   | "CONFIRMED"
   | "CANCELLED";
 
-/**
- * `EXPIRED` is the sweep releasing an unpaid booking's seats. The booking's
- * status is `CANCELLED` either way — ADR-010 declined to add a status for a
- * state that is operationally identical — so this event is the only thing that
- * says the student did not cancel it themselves.
- */
 export type BookingEventType =
   | "CREATED"
   | "PAYMENT_PROOF_SUBMITTED"
@@ -25,10 +14,6 @@ export type BookingEventType =
   | "CANCELLED"
   | "EXPIRED";
 
-/**
- * One entry in a booking's history. `actorUserId` is whoever caused it, which
- * for a review is a member of staff rather than the student reading it.
- */
 export type BookingEvent = {
   type: BookingEventType;
   detail: string | null;
@@ -36,11 +21,6 @@ export type BookingEvent = {
   createdAt: string;
 };
 
-/**
- * `WAITING` and `PROMOTED` are the queued states — the only ones a student's
- * own read returns. The other three are terminal. Nothing but `WAITING` and
- * `WITHDRAWN` is reachable until the promotion sweep lands (#69).
- */
 export type WaitlistStatus =
   | "WAITING"
   | "PROMOTED"
@@ -48,12 +28,6 @@ export type WaitlistStatus =
   | "WITHDRAWN"
   | "EXPIRED";
 
-/**
- * A student's place in a full trip's queue. `position` counts only queued
- * entries and is derived by the API on every read, so a student who leaves
- * stops occupying a place for everyone behind them. It is null for an entry
- * that has ended and therefore has no place.
- */
 export type WaitlistEntry = {
   id: string;
   tripId: string;
@@ -102,11 +76,6 @@ export type SeatHold = {
   seats: HeldSeat[];
 };
 
-/**
- * Route and departure arrive nested on a booking because the trip list carries
- * only future active trips: a past or cancelled trip could never be resolved
- * client-side for a my-bookings row.
- */
 export type Booking = {
   id: string;
   reference: string;
@@ -122,11 +91,6 @@ export type Booking = {
   totalFare: number;
   seats: HeldSeat[];
   events: BookingEvent[];
-  /**
-   * When these seats are released if the booking is still unpaid, and null for
-   * one that never expires — every confirmed or cancelled booking, and any row
-   * written before the deadline existed.
-   */
   paymentDeadlineAt: string | null;
   createdAt: string;
 };

@@ -21,12 +21,6 @@ describe("App", () => {
     expect(await screen.findByText("Available")).toBeInTheDocument();
   });
 
-  /**
-   * The flag is a build-time constant and this suite builds without it, so the
-   * Playwright suite's sign-in control is not in this tree at all. The check
-   * that actually protects production is the bundle grep in `Container checks`;
-   * this one catches a gate removed by hand (ADR-013).
-   */
   it("offers no end-to-end sign-in in a build that did not ask for one", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 

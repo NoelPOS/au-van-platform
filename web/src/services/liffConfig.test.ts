@@ -15,11 +15,7 @@ describe("LIFF configuration", () => {
     expect(e2eAuthEnabled).toBe(false);
   });
 
-  /**
-   * Re-imported rather than re-read: `e2eAuthEnabled` is a module-level
-   * constant on purpose, because that is what lets the bundler fold the control
-   * away entirely, so the only way it can change is a fresh evaluation.
-   */
+  // e2eAuthEnabled is a module-level constant, so only a fresh import re-reads it.
   it("turns the end-to-end sign-in on only for the exact string the build flag documents", async () => {
     vi.stubEnv("VITE_E2E_AUTH", "true");
     vi.resetModules();

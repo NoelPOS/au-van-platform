@@ -18,8 +18,6 @@ describe("StudentBookingPage", () => {
   });
 
   it("sends a payment slip as multipart and lets the browser set the boundary", async () => {
-    // The shared request() helper forces application/json, which would
-    // mis-type the upload; this call has to go around it.
     let uploaded = 0;
     const fetcher = stubApi({
       bookings: () =>
@@ -53,8 +51,6 @@ describe("StudentBookingPage", () => {
     expect(headers.get("Authorization")).toBe("Bearer student-token");
     expect(init.body).toBeInstanceOf(FormData);
     expect((init.body as FormData).get("file")).toBe(slip);
-    // The list is refetched, so the student sees the new state rather than
-    // the upload form they just used.
     expect(
       await screen.findByText(
         "Your payment proof is with an administrator. This booking is confirmed once they approve it.",
@@ -76,7 +72,6 @@ describe("StudentBookingPage", () => {
     expect(
       await screen.findByText("The slip is too blurred to read."),
     ).toBeInTheDocument();
-    // Rejection is a failure, and the badge's fallback tone already says so.
     expect(screen.getByText("PAYMENT_REJECTED")).toHaveClass("text-red-700");
 
     fireEvent.change(screen.getByLabelText("Upload your payment slip"), {
@@ -144,9 +139,6 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    // Built with the same formatter the page uses: the assertion is about
-    // which instant is shown — the deadline, not the departure — and must not
-    // depend on the timezone the suite happens to run in.
     expect(
       await screen.findByText(
         `Send your payment slip by ${formatDeparture(booking.paymentDeadlineAt)} or these seats are released.`,
@@ -167,16 +159,10 @@ describe("StudentBookingPage", () => {
         "Expired unpaid and released seats A1. Book again if seats are still free.",
       ),
     ).toBeInTheDocument();
-    // The seats are gone, so there is nothing left to send a slip for.
     expect(
       screen.queryByLabelText("Upload your payment slip"),
     ).not.toBeInTheDocument();
   });
-
-  /**
-   * A booking the student cancelled themselves has no EXPIRED event, so it must
-   * not be told it ran out of time.
-   */
 
   it("does not claim a booking the student cancelled themselves expired", async () => {
     stubApi({

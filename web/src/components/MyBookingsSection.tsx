@@ -5,13 +5,9 @@ import { StatusBadge } from "./ui/StatusBadge";
 import { formatDeparture, formatFare } from "../utils/format";
 import type { Booking } from "../types/booking";
 
-/** Mirrors the API's own allowlist; its 400 is the backstop. */
+// Mirrors the API's own allowlist; its 400 is the backstop.
 const acceptedImageTypes = "image/jpeg,image/png,image/webp";
 
-/**
- * Why the last slip was turned down. The history is oldest first and a booking
- * can be rejected more than once, so the reason to show is the last one.
- */
 function rejectionReason(booking: Booking): string | null {
   return (
     booking.events.findLast((event) => event.type === "PAYMENT_REJECTED")
@@ -19,11 +15,6 @@ function rejectionReason(booking: Booking): string | null {
   );
 }
 
-/**
- * Why a cancelled booking is cancelled. An expiry and the student's own
- * cancellation both leave the status `CANCELLED`, so the history is the only
- * thing that tells them apart — and an expiry is the one they did not ask for.
- */
 function expiryReason(booking: Booking): string | null {
   return (
     booking.events.findLast((event) => event.type === "EXPIRED")?.detail ?? null
@@ -121,9 +112,6 @@ function PaymentProofForm({
   onSubmitProof: (bookingId: string, file: File) => void;
   submitting: boolean;
 }) {
-  // The file is read off the form on submit rather than held in state: there
-  // is nothing to do with it in between, and a controlled file input cannot
-  // be reset the way the rest of this form can.
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const input = event.currentTarget.elements.namedItem(

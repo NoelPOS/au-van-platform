@@ -18,12 +18,6 @@ export function useWaitlistAndProof(
   const joinWaitlist = useJoinWaitlist(session);
   const leaveWaitlist = useLeaveWaitlist(session);
 
-  /**
-   * A refused join is almost always the trip having a seat again, which the
-   * student would rather book than queue for, so both failures that mean that
-   * send them back to a refreshed list instead of leaving a message beside a
-   * stale row.
-   */
   async function joinTheWaitlist(next: AvailableTrip) {
     setNotice(null);
     try {
@@ -57,17 +51,12 @@ export function useWaitlistAndProof(
       await leaveWaitlist.mutateAsync({ entryId: entry.id });
       setNotice({ tone: "status", message: "You have left the waitlist." });
     } catch (error) {
-      // A 404 means the entry is already gone, which is what was asked for;
-      // the refreshed queue on the way out says so on its own.
+      // A 404 means the entry is already gone, which is what was asked for.
       if (error instanceof ApiError && error.status === 404) return;
       setNotice({ tone: "error", message: messageOf(error) });
     }
   }
 
-  /**
-   * The upload keeps the student where they are: nothing else on the page
-   * depends on it, and a refused file is fixed by picking another one.
-   */
   async function submitPaymentProof(bookingId: string, file: File) {
     setNotice(null);
     try {

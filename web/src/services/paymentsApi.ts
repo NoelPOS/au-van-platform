@@ -43,13 +43,7 @@ export const paymentsApi = {
       method: "POST",
       body: JSON.stringify({ note }),
     }),
-  /**
-   * The one call that cannot go through `request()`: it sets
-   * `Content-Type: application/json` and parses the body as JSON, and this
-   * body is an image. An `<img src>` is not an option either — the browser
-   * sends no `Authorization` header for one, so the endpoint would answer 401
-   * and the administrator would see a broken image.
-   */
+  // Fetched with the token because an <img src> sends no Authorization header.
   loadProofImage: async (
     session: AuthSession,
     proofId: string,

@@ -1,13 +1,8 @@
 import type { Notice } from "../types/booking";
 
 export function BookingNotice({ notice }: { notice: Notice | null }) {
-  /*
-    Both live regions stay mounted and only their text changes. A
-    `role="status"` region inserted together with its first text is
-    announced unreliably, and swapping the role on one element has the
-    same problem. Empty, the wrapper is taken out of the flex flow rather
-    than unmounted, so it neither leaves a gap nor leaves the tree.
-  */
+  // Both regions stay mounted and only their text changes: a live region
+  // inserted together with its first text is announced unreliably.
   return (
     <div className={notice ? "" : "sr-only"}>
       <p

@@ -3,26 +3,6 @@ import { Button } from "./ui/Button";
 import { exchangeLineIdToken } from "../services/authService";
 import type { AuthSession } from "../types/auth";
 
-/**
- * Sign-in for the Playwright suite, and for nothing else (ADR-013).
- *
- * <p>It skips `liff.init()` — which contacts LINE and cannot be driven by a
- * browser automation — and posts the typed subject to the ordinary exchange
- * endpoint as an id token. That is the whole of it: `exchangeLineIdToken` is
- * reused rather than wrapped, so the E2E path and the real path share one
- * client and one failure handling, and there is no second thing to keep right.
- *
- * <p><strong>This is not an authentication bypass.</strong> The API verifies
- * the string exactly as it verifies a real id token, against
- * `auth.line.api-base-url`. A subject typed here is accepted only by an
- * instance deliberately pointed at a verification double, which only
- * `compose.e2e.yaml` does; against the default `https://api.line.me` it is
- * refused like any other made-up token.
- *
- * <p>`App.tsx` renders this behind `e2eAuthEnabled()`, so nothing below reaches
- * a production bundle. The marker on the form is what `Container checks` greps
- * for to prove that.
- */
 export function E2eSignIn({
   onSignedIn,
 }: {
@@ -51,6 +31,7 @@ export function E2eSignIn({
     }
   }
 
+  // CI and the e2e global setup grep for this data-testid: never rename it.
   return (
     <form
       className="mt-6 flex flex-wrap items-end gap-2"

@@ -4,10 +4,6 @@ import { SeatLegend, SeatMap } from "./SeatMap";
 import { formatDeparture, formatFare } from "../utils/format";
 import type { AvailableTrip, TripSeat } from "../types/booking";
 
-/**
- * Empty when nothing was lost, so the live region can stay mounted. The
- * four-seat cap means more than one seat can go at once, so this pluralises.
- */
 function lostSeatMessage(labels: string[]): string {
   if (labels.length === 0) return "";
   if (labels.length === 1)
@@ -55,10 +51,8 @@ export function SeatSelectionSection({
           <p className="text-sm text-red-700">{error.message}</p>
         </div>
       )}
-      {/*
-        Mounted even when empty: a `role="status"` region inserted together
-        with its first text is announced unreliably, so only the text changes.
-      */}
+      {/* Stays mounted: a status region inserted together with its first
+          text is announced unreliably. */}
       <p
         className={lostSeatLabels.length > 0 ? "mt-4 text-sm text-red-700" : ""}
         role="status"

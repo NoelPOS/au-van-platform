@@ -104,7 +104,6 @@ describe("AdminPaymentReviewPage", () => {
     );
     const call = fetcher.mock.calls.find(([url]) => String(url).endsWith("/image"));
     expect(call?.[0]).toBe("/api/v1/admin/payment-proofs/proof-1/image");
-    // No <img src> straight at the endpoint: it would go out with no token.
     expect(new Headers(call?.[1]?.headers).get("Authorization")).toBe(
       "Bearer admin-token",
     );
@@ -122,7 +121,6 @@ describe("AdminPaymentReviewPage", () => {
     await screen.findByAltText(/Payment slip for booking/);
     view.unmount();
 
-    // Without this every slip looked at leaks a blob for the life of the tab.
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:the-slip");
   });
 
@@ -166,8 +164,6 @@ describe("AdminPaymentReviewPage", () => {
         "Say why the slip was rejected, so the student can fix it.",
       ),
     ).toBeInTheDocument();
-    // Nothing went out: the student would have been told to try again with no
-    // idea what to change.
     expect(
       fetcher.mock.calls.filter(([url]) => String(url).includes("/reject")),
     ).toHaveLength(0);

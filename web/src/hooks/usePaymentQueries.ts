@@ -13,10 +13,6 @@ export function usePaymentProofs(session: AuthSession) {
   });
 }
 
-/**
- * A decision always refreshes the queue: the proof just decided leaves it, and
- * anything another administrator decided meanwhile leaves it too.
- */
 function useDecision(
   session: AuthSession,
   decide: (session: AuthSession, proofId: string, note: string) => Promise<unknown>,

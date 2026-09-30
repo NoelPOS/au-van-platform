@@ -1,10 +1,3 @@
-/**
- * Three tones, not two. A booking waiting for payment or sitting in front of
- * an administrator is neither a success nor a failure, and painting it green
- * would tell a student their seat is paid for when it is not — while red would
- * say something is wrong when nothing is. Amber is the "still in progress"
- * tone. Anything unrecognised keeps falling back to the failure colour.
- */
 const tones: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
   CONFIRMED: "bg-emerald-50 text-emerald-700",

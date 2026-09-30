@@ -23,8 +23,6 @@ describe("StudentBookingPage waitlist", () => {
     expect(
       await screen.findByRole("button", { name: "Join waitlist" }),
     ).toBeInTheDocument();
-    // The bookable trip is still a button that opens the seat map, and it
-    // carries no waitlist control of its own.
     expect(
       screen.getByRole("button", { name: /3 of 4 seats free/ }),
     ).toBeEnabled();
@@ -76,8 +74,6 @@ describe("StudentBookingPage waitlist", () => {
   });
 
   it("leaves the waitlist through POST /leave, never DELETE", async () => {
-    // The API's CORS policy allows no DELETE, so a DELETE here would pass this
-    // suite and fail only in a real browser.
     let queued = true;
     const fetcher = stubApi({
       trips: () => json([fullTrip]),

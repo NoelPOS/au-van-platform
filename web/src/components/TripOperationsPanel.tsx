@@ -3,7 +3,6 @@ import { formatDeparture } from "../utils/format";
 import { EmptyRow, InventoryTable } from "./InventoryTable";
 import { StatusBadge } from "./ui/StatusBadge";
 
-/** A place, or a dash for an entry that has ended and holds none. */
 function place(entry: WaitlistPlace): string {
   return entry.position === null ? "—" : `#${entry.position}`;
 }

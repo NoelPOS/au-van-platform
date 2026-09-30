@@ -9,11 +9,6 @@ import type {
   WaitlistEntry,
 } from "../types/booking";
 
-/**
- * A failed booking request. The flow branches on `code`, never on the status
- * alone: the API answers 409 for several unrelated conditions and only the
- * machine-readable code says which one happened.
- */
 export class ApiError extends Error {
   status: number;
   code: string | null;
@@ -29,8 +24,6 @@ export class ApiError extends Error {
 const sessionExpired = "Your sign-in has expired. Sign in with LINE again.";
 
 async function failure(response: Response): Promise<ApiError> {
-  // Spring answers a missing or expired token with a bare 401 and no body, so
-  // there is nothing to parse and nothing useful to show the student.
   if (response.status === 401) return new ApiError(sessionExpired, 401, null);
 
   const body = (await response.json().catch(() => null)) as {
@@ -56,8 +49,6 @@ async function request<T>(
 
   if (!response.ok) throw await failure(response);
 
-  // Releasing a hold answers 204 with an empty body; parsing it would throw on
-  // a successful call.
   if (response.status === 204) return undefined as T;
 
   return (await response.json()) as T;
@@ -80,7 +71,6 @@ export const bookingApi = {
     request<void>(session, `/seat-holds/${holdId}/release`, { method: "POST" }),
   listBookings: (session: AuthSession) =>
     request<Booking[]>(session, "/bookings"),
-  /** The caller's own queued entries, across every trip, in one request. */
   listWaitlist: (session: AuthSession) =>
     request<WaitlistEntry[]>(session, "/waitlist"),
   joinWaitlist: (
@@ -91,10 +81,7 @@ export const bookingApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  /**
-   * A POST, not a DELETE: the API's CORS policy allows no DELETE, so a DELETE
-   * here would work behind the Vite dev proxy and fail in a real browser.
-   */
+  // A POST, not a DELETE: the API's CORS policy allows no DELETE.
   leaveWaitlist: (session: AuthSession, entryId: string) =>
     request<void>(session, `/waitlist/${entryId}/leave`, { method: "POST" }),
   createBooking: (
@@ -107,12 +94,7 @@ export const bookingApi = {
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(input),
     }),
-  /**
-   * The one call that cannot go through `request()`: that helper always sets
-   * `Content-Type: application/json`, and a multipart upload needs the browser
-   * to set its own `multipart/form-data; boundary=...` instead. Setting it by
-   * hand is not an option either — only the browser knows the boundary.
-   */
+  // Bypasses request(): only the browser can set the multipart boundary.
   submitPaymentProof: async (
     session: AuthSession,
     bookingId: string,

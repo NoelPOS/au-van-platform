@@ -16,11 +16,7 @@ export function useAvailableTrips(session: AuthSession) {
   });
 }
 
-/**
- * The seat map is never served from cache: the application-wide staleTime of
- * thirty seconds would hand a returning student a map that no longer matches
- * the trip, and they would pick a seat that is already gone.
- */
+// Never cached: the app-wide staleTime would offer seats that are already gone.
 export function useSeatMap(
   session: AuthSession,
   tripId: string | null,
@@ -49,11 +45,6 @@ export function useMyWaitlist(session: AuthSession) {
   });
 }
 
-/**
- * Both waitlist mutations invalidate the trip list as well as the queue: a
- * position is derived from the queue on the server, and joining or leaving is
- * also the moment to find out whether the trip is still full.
- */
 export function useJoinWaitlist(session: AuthSession) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -83,7 +74,6 @@ export function useHoldSeats(session: AuthSession) {
   return useMutation({
     mutationFn: (input: { tripId: string; seatIds: string[] }) =>
       bookingApi.holdSeats(session, input),
-    // Refresh on failure too: a rejected hold means somebody else took a seat.
     onSettled: (_data, _error, input) =>
       queryClient.invalidateQueries({
         queryKey: bookingKeys.seatMap(input.tripId),
@@ -108,8 +98,6 @@ export function useSubmitPaymentProof(session: AuthSession) {
   return useMutation({
     mutationFn: (variables: { bookingId: string; file: File }) =>
       bookingApi.submitPaymentProof(session, variables.bookingId, variables.file),
-    // The booking comes back with its new status, but the list beside it is
-    // what the student is looking at.
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: bookingKeys.bookings }),
   });

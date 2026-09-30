@@ -18,7 +18,7 @@ import {
   useSeatMap,
 } from "./useBookingQueries";
 
-/** Mirrors the API's `booking.max-seats-per-hold`; its 400 is the backstop. */
+// Mirrors the API's booking.max-seats-per-hold; its 400 is the backstop.
 export const maxSeatsPerHold = 4;
 
 export function useBookingFlow(session: AuthSession) {
@@ -28,8 +28,7 @@ export function useBookingFlow(session: AuthSession) {
   const [hold, setHold] = useState<SeatHold | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
-  // One idempotency key per booking attempt, deliberately kept across a failed
-  // attempt so a retry cannot create a second booking.
+  // One key per booking attempt, kept across a failure so a retry cannot book twice.
   const keyRef = useRef<string | null>(null);
 
   const trips = useAvailableTrips(session);
@@ -44,8 +43,6 @@ export function useBookingFlow(session: AuthSession) {
   const createBooking = useCreateBooking(session);
 
   const seats = seatMap.data?.seats ?? [];
-  // The poll can never fight the selection: availability is derived from the
-  // latest map on every render and never written back into `selected`.
   const takeable = new Set(
     seats
       .filter((seat) => seat.state === "AVAILABLE" || seat.state === "HELD_BY_YOU")
@@ -58,15 +55,11 @@ export function useBookingFlow(session: AuthSession) {
     .filter((seat) => selected.includes(seat.id) && !takeable.has(seat.id))
     .map((seat) => seat.label);
 
-  // A 404 on the map means the trip itself is gone. Rendering the error beside
-  // an empty grid would leave the student on a dead trip that is still in the
-  // list, so this is the same forced transition the other trip-gone codes take.
   const tripIsGone = seatMap.error instanceof ApiError && seatMap.error.status === 404;
   useEffect(() => {
     if (tripIsGone)
       backToTrips("That trip is no longer available. Choose another.");
-    // `backToTrips` is redeclared every render, so depending on it would fire
-    // the transition on every render instead of on the edge into the 404.
+    // Only on the edge into the 404: backToTrips is redeclared every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripIsGone]);
 
@@ -106,8 +99,6 @@ export function useBookingFlow(session: AuthSession) {
   }
 
   function toggleSeat(seatId: string) {
-    // Built from the pruned selection, so a seat lost to the poll drops out
-    // for good on the next interaction.
     if (effective.includes(seatId)) {
       setNotice(null);
       setSelected(effective.filter((id) => id !== seatId));
@@ -150,8 +141,6 @@ export function useBookingFlow(session: AuthSession) {
       return backToTrips("That trip has already departed. Choose another.");
     if (status === 404)
       return backToTrips("That trip is no longer available. Choose another.");
-    // A seat was taken first: the map has been refreshed and the selection is
-    // pruned from it, so the student only has to pick again.
     setNotice({ tone: "error", message: messageOf(error) });
   }
 
@@ -178,8 +167,7 @@ export function useBookingFlow(session: AuthSession) {
   }
 
   function resetIdempotencyKey() {
-    // A new payload needs a new key, or the API rejects the retry as a
-    // key reused with different content.
+    // A changed payload needs a new key, or the API rejects it as a reused one.
     keyRef.current = null;
   }
 
@@ -216,10 +204,7 @@ export function useBookingFlow(session: AuthSession) {
         "Your seat hold expired before the booking was confirmed. Choose your seats again.",
       );
     if (code === "hold_already_used") {
-      // A dropped connection can hide a successful 201, and a form edit then
-      // mints a new key: the booking exists. Sending the student back to the
-      // seat map would hide the very booking they are being told about, so
-      // this one lands on the list that shows it.
+      // A lost 201 can hide this booking, so land on the list that shows it.
       void bookings.refetch();
       return backToTrips(
         "Those seats are already booked. If that was you, the booking is in My bookings below.",
@@ -245,8 +230,7 @@ export function useBookingFlow(session: AuthSession) {
         tone: "error",
         message: "Check the passenger name and phone number, then try again.",
       });
-    // Anything else keeps the hold and the idempotency key: this is the retry
-    // case, and retrying cannot create a second booking.
+    // Keep the hold and the key: retrying with the same key cannot book twice.
     setNotice({ tone: "error", message: messageOf(error) });
   }
 

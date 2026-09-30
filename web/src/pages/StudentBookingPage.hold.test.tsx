@@ -41,15 +41,12 @@ describe("StudentBookingPage", () => {
     const beforeExpiry = seatsRequested;
     await tick(30_000);
 
-    // A polite live region rather than plain text: the expiry is not an error
-    // the student caused, but it has to be announced.
     expect(
       screen.getAllByRole("status").map((region) => region.textContent),
     ).toContain("Your seat hold expired. Choose your seats again.");
     expect(
       screen.getByRole("group", { name: "Seat map" }),
     ).toBeInTheDocument();
-    // The map the student comes back to is the one the hold was released into.
     expect(seatsRequested).toBeGreaterThan(beforeExpiry);
   });
 
@@ -75,9 +72,6 @@ describe("StudentBookingPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Seat map" })).toBeInTheDocument();
-    // Nothing else refreshes the map on the way back: the poll is only
-    // rescheduled, so the student would pick from the map the expired hold
-    // was taken against.
     await vi.waitFor(() =>
       expect(seatsRequested).toBeGreaterThan(beforeFailure),
     );
@@ -96,8 +90,6 @@ describe("StudentBookingPage", () => {
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    // Without this branch the 404 falls into the generic retry case and the
-    // student retries against a hold that is not there.
     expect(
       await screen.findByText(
         "That seat hold is no longer available. Choose your seats again.",
@@ -126,10 +118,6 @@ describe("StudentBookingPage", () => {
   });
 
   it("lets the student take back seats their own failed release left held", async () => {
-    // "Change seats" releases the hold without waiting on it, so a failed
-    // release drops the student onto a map where their own seats read
-    // HELD_BY_YOU. The map only shows that state once the release has
-    // invalidated it, and those seats have to stay selectable.
     let seatsRequested = 0;
     stubApi({
       release: () => json({ detail: "The hold could not be released." }, 500),

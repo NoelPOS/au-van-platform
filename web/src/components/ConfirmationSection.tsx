@@ -12,11 +12,6 @@ export function ConfirmationSection({
 }) {
   return (
     <Panel className="p-5">
-      {/*
-        Not "confirmed": ADR-009 put a payment review in front of that, and
-        this booking is PENDING_PAYMENT until staff approve the proof the
-        student uploads from My bookings below.
-      */}
       <h2 className="text-lg font-bold text-ink">Seats reserved</h2>
       <p className="mt-1 text-sm text-muted">
         Your seats are held. Upload your payment slip in My bookings below, and
