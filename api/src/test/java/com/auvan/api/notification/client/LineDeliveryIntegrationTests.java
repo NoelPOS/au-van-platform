@@ -35,31 +35,11 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-/**
- * The real sender driven by the real dispatcher: what each kind of LINE answer
- * does to the outbox row it came from.
- *
- * <p>{@link LineMessageSenderImplTests} proves the classification; this proves
- * the consequence, which is the thing that actually costs something. A
- * permanent error that is merely "an exception" is retried
- * {@code outbox.max-attempts} times, and for a student who has not added the
- * official account that is five futile sends for every notification they are
- * ever owed.
- *
- * <p>The sender is swapped per test through {@link SwitchableSender} so that one
- * application context covers every case. Each variant is a real
- * {@link LineMessageSenderImpl} bound to a {@link MockRestServiceServer}: the
- * production code path runs in full and no request leaves the machine.
- *
- * <p>Not {@code @Transactional}: the dispatcher must run outside any
- * transaction of its own, and its claim and outcome are separate commits.
- */
 @SpringBootTest
 class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
     private static final String PUSH_URL = "https://api.line.me/v2/bot/message/push";
     private static final String TOKEN = "channel-access-token-for-this-test-only";
 
-    /** Lets one context serve every kind of LINE answer, one test at a time. */
     static class SwitchableSender implements LineMessageSender {
         volatile LineMessageSender delegate;
 
@@ -121,14 +101,6 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
     }
 
-    /**
-     * Trap 12, as the consequence rather than the classification. Make
-     * {@code LineMessageSenderImpl} throw a plain {@code IllegalStateException}
-     * for a 404 instead of a {@code PermanentFailureException} — or delete the
-     * permanent branch from {@code OutboxDispatcher.recordFailure} — and this
-     * reddens: the row comes back {@code PENDING} on attempt one, with four more
-     * pointless sends ahead of it.
-     */
     @Test
     void aPermanentLineErrorDeadLettersTheRowOnItsFirstAttemptRatherThanItsFifth() {
         sender.delegate = lineAlwaysAnswering(withStatus(HttpStatus.NOT_FOUND)
@@ -140,20 +112,13 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(events.findById(eventId).orElseThrow()).satisfies(event -> {
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.DEAD);
-            // One, not outbox.max-attempts. This number is the whole point.
             assertThat(event.getAttempts()).isOne();
             assertThat(event.getLastError()).contains("404");
             assertThat(event.getProcessedAt()).isNotNull();
         });
-        // And nothing claims it again, however due it looks.
         assertThat(dispatcher.dispatchBatch()).isZero();
     }
 
-    /**
-     * The other half of the same guard: a non-2xx that LINE does not define as
-     * permanent has to keep its retries. Classify 5xx as permanent and a
-     * passing outage silently dead-letters every notification taken during it.
-     */
     @Test
     void aTransientLineErrorLeavesTheRowPendingWithItsBackoffAndItsRemainingAttempts() {
         sender.delegate = lineAlwaysAnswering(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
@@ -169,14 +134,6 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
         });
     }
 
-    /**
-     * With no channel access token the dispatch must fail cleanly and leave the
-     * row for another attempt — a token supplied afterwards makes that attempt
-     * work — rather than throwing out of {@code dispatchBatch} and stopping the
-     * batch. The application starting at all with the token blank is the same
-     * property, and every other {@code @SpringBootTest} in this suite is the
-     * proof of it.
-     */
     @Test
     void aBlankChannelAccessTokenLeavesTheRowRetryingInsteadOfCrashingTheDispatch() {
         sender.delegate = lineWithNoToken();
@@ -191,12 +148,6 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
         });
     }
 
-    /**
-     * A student with no usable LINE subject is undeliverable for as long as that
-     * stays true, so the row dies on the first attempt and nothing is ever put
-     * on the wire — {@link MockRestServiceServer#verify()} below expects no
-     * request at all.
-     */
     @Test
     void aStudentWithNoLineUserIdIsNotRetriedFiveTimesOverAndOverAgain() {
         sender.delegate = lineExpectingNoRequest();
@@ -213,40 +164,23 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
         line.verify();
     }
 
-    /**
-     * Trap 10, as arithmetic over the values actually configured rather than
-     * over the ones the plan assumed. LINE honours {@code X-Line-Retry-Key} for
-     * twenty-four hours and treats anything later as a fresh request, so a row
-     * still retrying past that window can put a second message in front of a
-     * student. Raise {@code outbox.max-attempts} far enough — {@code 40} does
-     * it — and this reddens instead of shipping that risk in silence;
-     * {@code outbox.backoff-base} is the other knob it detects, because both
-     * add to the window. {@code outbox.backoff-cap} is not: the term is
-     * {@code min(base * 2^k, cap)}, so the cap can only ever <em>shorten</em>
-     * the window, and raising it can never push the total past twenty-four
-     * hours.
-     */
     @Test
     void theWholeRetryScheduleFinishesFarInsideLinesTwentyFourHourRetryKeyWindow() {
         Duration total = Duration.ZERO;
         for (int attempt = 1; attempt < outbox.maxAttempts(); attempt++) {
             Duration backoff = outbox.backoffBase().multipliedBy(1L << (attempt - 1));
             total = total.plus(backoff.compareTo(outbox.backoffCap()) > 0 ? outbox.backoffCap() : backoff);
-            // Each attempt also holds a lease before it fails.
             total = total.plus(outbox.lease());
         }
 
         assertThat(total).isLessThan(Duration.ofHours(24));
     }
 
-    // Fixtures
-
     private UUID record(UUID recipient) {
         return recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), recipient,
                 new BookingNotification("AUV-250101-LINE", "Booked seats A1."), OffsetDateTime.now()).getId();
     }
 
-    /** The production sender, against a LINE that answers this way to anything. */
     private LineMessageSenderImpl lineAlwaysAnswering(
             org.springframework.test.web.client.ResponseCreator answer) {
         RestClient.Builder builder = RestClient.builder();

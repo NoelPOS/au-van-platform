@@ -21,23 +21,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The other side of the scheduling gate: with {@code outbox.dispatch.enabled}
- * turned back on, a recorded row really is dispatched by the scheduler, with
- * nothing in this test calling {@code dispatchBatch()}. Every other test class
- * calls the dispatcher directly, so without this one the wiring — the
- * {@code @Scheduled} method, the poll interval binding, the conditional bean —
- * would be entirely unproven.
- *
- * <p>The property is set here and nowhere else, so this is the only context in
- * the suite with a live poller in it. That isolation is the point: a scheduler
- * running through the booking and payment-proof concurrency tests would move
- * their fixtures mid-assertion.
- *
- * <p>No {@code LineMessageSender} is registered, which also makes this the
- * proof that the handler is safe with nothing behind the port: the row
- * completes rather than failing five times over an absent dependency.
- */
 @SpringBootTest
 @TestPropertySource(properties = {
         "outbox.dispatch.enabled=true",
@@ -81,17 +64,7 @@ class OutboxSchedulingIntegrationTests extends AuthenticationTestSupport {
         assertThat(dispatched.getProcessedAt()).isNotNull();
     }
 
-    /**
-     * Polls rather than sleeping a fixed time, so a slow machine waits longer
-     * and a fast one does not.
-     *
-     * <p>It waits for a <em>terminal</em> status, not merely for something other
-     * than {@code PENDING}. A dispatch takes the row through {@code IN_FLIGHT}
-     * on its way, so "not PENDING" returns a row that has only been claimed and
-     * the {@code SENT} assertion fails on a machine slow enough to be polled
-     * mid-dispatch — which is a flake in this test, not a fault in the
-     * dispatcher.
-     */
+    // Wait for a terminal status: a row polled mid-dispatch is IN_FLIGHT, not SENT.
     private OutboxEvent awaitResolution(UUID eventId) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MILLIS;
         while (System.currentTimeMillis() < deadline) {

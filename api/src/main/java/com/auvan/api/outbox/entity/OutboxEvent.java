@@ -12,19 +12,6 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * One piece of outbound work, recorded in the transaction that caused it.
- *
- * <p>Nothing here mutates the row after it is created. Every state change a
- * dispatch makes — the claim and the outcome — is a conditional {@code UPDATE}
- * in {@link com.auvan.api.outbox.repository.OutboxEventRepository}, because
- * each one has to be decided by the database rather than by a value some worker
- * read a moment ago.
- *
- * <p>Mirrored from {@code V7} under the same names and widths, so the mapping
- * and the migration cannot describe this table differently without it showing
- * in review.
- */
 @Entity
 @Table(name = "outbox_events", uniqueConstraints =
         @UniqueConstraint(name = "outbox_events_dedupe_key_unique", columnNames = "dedupe_key"))
@@ -37,17 +24,9 @@ public class OutboxEvent {
     @Column(name = "event_type", nullable = false, length = 64)
     private OutboxEventType eventType;
 
-    /**
-     * The thing this event is about: a booking for every type but the two
-     * waitlist ones, whose aggregate is a {@code waitlist_entries} row, because
-     * a promotion happens before any booking exists (ADR-011). A plain column
-     * with no foreign key — see {@code V7} on why that is deliberate — which is
-     * what lets the meaning widen without a migration.
-     */
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
 
-    /** The {@code app_users} row the message is for, frozen at record time. */
     @Column(name = "recipient_user_id", nullable = false)
     private UUID recipientUserId;
 
@@ -67,17 +46,6 @@ public class OutboxEvent {
     @Column(name = "last_error", length = 1000)
     private String lastError;
 
-    /**
-     * Null for a state-change event, which legitimately repeats, and set for a
-     * scheduled departure reminder, where the unique constraint on this column
-     * is what makes scheduling idempotent — the legacy application's own
-     * {@code unique (bookingId, type)} ({@code src/models/ReminderJob.ts:46}).
-     *
-     * <p>It is therefore also the column that says <em>which rows are
-     * reminders</em>, which is what
-     * {@link com.auvan.api.outbox.repository.OutboxEventRepository#cancelScheduled}
-     * selects on when a booking stops being eligible for one.
-     */
     @Column(name = "dedupe_key", length = 255)
     private String dedupeKey;
 
@@ -89,7 +57,6 @@ public class OutboxEvent {
 
     protected OutboxEvent() { }
 
-    /** Due immediately: a notification is owed the moment its transaction commits. */
     public OutboxEvent(OutboxEventType eventType, UUID aggregateId, UUID recipientUserId, String payload,
                        OffsetDateTime now) {
         this.eventType = eventType;
@@ -102,18 +69,6 @@ public class OutboxEvent {
         this.createdAt = now;
     }
 
-    /**
-     * A reminder: the same row, due in the future and carrying a dedupe key.
-     *
-     * <p>That is the whole of what makes a scheduled reminder different from a
-     * notification, and the reason ADR-010 rejected a second {@code reminder_jobs}
-     * table — the claim, the backoff and the dead-letter rule are already
-     * written here and would otherwise be written twice.
-     *
-     * @param dueAt when the reminder should reach the student, which is always
-     *              in the future: a reminder whose time has already passed is
-     *              not scheduled at all
-     */
     public OutboxEvent(OutboxEventType eventType, UUID aggregateId, UUID recipientUserId, String payload,
                        String dedupeKey, OffsetDateTime dueAt, OffsetDateTime now) {
         this(eventType, aggregateId, recipientUserId, payload, now);
