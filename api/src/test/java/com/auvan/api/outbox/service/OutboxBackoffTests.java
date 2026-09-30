@@ -6,16 +6,6 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The retry schedule, as arithmetic. An integration test would have to wait out
- * a real hour to see the cap, and the two things worth being sure of here are
- * that it doubles and that it stops.
- *
- * <p>The ceiling is not decoration: {@code max-attempts} and {@code backoff-cap}
- * have to multiply out to well under the twenty-four hours LINE deduplicates a
- * retry key for, or a row still retrying past that window becomes a second
- * message the student sees.
- */
 class OutboxBackoffTests {
     private static final Duration BASE = Duration.ofSeconds(30);
     private static final Duration CAP = Duration.ofHours(1);
@@ -35,12 +25,6 @@ class OutboxBackoffTests {
         assertThat(OutboxDispatcher.backoffFor(Integer.MAX_VALUE, BASE, CAP)).isEqualTo(CAP);
     }
 
-    /**
-     * The configured five attempts, added up. Eight minutes is the number that
-     * has to stay far inside LINE's twenty-four-hour window; change
-     * {@code max-attempts}, {@code backoff-base} or {@code backoff-cap} and
-     * this is the assertion that says so.
-     */
     @Test
     void fiveAttemptsSpanFarLessThanTheRetryKeyWindow() {
         Duration total = Duration.ZERO;

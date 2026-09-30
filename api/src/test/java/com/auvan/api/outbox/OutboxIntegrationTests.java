@@ -62,23 +62,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 
-/**
- * The outbox end to end: what a committed transaction leaves behind, what a
- * rolled-back one does not, and what the dispatcher then does with it.
- *
- * <p>Not {@code @Transactional}. A test-managed transaction would make the
- * rollback test meaningless — the whole point is that a real commit boundary
- * decides whether the row exists — and the dispatcher must run outside any
- * transaction of its own.
- *
- * <p>Rows are aged with {@link JdbcTemplate} rather than by waiting. Nothing in
- * this codebase injects a {@code Clock}, so a backoff of thirty seconds is
- * thirty real seconds; moving {@code next_attempt_at} instead is what makes the
- * retry, lease and dead-letter paths testable at all.
- */
+// Not @Transactional: the rollback test needs a real commit boundary.
 @SpringBootTest
 class OutboxIntegrationTests extends AuthenticationTestSupport {
-    /** Both ports' test implementations, registered the way the payment-proof tests already do. */
     @TestConfiguration
     static class FakePortsConfiguration {
         @Bean
@@ -121,7 +107,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private InMemoryPaymentProofStorage storage;
 
-    // A spy, not a mock: every call runs for real except the one a test stubs.
     @MockitoSpyBean
     private IdempotencyService idempotency;
 
@@ -169,7 +154,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         administrator = users.save(new AppUser("Uadmin-outbox", "Administrator")).getId();
     }
 
-    /** In foreign-key order, and in both hooks: leftovers break other classes' cleanup. */
     @AfterEach
     void clearData() {
         events.deleteAll();
@@ -184,8 +168,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         users.deleteAll();
     }
 
-    // Recording: the row and the state change are one commit
-
     @Test
     void aCommittedBookingCreationLeavesExactlyOnePendingOutboxRowForTheStudent() {
         UUID bookingId = createBooking("key-created");
@@ -197,20 +179,11 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
             assertThat(event.getAttempts()).isZero();
             assertThat(event.getProcessedAt()).isNull();
-            // Due immediately: a notification is owed the moment it commits.
             assertThat(event.getNextAttemptAt()).isBeforeOrEqualTo(OffsetDateTime.now());
             assertThat(event.getPayload()).contains(bookings.findById(bookingId).orElseThrow().getReference());
         });
     }
 
-    /**
-     * Acceptance criterion 1, in the only form that proves it: the write fails
-     * <em>after</em> the outbox row has been recorded, and the row goes with it.
-     *
-     * <p>Give {@link OutboxRecorder} a transaction of its own — a
-     * {@code REQUIRES_NEW} propagation — and this is the test that reddens.
-     * Everything else in this class would still pass.
-     */
     @Test
     void aBookingWriteThatFailsAfterRecordingLeavesNoOutboxRowAndNoBooking() {
         UUID holdId = holdOn(trip.getSeats().getFirst());
@@ -225,14 +198,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(bookings.count()).isZero();
     }
 
-    /**
-     * The cancellation path's own trap. {@code seat_claims.deleteByBookingId}
-     * is {@code @Modifying(clearAutomatically = true)}, so an outbox insert
-     * that has not been flushed by the time it runs is discarded in silence.
-     * Move the {@code outbox.record} call in {@code BookingService.cancel}
-     * below the {@code bookings.flush()} and this test reddens with no error
-     * anywhere — the row simply is not there.
-     */
     @Test
     void cancellingABookingLeavesItsOutboxRowDespiteTheClaimDeleteClearingThePersistenceContext() {
         UUID bookingId = createBooking("key-cancel");
@@ -246,11 +211,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         });
     }
 
-    /**
-     * The two payment transactions, and the one thing about them that is easy
-     * to get wrong: an administrator's decision is news for the <em>student</em>,
-     * so the recipient is the booking's owner and never the actor.
-     */
     @Test
     void aSubmissionAndTheDecisionOnItEachRecordOneRowAddressedToTheStudent() {
         UUID bookingId = createBooking("key-proof");
@@ -280,8 +240,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getPayload()).contains("The slip is unreadable.");
         });
     }
-
-    // Dispatch: the success path
 
     @Test
     void aDueRowIsSentOnceAndLandsSent() {
@@ -313,12 +271,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
     }
 
-    /**
-     * The terminal-state guard. A {@code SENT} row that somehow becomes due
-     * again — a clock skew, an operator's hand on the table — must not produce
-     * a second message. Drop {@code status} from the claim's {@code WHERE} and
-     * this reddens.
-     */
     @Test
     void aSentRowIsNeverSentAgainEvenWhenItIsDue() {
         UUID eventId = record("AUV-250101-ALREADY");
@@ -330,20 +282,9 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(sender.messages()).isEmpty();
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
-        // Not even a candidate. The claim would refuse it anyway, but a table
-        // whose history is mostly SENT would otherwise fill every batch with
-        // rows there is nothing to do about and starve the ones there is.
         assertThat(events.findDispatchable(OffsetDateTime.now(), PageRequest.of(0, 50))).isEmpty();
     }
 
-    /**
-     * The same guard one layer down, where it actually has to hold. The
-     * candidate query filters terminal rows out, so the test above never
-     * reaches the claim; this one calls the claim directly, which is what
-     * happens for real when a rival resolves the row between another worker's
-     * candidate read and its claim. Drop {@code status} from the claim's
-     * {@code WHERE} and this reddens while everything else stays green.
-     */
     @Test
     void theClaimItselfRefusesARowThatHasAlreadyBeenResolved() {
         UUID sentId = record("AUV-250101-CLAIMSENT");
@@ -359,12 +300,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.claim(deadId, now, now.plusMinutes(2))).isZero();
     }
 
-    /**
-     * An outcome belongs to whoever holds the claim. Writing one for a row
-     * nobody has claimed would let a stale worker resolve a row that has since
-     * gone back to the queue. Drop {@code status} from the {@code markSent} and
-     * {@code markDead} guards and this reddens.
-     */
     @Test
     void anOutcomeIsRefusedForARowThatNoWorkerHasClaimed() {
         UUID eventId = record("AUV-250101-UNCLAIMED");
@@ -376,11 +311,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.PENDING);
     }
 
-    /**
-     * The lease, which is this design's whole answer to a worker dying
-     * mid-send: no sweeper collects the row, its lease simply runs out and it
-     * becomes due again.
-     */
     @Test
     void aClaimedRowIsUntouchableUntilItsLeaseRunsOutAndIsThenReclaimed() {
         UUID eventId = record("AUV-250101-LEASED");
@@ -397,13 +327,9 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(sender.messages()).hasSize(1);
         assertThat(events.findById(eventId).orElseThrow()).satisfies(event -> {
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.SENT);
-            // The dead worker's attempt was spent, so a send that always kills
-            // its worker still runs out of attempts rather than looping.
             assertThat(event.getAttempts()).isEqualTo(2);
         });
     }
-
-    // Dispatch: the failure path
 
     @Test
     void aSendThatThrowsLeavesTheRowPendingWithOneSpentAttemptAndABackedOffDeadline() {
@@ -417,21 +343,11 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getAttempts()).isOne();
             assertThat(event.getLastError()).contains("LINE did not accept the push.");
             assertThat(event.getProcessedAt()).isNull();
-            // The first backoff is outbox.backoff-base, thirty seconds.
             assertThat(event.getNextAttemptAt()).isAfter(OffsetDateTime.now().plusSeconds(20));
         });
-        // Not claimable again until then: the row is out of the batch entirely.
         assertThat(dispatcher.dispatchBatch()).isZero();
     }
 
-    /**
-     * Acceptance criterion 2 as a test, and the one that would otherwise be
-     * quietly missing. A send that reached LINE and then failed is
-     * indistinguishable from one that never arrived, so the retry must carry
-     * the <em>same</em> retry key — LINE deduplicates on it, and without that
-     * the student reads the message twice. Nothing else in this suite would
-     * notice if the key were rebuilt per attempt.
-     */
     @Test
     void aRetryCarriesTheSameRetryKeyAsTheSendThatFailed() {
         UUID eventId = record("AUV-250101-RETRYKEY");
@@ -446,11 +362,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.findById(eventId).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
     }
 
-    /**
-     * Acceptance criterion 4: the attempt budget is spent, the row lands
-     * somewhere an operator can find it, and nothing retries it again however
-     * due it looks.
-     */
     @Test
     void aRowThatExhaustsItsAttemptsGoesDeadAndStopsBeingRetried() {
         UUID eventId = record("AUV-250101-DOOMED");
@@ -463,7 +374,6 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(events.findById(eventId).orElseThrow()).satisfies(event -> {
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.DEAD);
-            // outbox.max-attempts, and not one more.
             assertThat(event.getAttempts()).isEqualTo(5);
             assertThat(event.getLastError()).contains("LINE did not accept the push.");
             assertThat(event.getProcessedAt()).isNotNull();
@@ -475,24 +385,11 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         assertThat(sender.messages()).hasSize(5);
     }
 
-    // The scheduling gate
-
-    /**
-     * The gate, from the side that matters to everyone else's tests: under the
-     * test configuration there is no scheduler bean at all, so no background
-     * sweep can move a fixture under a concurrency assertion. Remove
-     * {@code @ConditionalOnProperty} from {@code OutboxScheduler} and this
-     * reddens. {@code OutboxSchedulingIntegrationTests} proves the other side —
-     * that turning the property on really does dispatch.
-     */
     @Test
     void noSchedulerRunsUnderTheTestConfiguration() {
         assertThat(context.getBeanNamesForType(OutboxScheduler.class)).isEmpty();
     }
 
-    // Fixtures
-
-    /** A booking made the way a student makes one, so the create path really runs. */
     private UUID createBooking(String idempotencyKey) {
         UUID holdId = holdOn(trip.getSeats().getFirst());
         bookingService.create(student, idempotencyKey, new CreateBookingRequest(holdId, "Somchai P.", "0812345678"));
@@ -505,16 +402,11 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
         return holdId;
     }
 
-    /** One outbox row with no booking behind it, for the dispatch paths. */
     private UUID record(String reference) {
         return recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), student,
                 new BookingNotification(reference, "Booked seats A1."), OffsetDateTime.now()).getId();
     }
 
-    /**
-     * Ages a row by writing {@code next_attempt_at} directly. Nothing injects a
-     * {@code Clock}, so the alternative is waiting out a real backoff.
-     */
     private void dueAt(UUID eventId, OffsetDateTime when) {
         jdbc.update("update outbox_events set next_attempt_at = ? where id = ?", when, eventId);
     }

@@ -34,27 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
-/**
- * Two workers, one due row. Exactly one claim succeeds and exactly one message
- * is sent — the property the whole design rests on, because nothing in the
- * schema would notice a message being sent twice.
- *
- * <p>Like the three concurrency classes before it, this one must not be
- * {@code @Transactional}: a test-managed transaction would put both threads on
- * one connection and there would be no race left to observe.
- *
- * <p>The candidate read is stubbed so both workers hold the same id before
- * either tries to claim it, which is the interleaving a real race only
- * sometimes produces. The stub controls timing only; both threads then run the
- * production claim for real and the database decides.
- *
- * <p>All of this runs on H2, so none of it proves PostgreSQL's behaviour.
- * {@link OutboxClaimConcurrencyPostgresTests} re-proves the claim against a real
- * PostgreSQL 17, where the {@code WHERE}-clause recheck that the loser's {@code 0}
- * actually rests on is a documented guarantee rather than an emulation. That suite
- * is tagged {@code postgres} and excluded from {@code ./gradlew test}, so this
- * class keeps its Docker-free feedback.
- */
+// Not @Transactional: a test transaction puts every thread on one connection and hides the race.
 @SpringBootTest
 class OutboxConcurrencyIntegrationTests extends AuthenticationTestSupport {
     @TestConfiguration
@@ -75,7 +55,6 @@ class OutboxConcurrencyIntegrationTests extends AuthenticationTestSupport {
     @Autowired
     private RecordingLineMessageSender sender;
 
-    // A spy, not a mock: every call runs for real except the one this stubs.
     @MockitoSpyBean
     private OutboxEventRepository events;
 
@@ -97,21 +76,12 @@ class OutboxConcurrencyIntegrationTests extends AuthenticationTestSupport {
         users.deleteAll();
     }
 
-    /**
-     * The conditional {@code UPDATE} is the only thing standing between this
-     * and two identical messages. Weaken it — drop {@code status} and
-     * {@code nextAttemptAt} from the {@code WHERE} so the claim always reports
-     * success — and both workers send: the loser's {@code UPDATE} waits for the
-     * winner's commit and then happily affects its one row.
-     */
     @Test
     void onlyOneOfTwoWorkersClaimsADueRowAndOnlyOneMessageIsSent() throws Exception {
         UUID eventId = recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), student,
                 new BookingNotification("AUV-250101-RACE", "Booked seats A1."), OffsetDateTime.now()).getId();
         CountDownLatch bothHoldTheCandidate = new CountDownLatch(2);
 
-        // Both workers leave the candidate read holding the same id, so both
-        // reach the claim. Without this they would usually not overlap at all.
         doAnswer(invocation -> {
             Object candidates = real(invocation);
             bothHoldTheCandidate.countDown();
@@ -132,19 +102,10 @@ class OutboxConcurrencyIntegrationTests extends AuthenticationTestSupport {
         assertThat(sender.messages()).hasSize(1);
         assertThat(events.findById(eventId).orElseThrow()).satisfies(event -> {
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.SENT);
-            // One claim, so one spent attempt: the loser wrote nothing at all.
             assertThat(event.getAttempts()).isOne();
         });
     }
 
-    /**
-     * Runs the call the stub intercepted for real.
-     *
-     * <p>{@code invocation.callRealMethod()} cannot do this for a Spring Data
-     * repository: the method is an interface method with no body, and the spy
-     * keeps the actual repository in its default answer rather than as a spied
-     * instance.
-     */
     private static Object real(InvocationOnMock invocation) throws Throwable {
         return mockingDetails(invocation.getMock()).getMockCreationSettings().getDefaultAnswer().answer(invocation);
     }
