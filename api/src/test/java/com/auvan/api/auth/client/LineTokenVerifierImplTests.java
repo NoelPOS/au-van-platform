@@ -17,22 +17,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-/**
- * Where the verification request goes, and what the verifier will and will not
- * accept back from it.
- *
- * <p>{@code auth.line.api-base-url} was made configurable so the Playwright
- * suite can point an instance at a verification double and sign in with no LINE
- * channel (ADR-013). <strong>The point of this class is that moving the host is
- * the only thing that changed.</strong> Every rejection below is asserted
- * against a double that the verifier has been told to trust, so none of them
- * can be passing because the request failed to arrive: the double answers, and
- * the verifier refuses the answer anyway.
- *
- * <p>Against a {@link MockRestServiceServer} through the real
- * {@code RestClient}, as {@code LineMessageSenderImplTests} already does, so no
- * request ever leaves the machine.
- */
 class LineTokenVerifierImplTests {
     private static final String CHANNEL_ID = "2000000000";
     private static final String DOUBLE = "http://line-verification.test";
@@ -60,10 +44,6 @@ class LineTokenVerifierImplTests {
                         MediaType.APPLICATION_JSON));
     }
 
-    /**
-     * The seam itself: the verification request goes to the configured host,
-     * carrying the token and the channel id LINE's own endpoint documents.
-     */
     @Test
     void theVerificationGoesToTheConfiguredHostAndYieldsTheVerifiedSubject() {
         withVerificationHostAndChannel(DOUBLE, CHANNEL_ID);
@@ -75,11 +55,6 @@ class LineTokenVerifierImplTests {
         line.verify();
     }
 
-    /**
-     * The issuer check, which is the one that survives the host moving. A host
-     * this instance has been pointed at is still not allowed to claim that
-     * somebody else issued the token.
-     */
     @Test
     void anIssuerThatIsNotLineIsRefusedEvenFromTheConfiguredHost() {
         withVerificationHostAndChannel(DOUBLE, CHANNEL_ID);
@@ -91,7 +66,6 @@ class LineTokenVerifierImplTests {
         line.verify();
     }
 
-    /** A token minted for another channel is another channel's, host or no host. */
     @Test
     void anAudienceThatIsNotTheConfiguredChannelIsRefusedEvenFromTheConfiguredHost() {
         withVerificationHostAndChannel(DOUBLE, CHANNEL_ID);
@@ -103,11 +77,6 @@ class LineTokenVerifierImplTests {
         line.verify();
     }
 
-    /**
-     * A blank {@code sub} is the one that would be silent: {@code AuthService}
-     * keys {@code app_users.line_subject} on it, so accepting it would put every
-     * such caller on one row.
-     */
     @Test
     void aBlankSubjectIsRefusedEvenFromTheConfiguredHost() {
         withVerificationHostAndChannel(DOUBLE, CHANNEL_ID);
@@ -119,12 +88,6 @@ class LineTokenVerifierImplTests {
         line.verify();
     }
 
-    /**
-     * Unchanged behaviour, asserted here because the constructor moved: with no
-     * channel id there is nothing to check {@code aud} against, and the failure
-     * happens before anything is put on the wire rather than at startup, so an
-     * instance that does not use LIFF still boots.
-     */
     @Test
     void aBlankChannelIdFailsAtTheCallWithoutSendingAnything() {
         withVerificationHostAndChannel(DOUBLE, "  ");

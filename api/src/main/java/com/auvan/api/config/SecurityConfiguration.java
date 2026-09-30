@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/api/v1/auth/line/exchange").permitAll()
+                        // The only ADMIN check: there is no method security, so every
+                        // admin mapping must sit under /api/v1/admin/**.
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
@@ -67,15 +69,12 @@ public class SecurityConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         var configuration = new CorsConfiguration();
-        // Driven by CORS_ALLOWED_ORIGINS, the same variable the actuator's own
-        // CORS setting reads, so the two never drift apart. The Vite dev proxy
-        // makes local development same-origin, which hides a wrong value here
-        // entirely -- the fault appears only through a tunnel, a container, or
-        // the eventual CloudFront distribution.
+        // Never a wildcard origin: requests carry an Authorization header.
         configuration.setAllowedOrigins(properties.allowedOrigins());
+        // No DELETE: cancel, release and leave are POSTs, because a DELETE mapping
+        // passes MockMvc and fails in a real browser.
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
-        // Idempotency-Key is not a CORS-safelisted header, so without it here the
-        // browser's preflight refuses every booking confirmation.
+        // Idempotency-Key is not a CORS-safelisted header.
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
