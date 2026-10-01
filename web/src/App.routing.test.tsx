@@ -4,6 +4,7 @@ import {
   fireEvent,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLiffSession } from "./services/liffService";
@@ -53,14 +54,29 @@ describe("App routing", () => {
     vi.clearAllMocks();
   });
 
-  it("opens the inventory for an administrator who signs in at /admin/inventory", async () => {
+  it("sends an administrator at the old /admin/inventory address on to trips", async () => {
     const router = renderApp("/admin/inventory");
     signInAs("ADMIN");
 
     expect(
-      await screen.findByRole("heading", { name: "Transport inventory" }),
+      await screen.findByRole("heading", { name: "Trips", level: 1 }),
     ).toBeInTheDocument();
-    expect(locationOf(router)).toBe("/admin/inventory");
+    await expectLocation(router, "/admin/trips");
+  });
+
+  it.each([
+    ["/admin/trips", "Trips"],
+    ["/admin/routes", "Routes"],
+    ["/admin/vans", "Vans"],
+    ["/admin/seat-layouts", "Seat layouts"],
+  ])("opens %s for an administrator who signs in there", async (path, title) => {
+    const router = renderApp(path);
+    signInAs("ADMIN");
+
+    expect(
+      await screen.findByRole("heading", { name: title, level: 1 }),
+    ).toBeInTheDocument();
+    expect(locationOf(router)).toBe(path);
   });
 
   it("opens payment review for an administrator who signs in at /admin/payments", async () => {
@@ -81,34 +97,39 @@ describe("App routing", () => {
     expect(locationOf(router)).toBe("/admin/operations");
   });
 
-  it("sends an administrator at /admin on to the inventory", async () => {
+  it("opens the overview for an administrator at /admin", async () => {
     const router = renderApp("/admin");
     signInAs("ADMIN");
 
     expect(
-      await screen.findByRole("heading", { name: "Transport inventory" }),
+      await screen.findByRole("heading", { name: "Overview" }),
     ).toBeInTheDocument();
-    await expectLocation(router, "/admin/inventory");
+    expect(locationOf(router)).toBe("/admin");
   });
 
-  it("takes an administrator who signs in at / to the inventory", async () => {
+  it("takes an administrator who signs in at / to the overview", async () => {
     const router = renderApp("/");
     signInAs("ADMIN");
 
     expect(
-      await screen.findByRole("heading", { name: "Transport inventory" }),
+      await screen.findByRole("heading", { name: "Overview" }),
     ).toBeInTheDocument();
-    await expectLocation(router, "/admin/inventory");
+    await expectLocation(router, "/admin");
   });
 
   it("moves between administration destinations with links that mark the current one", async () => {
-    const router = renderApp("/admin/inventory");
+    const router = renderApp("/admin/trips");
     signInAs("ADMIN");
-    await screen.findByRole("heading", { name: "Transport inventory" });
+    await screen.findByRole("heading", { name: "Trips", level: 1 });
 
-    expect(
-      screen.getByRole("link", { name: "Transport inventory" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Trips" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: "Overview" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(screen.getAllByText("Somchai").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("link", { name: "Operations" }));
 
     expect(
@@ -119,9 +140,25 @@ describe("App routing", () => {
       "aria-current",
       "page",
     );
+    expect(screen.getByRole("link", { name: "Trips" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("reaches the tucked-away destinations from the More sheet", async () => {
+    const router = renderApp("/admin");
+    signInAs("ADMIN");
+    await screen.findByRole("heading", { name: "Overview" });
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const sheet = within(screen.getByRole("dialog", { name: "More" }));
+    fireEvent.click(sheet.getByRole("link", { name: "Vans" }));
+
     expect(
-      screen.getByRole("link", { name: "Transport inventory" }),
-    ).not.toHaveAttribute("aria-current");
+      await screen.findByRole("heading", { name: "Vans", level: 1 }),
+    ).toBeInTheDocument();
+    expect(locationOf(router)).toBe("/admin/vans");
+    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
   });
 
   it("sends a student who opens /admin/payments to the booking page", async () => {
@@ -171,9 +208,9 @@ describe("App routing", () => {
   it("sends a signed-in user on an unknown path to their own area", async () => {
     const admin = renderApp("/");
     signInAs("ADMIN");
-    await screen.findByRole("heading", { name: "Transport inventory" });
+    await screen.findByRole("heading", { name: "Overview" });
     await act(() => admin.navigate("/nowhere"));
-    await expectLocation(admin, "/admin/inventory");
+    await expectLocation(admin, "/admin");
     cleanup();
 
     const student = renderApp("/");
