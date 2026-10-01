@@ -77,9 +77,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in with LINE" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Transport inventory" }),
+      await screen.findByRole("heading", { name: "Overview" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("link", { name: "Payment review" }));
+    fireEvent.click(screen.getByRole("link", { name: "Payments" }));
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
   });

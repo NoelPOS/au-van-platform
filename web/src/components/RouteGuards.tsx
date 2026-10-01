@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router";
 import type { ApplicationRole, AuthSession } from "../types/auth";
 
 const homeOf: Record<ApplicationRole, string> = {
-  ADMIN: "/admin/inventory",
+  ADMIN: "/admin",
   STUDENT: "/",
 };
 

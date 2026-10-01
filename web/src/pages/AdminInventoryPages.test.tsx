@@ -1,40 +1,18 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuthSession } from "../types/auth";
-import { AdminInventoryPage } from "./AdminInventoryPage";
+import { adminSession as session, json, renderAdminPage } from "../test/renderAdminPage";
+import { AdminRoutesPage } from "./AdminRoutesPage";
+import { AdminSeatLayoutsPage } from "./AdminSeatLayoutsPage";
+import { AdminTripsPage } from "./AdminTripsPage";
+import { AdminVansPage } from "./AdminVansPage";
 
-const session: AuthSession = {
-  accessToken: "admin-token",
-  expiresIn: 900,
-  user: { id: "admin-id", role: "ADMIN", displayName: "Noel" },
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AdminInventoryPage session={session} />
-    </QueryClientProvider>,
-  );
-}
-
-describe("AdminInventoryPage", () => {
+describe("inventory pages", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
   });
 
-  it("loads the route section and sends a new route to the admin API", async () => {
+  it("loads the routes page and sends a new route to the admin API", async () => {
     const fetcher = vi.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         if (String(input).endsWith("/routes") && init?.method === "POST") {
@@ -55,7 +33,7 @@ describe("AdminInventoryPage", () => {
     );
     vi.stubGlobal("fetch", fetcher);
 
-    renderPage();
+    renderAdminPage(<AdminRoutesPage session={session} />);
 
     expect(await screen.findByText("No routes yet")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Origin"), {
@@ -92,31 +70,28 @@ describe("AdminInventoryPage", () => {
         ),
     );
 
-    renderPage();
+    renderAdminPage(<AdminTripsPage session={session} />);
 
-    expect(
-      await screen.findByText("Could not load inventory"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Could not load trips")).toBeInTheDocument();
     expect(screen.getByText("Access denied.")).toBeInTheDocument();
   });
 
-  it("provides seat-layout, vehicle, and trip management sections", async () => {
+  it("provides seat-layout, vehicle, and trip management pages", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(() => Promise.resolve(json([]))),
     );
 
-    renderPage();
-    await screen.findByText("No routes yet");
+    renderAdminPage(<AdminSeatLayoutsPage session={session} />);
+    expect(await screen.findByLabelText("Layout name")).toBeInTheDocument();
+    cleanup();
 
-    fireEvent.click(screen.getByRole("button", { name: /seat layouts/i }));
-    expect(screen.getByLabelText("Layout name")).toBeInTheDocument();
+    renderAdminPage(<AdminVansPage session={session} />);
+    expect(await screen.findByLabelText("Vehicle code")).toBeInTheDocument();
+    cleanup();
 
-    fireEvent.click(screen.getByRole("button", { name: /^vehicles/i }));
-    expect(screen.getByLabelText("Vehicle code")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /^trips/i }));
-    expect(screen.getByLabelText("Departure")).toBeInTheDocument();
+    renderAdminPage(<AdminTripsPage session={session} />);
+    expect(await screen.findByLabelText("Departure")).toBeInTheDocument();
   });
 
   it("offers only trip statuses the API can deserialise", async () => {
@@ -147,9 +122,7 @@ describe("AdminInventoryPage", () => {
     );
     vi.stubGlobal("fetch", fetcher);
 
-    renderPage();
-    await screen.findByText("No routes yet");
-    fireEvent.click(screen.getByRole("button", { name: /^trips/i }));
+    renderAdminPage(<AdminTripsPage session={session} />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
     const offered = Array.from(

@@ -2,9 +2,13 @@ import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { AdminLayout } from "./components/AdminLayout";
 import { RedirectHome, RequireRole } from "./components/RouteGuards";
-import { AdminInventoryPage } from "./pages/AdminInventoryPage";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
+import { AdminOverviewPage } from "./pages/AdminOverviewPage";
 import { AdminPaymentReviewPage } from "./pages/AdminPaymentReviewPage";
+import { AdminRoutesPage } from "./pages/AdminRoutesPage";
+import { AdminSeatLayoutsPage } from "./pages/AdminSeatLayoutsPage";
+import { AdminTripsPage } from "./pages/AdminTripsPage";
+import { AdminVansPage } from "./pages/AdminVansPage";
 import { SignInPage } from "./pages/SignInPage";
 import { StudentBookingPage } from "./pages/StudentBookingPage";
 import type { AuthSession } from "./types/auth";
@@ -39,14 +43,17 @@ function App() {
         path="/admin"
         element={
           <RequireRole role="ADMIN" session={session}>
-            <AdminLayout />
+            <AdminLayout session={session} />
           </RequireRole>
         }
       >
-        <Route index element={<Navigate replace to="inventory" />} />
+        <Route index element={<AdminOverviewPage session={session} />} />
+        <Route path="trips" element={<AdminTripsPage session={session} />} />
+        <Route path="routes" element={<AdminRoutesPage session={session} />} />
+        <Route path="vans" element={<AdminVansPage session={session} />} />
         <Route
-          path="inventory"
-          element={<AdminInventoryPage session={session} />}
+          path="seat-layouts"
+          element={<AdminSeatLayoutsPage session={session} />}
         />
         <Route
           path="payments"
@@ -56,6 +63,7 @@ function App() {
           path="operations"
           element={<AdminOperationsPage session={session} />}
         />
+        <Route path="inventory" element={<Navigate replace to="/admin/trips" />} />
       </Route>
       <Route path="*" element={<RedirectHome />} />
     </Routes>
