@@ -43,7 +43,9 @@ export function InventoryPage({
             <p className="mt-2 mb-5 text-muted" role="alert">
               {failure.message}
             </p>
-            <Button onClick={() => queries.forEach((query) => void query.refetch())}>
+            <Button
+              onClick={() => queries.forEach((query) => void query.refetch())}
+            >
               Try again
             </Button>
           </Panel>

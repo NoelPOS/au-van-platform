@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { useCreateVehicle, useUpdateVehicle } from "../hooks/useInventoryQueries";
+import {
+  useCreateVehicle,
+  useUpdateVehicle,
+} from "../hooks/useInventoryQueries";
 import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
 import type { SeatLayout, Vehicle, VehicleStatus } from "../types/inventory";
@@ -29,7 +32,9 @@ export function VanForm({
   if (!van && layouts.length === 0) {
     return (
       <EmptyState
-        action={<TextLink to="/admin/seat-layouts">Create a seat layout</TextLink>}
+        action={
+          <TextLink to="/admin/seat-layouts">Create a seat layout</TextLink>
+        }
         detail="A van takes its seats from a layout, so make one first."
         title="No seat layouts yet"
       />

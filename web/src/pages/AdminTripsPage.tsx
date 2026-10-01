@@ -28,7 +28,9 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
       render: (trip) => (
         <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
           <span className="text-muted">{bangkokDay(trip.departureAt)}</span>
-          <span aria-hidden className="text-line">·</span>
+          <span aria-hidden className="text-line">
+            ·
+          </span>
           <span className="font-display text-lg text-brand-900">
             {bangkokTime(trip.departureAt)}
           </span>

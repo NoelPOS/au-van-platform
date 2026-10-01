@@ -69,15 +69,18 @@ describe("App routing", () => {
     ["/admin/routes", "Routes"],
     ["/admin/vans", "Vans"],
     ["/admin/seat-layouts", "Seat layouts"],
-  ])("opens %s for an administrator who signs in there", async (path, title) => {
-    const router = renderApp(path);
-    signInAs("ADMIN");
+  ])(
+    "opens %s for an administrator who signs in there",
+    async (path, title) => {
+      const router = renderApp(path);
+      signInAs("ADMIN");
 
-    expect(
-      await screen.findByRole("heading", { name: title, level: 1 }),
-    ).toBeInTheDocument();
-    expect(locationOf(router)).toBe(path);
-  });
+      expect(
+        await screen.findByRole("heading", { name: title, level: 1 }),
+      ).toBeInTheDocument();
+      expect(locationOf(router)).toBe(path);
+    },
+  );
 
   it("opens payment review for an administrator who signs in at /admin/payments", async () => {
     const router = renderApp("/admin/payments");

@@ -20,7 +20,12 @@ export function RouteForm({
   const updateRoute = useUpdateRoute(session);
   const notify = useToast();
   const [status, setStatus] = useState<RouteStatus>(route?.status ?? "ACTIVE");
-  const values = route ?? { origin: "", destination: "", fare: 0, durationMinutes: 30 };
+  const values = route ?? {
+    origin: "",
+    destination: "",
+    fare: 0,
+    durationMinutes: 30,
+  };
   const retiring = route?.status === "ACTIVE" && status === "INACTIVE";
 
   function saved(message: string) {

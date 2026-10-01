@@ -27,7 +27,12 @@ const destinations: Destination[] = [
   { path: "/admin/trips", label: "Trips", icon: CalendarClock },
   { path: "/admin/routes", label: "Routes", icon: Signpost, tucked: true },
   { path: "/admin/vans", label: "Vans", icon: Van, tucked: true },
-  { path: "/admin/seat-layouts", label: "Seat layouts", icon: Armchair, tucked: true },
+  {
+    path: "/admin/seat-layouts",
+    label: "Seat layouts",
+    icon: Armchair,
+    tucked: true,
+  },
   { path: "/admin/payments", label: "Payments", icon: ReceiptText },
   { path: "/admin/operations", label: "Operations", icon: Activity },
 ];
@@ -76,12 +81,18 @@ export function AdminLayout({ session }: { session: AuthSession }) {
         >
           {destinations.map(({ path, label, icon: Icon, tucked: hidden }) => (
             <NavLink
-              className={(state) => `${linkClass(state)} ${hidden ? "max-lg:hidden" : ""}`}
+              className={(state) =>
+                `${linkClass(state)} ${hidden ? "max-lg:hidden" : ""}`
+              }
               end={path === "/admin"}
               key={path}
               to={path}
             >
-              <Icon aria-hidden className="size-5 shrink-0" strokeWidth={1.75} />
+              <Icon
+                aria-hidden
+                className="size-5 shrink-0"
+                strokeWidth={1.75}
+              />
               {label}
             </NavLink>
           ))}
@@ -113,7 +124,11 @@ export function AdminLayout({ session }: { session: AuthSession }) {
                 onClick={() => setMoreOpen(false)}
                 to={path}
               >
-                <Icon aria-hidden className="size-5 text-brand-500" strokeWidth={1.75} />
+                <Icon
+                  aria-hidden
+                  className="size-5 text-brand-500"
+                  strokeWidth={1.75}
+                />
                 {label}
               </NavLink>
             </li>

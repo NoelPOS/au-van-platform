@@ -1,6 +1,10 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
-import { ToastContext, type Notify, type ToastTone } from "../../hooks/useToast";
+import {
+  ToastContext,
+  type Notify,
+  type ToastTone,
+} from "../../hooks/useToast";
 
 type Toast = { id: number; message: string; tone: ToastTone };
 

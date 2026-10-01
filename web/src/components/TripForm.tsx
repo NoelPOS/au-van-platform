@@ -27,7 +27,9 @@ export function TripForm({
   const updateTrip = useUpdateTrip(session);
   const notify = useToast();
   const [status, setStatus] = useState<TripStatus>(trip?.status ?? "ACTIVE");
-  const departure = trip ? toBangkokInputs(trip.departureAt) : { date: "", time: "" };
+  const departure = trip
+    ? toBangkokInputs(trip.departureAt)
+    : { date: "", time: "" };
   const cancelling = trip?.status === "ACTIVE" && status === "CANCELLED";
 
   if (!trip && (routes.length === 0 || vans.length === 0)) {

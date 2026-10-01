@@ -38,6 +38,8 @@ describe("AdminSeatLayoutsPage", () => {
     expect(
       await screen.findByText("Could not load seat layouts"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
   });
 });

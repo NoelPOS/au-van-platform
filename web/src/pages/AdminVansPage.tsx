@@ -21,7 +21,9 @@ export function AdminVansPage({ session }: { session: AuthSession }) {
   const columns: Column<Vehicle>[] = [
     {
       label: "Code",
-      render: (van) => <span className="font-mono text-[13px]">{van.code}</span>,
+      render: (van) => (
+        <span className="font-mono text-[13px]">{van.code}</span>
+      ),
     },
     { label: "Name", render: (van) => van.name },
     {

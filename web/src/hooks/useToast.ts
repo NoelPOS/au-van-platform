@@ -7,6 +7,7 @@ export const ToastContext = createContext<Notify | null>(null);
 
 export function useToast(): Notify {
   const notify = useContext(ToastContext);
-  if (!notify) throw new Error("useToast is only available inside a ToastProvider.");
+  if (!notify)
+    throw new Error("useToast is only available inside a ToastProvider.");
   return notify;
 }
