@@ -89,8 +89,24 @@ export const deadLetter = {
   processedAt: "2026-09-21T09:10:00Z",
 };
 
+export function seatMap(states: string[]) {
+  return {
+    tripId: "trip-1",
+    departureAt: trip.departureAt,
+    fare: 35,
+    seats: states.map((state, index) => ({
+      id: `seat-${index + 1}`,
+      label: `A${index + 1}`,
+      rowNumber: 1,
+      columnNumber: index + 1,
+      state,
+    })),
+  };
+}
+
 type Routes = {
   trips?: () => Response;
+  seats?: () => Response;
   trip?: () => Response;
   deadLetters?: () => Response;
 };
@@ -99,6 +115,8 @@ export function stubApi(overrides: Routes = {}) {
   const fetcher = vi.fn(
     async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
+      if (url.endsWith("/api/v1/trips/trip-1/seats"))
+        return overrides.seats?.() ?? json(seatMap(["BOOKED", "AVAILABLE"]));
       if (url.endsWith("/operations/trips/trip-1"))
         return overrides.trip?.() ?? json(operations);
       if (url.endsWith("/operations/dead-letters"))
