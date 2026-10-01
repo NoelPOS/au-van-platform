@@ -7,10 +7,16 @@ import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
 import type { SeatLayout, Vehicle, VehicleStatus } from "../types/inventory";
 import { ErrorMessage, FormActions } from "./FormCard";
+import { SeatLayoutPicker } from "./SeatLayoutPicker";
 import { EmptyState } from "./ui/EmptyState";
 import { Input } from "./ui/Input";
-import { Select } from "./ui/Select";
+import { SegmentedControl } from "./ui/SegmentedControl";
 import { TextLink } from "./ui/TextLink";
+
+const statuses: { value: VehicleStatus; label: string }[] = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+];
 
 export function VanForm({
   session,
@@ -80,27 +86,17 @@ export function VanForm({
         placeholder="White Toyota Hiace"
         required
       />
-      <Select
-        defaultValue={van?.seatLayoutId ?? layouts[0]?.id}
-        label="Seat layout"
-        name="seatLayoutId"
-        required
-      >
-        {layouts.map((layout) => (
-          <option key={layout.id} value={layout.id}>
-            {`${layout.name} · ${layout.seats.length} seats`}
-          </option>
-        ))}
-      </Select>
+      <SeatLayoutPicker
+        defaultValue={van?.seatLayoutId ?? layouts[0].id}
+        layouts={layouts}
+      />
       {van && (
-        <Select
+        <SegmentedControl
           label="Status"
-          onChange={(event) => setStatus(event.target.value as VehicleStatus)}
+          onChange={setStatus}
+          options={statuses}
           value={status}
-        >
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </Select>
+        />
       )}
       <ErrorMessage error={createVan.error ?? updateVan.error} />
       <FormActions

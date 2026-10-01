@@ -17,6 +17,11 @@ const layout = {
     { label: "A2", rowNumber: 1, columnNumber: 2 },
   ],
 };
+const hiace = {
+  id: "layout-2",
+  name: "Hiace",
+  seats: [{ label: "A1", rowNumber: 1, columnNumber: 1 }],
+};
 const van = {
   id: "van-1",
   code: "VAN-01",
@@ -39,9 +44,9 @@ describe("AdminVansPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("adds a van from the drawer with the layout it carries", async () => {
+  it("adds a van from the drawer with the layout card it was given", async () => {
     const fetcher = stubAdminApi({
-      "GET /seat-layouts": () => json([layout]),
+      "GET /seat-layouts": () => json([layout, hiace]),
       "POST /vehicles": () => json(van, 201),
     });
 
@@ -55,12 +60,18 @@ describe("AdminVansPage", () => {
     fireEvent.change(drawer().getByLabelText("Name"), {
       target: { value: "White Hiace" },
     });
-    expect(drawer().getByLabelText("Seat layout")).toHaveValue("layout-1");
+    const commuter = drawer().getByRole("radio", { name: "Commuter" });
+    expect(commuter).toBeChecked();
+    expect(commuter).toHaveAccessibleDescription("2 seats");
+    expect(drawer().getByRole("radio", { name: "Hiace" })).toHaveAccessibleDescription(
+      "1 seat",
+    );
+    fireEvent.click(drawer().getByRole("radio", { name: "Hiace" }));
     fireEvent.click(drawer().getByRole("button", { name: "Add van" }));
 
     expect(await screen.findByText("Van added")).toBeInTheDocument();
     expect(sentTo(fetcher, "POST /vehicles")).toEqual([
-      { code: "VAN-01", name: "White Hiace", seatLayoutId: "layout-1" },
+      { code: "VAN-01", name: "White Hiace", seatLayoutId: "layout-2" },
     ]);
   });
 
@@ -76,6 +87,7 @@ describe("AdminVansPage", () => {
     const row = await screen.findByRole("row", { name: /VAN-01/ });
     expect(row).toHaveTextContent("Commuter · 2 seats");
     fireEvent.click(within(row).getByRole("button", { name: "Edit VAN-01" }));
+    expect(drawer().getByRole("radio", { name: "Commuter" })).toBeChecked();
     fireEvent.change(drawer().getByLabelText("Name"), {
       target: { value: "Blue Hiace" },
     });
@@ -89,6 +101,29 @@ describe("AdminVansPage", () => {
         seatLayoutId: "layout-1",
         status: "ACTIVE",
       },
+    ]);
+  });
+
+  it("asks before it marks a van inactive", async () => {
+    const fetcher = stubAdminApi({
+      "GET /seat-layouts": () => json([layout]),
+      "GET /vehicles": () => json([van]),
+      "PUT /vehicles/van-1": (body) => json({ ...van, ...(body as object) }),
+    });
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit VAN-01" }));
+    fireEvent.click(drawer().getByRole("radio", { name: "Inactive" }));
+    fireEvent.click(drawer().getByRole("button", { name: "Save van" }));
+    expect(drawer().getByText(/Mark this van as inactive/)).toBeInTheDocument();
+    expect(sentTo(fetcher, "PUT /vehicles/van-1")).toEqual([]);
+
+    fireEvent.click(drawer().getByRole("button", { name: "Yes, save" }));
+
+    expect(await screen.findByText("Van updated")).toBeInTheDocument();
+    expect(sentTo(fetcher, "PUT /vehicles/van-1")).toEqual([
+      expect.objectContaining({ status: "INACTIVE" }),
     ]);
   });
 

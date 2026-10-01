@@ -17,3 +17,7 @@ export function formatAgo(value: string, now = Date.now()): string {
   if (hours < 24) return `${hours} h ago`;
   return `${Math.floor(hours / 24)} d ago`;
 }
+
+export function seatCount(seats: number): string {
+  return `${seats} ${seats === 1 ? "seat" : "seats"}`;
+}
