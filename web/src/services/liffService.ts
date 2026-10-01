@@ -15,6 +15,8 @@ export async function resumeLiffSession(): Promise<AuthSession | null> {
     throw new Error("VITE_LIFF_ID is not configured.");
   }
 
+  // No withLoginOnExternalBrowser: this runs on load and must not send a
+  // signed-out visitor to LINE before they ask.
   await liff.init({ liffId });
   return liff.isLoggedIn() ? exchangeCurrentToken() : null;
 }
@@ -56,6 +58,7 @@ function startOver(): Promise<never> {
 }
 
 function redirectToLineLogin(): Promise<never> {
+  // Path only: a query from an earlier LINE callback would carry a spent code.
   liff.login({
     redirectUri: window.location.origin + window.location.pathname,
   });
