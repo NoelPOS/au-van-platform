@@ -1,6 +1,5 @@
 import type { PaymentProof } from "../types/payments";
 import { formatAgo, formatFare, formatWhen } from "../utils/format";
-import { TicketPerforation } from "./TicketPerforation";
 
 export function PaymentQueue({
   proofs,
@@ -50,7 +49,7 @@ export function PaymentQueue({
                   {`${proof.trip.origin} → ${proof.trip.destination} · ${formatWhen(proof.trip.departureAt)}`}
                 </span>
               </span>
-              <TicketPerforation />
+              <Perforation />
               <span className="flex w-28 shrink-0 flex-col items-end justify-center gap-1 px-4 py-3.5 text-right">
                 <span className="text-sm font-semibold text-ink tabular-nums">
                   {formatFare(proof.totalFare)}
@@ -68,5 +67,14 @@ export function PaymentQueue({
         );
       })}
     </ol>
+  );
+}
+
+function Perforation() {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative w-0 self-stretch border-l-2 border-dashed border-line before:absolute before:-top-[9px] before:-left-[7px] before:size-4 before:rounded-full before:border before:border-line before:bg-paper after:absolute after:-bottom-[9px] after:-left-[7px] after:size-4 after:rounded-full after:border after:border-line after:bg-paper"
+    />
   );
 }
