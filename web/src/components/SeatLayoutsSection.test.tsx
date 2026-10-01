@@ -140,6 +140,16 @@ describe("SeatLayoutsSection", () => {
     expect(cell(3, 2)).toHaveAttribute("tabindex", "0");
   });
 
+  it("keeps the van between one space and its largest size", () => {
+    renderSection();
+
+    fireEvent.change(screen.getByLabelText("Rows"), { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText("Columns"), { target: { value: "0" } });
+
+    expect(screen.getByLabelText("Rows")).toHaveValue(8);
+    expect(screen.getByLabelText("Columns")).toHaveValue(1);
+  });
+
   it("creates the layout with the placed seats in the API's shape", async () => {
     const fetcher = stubFetch();
     renderSection();
