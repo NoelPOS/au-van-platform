@@ -175,7 +175,7 @@ describe("StudentBookingPage", () => {
     renderPage();
 
     expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    expect(screen.getByText("PENDING_PAYMENT")).toHaveClass("text-warning");
+    expect(screen.getByText("Awaiting payment")).toHaveClass("text-warning");
     expect(screen.getByText(/^AU → Mega Bangna · /)).toBeInTheDocument();
     expect(screen.getByText("Seat A1 · 35.00 THB")).toBeInTheDocument();
   });

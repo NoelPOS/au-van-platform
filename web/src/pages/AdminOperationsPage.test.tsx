@@ -45,12 +45,12 @@ describe("AdminOperationsPage", () => {
     expect(screen.getByText("#1")).toBeInTheDocument();
     expect(screen.getByText("Malee K.")).toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
-    expect(screen.getByText("PROMOTED")).toBeInTheDocument();
+    expect(screen.getByText("Seat offered")).toBeInTheDocument();
     expect(screen.getByText(/Offer ends/)).toBeInTheDocument();
-    expect(screen.getByText("WITHDRAWN")).toBeInTheDocument();
+    expect(screen.getByText("Withdrawn")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.getByText(/2 of 2 seats claimed/)).toBeInTheDocument();
-    expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
+    expect(screen.getByText("Confirmed")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     const call = fetcher.mock.calls.find(([url]) =>
       String(url).includes("/operations/trips/"),

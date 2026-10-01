@@ -69,14 +69,14 @@ test.describe("the student journey", () => {
     await backToTrips(page);
 
     const card = bookingCard(page, reference);
-    await expect(card).toContainText("PENDING_PAYMENT");
+    await expect(card).toContainText("Awaiting payment");
     await expect(card).toContainText("Seat A1");
 
     await submitProof(page, reference, slip);
     await expect(
       page.getByText("Payment proof received.", { exact: false }),
     ).toBeVisible();
-    await expect(card).toContainText("PAYMENT_UNDER_REVIEW");
+    await expect(card).toContainText("In review");
     await expect(card).toContainText(
       "Your payment proof is with an administrator.",
     );
@@ -90,7 +90,7 @@ test.describe("the student journey", () => {
     // Signing in again rather than reloading: a reload drops the session, and
     // nothing on the student's page polls the booking list.
     await signInAsStudent(page, subject);
-    await expect(bookingCard(page, reference)).toContainText("CONFIRMED");
+    await expect(bookingCard(page, reference)).toContainText("Confirmed");
 
     await admin.context().close();
   });
@@ -132,7 +132,7 @@ test.describe("the student journey", () => {
 
     await signInAsStudent(page, subject);
     const card = bookingCard(page, reference);
-    await expect(card).toContainText("PAYMENT_REJECTED");
+    await expect(card).toContainText("Sent back");
     await expect(card).toContainText(
       "The slip shows 100 THB and the fare is 120 THB.",
     );
@@ -169,7 +169,7 @@ test.describe("the student journey", () => {
     await expect(page.getByRole("alert")).toContainText(
       "A payment proof must be a JPEG, PNG, or WebP image.",
     );
-    await expect(bookingCard(page, reference)).toContainText("PENDING_PAYMENT");
+    await expect(bookingCard(page, reference)).toContainText("Awaiting payment");
 
     // Over payment-proof.max-file-size (5MB) and under the multipart backstop
     // (8MB), so the application's own validation is what refuses it.
@@ -181,7 +181,7 @@ test.describe("the student journey", () => {
     await expect(page.getByRole("alert")).toContainText(
       "A payment proof must be 5MB or smaller.",
     );
-    await expect(bookingCard(page, reference)).toContainText("PENDING_PAYMENT");
+    await expect(bookingCard(page, reference)).toContainText("Awaiting payment");
 
     await submitProof(page, reference, slip);
     await expect(bookingCard(page, reference)).toContainText(
