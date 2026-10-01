@@ -3,7 +3,6 @@ package com.auvan.api.outbox;
 import com.auvan.api.AuthenticationTestSupport;
 import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.auth.repository.AppUserRepository;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.entity.OutboxStatus;
@@ -17,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +55,7 @@ class OutboxSchedulingIntegrationTests extends AuthenticationTestSupport {
     @Test
     void theScheduledPollerDispatchesARecordedRowWithoutAnybodyCallingTheDispatcher() throws Exception {
         UUID eventId = recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), student,
-                new BookingNotification("AUV-250101-SCHEDULED", "Booked seats A1."), OffsetDateTime.now()).getId();
+                Map.of("reference", "AUV-250101-SCHEDULED", "detail", "Booked seats A1."), OffsetDateTime.now()).getId();
 
         OutboxEvent dispatched = awaitResolution(eventId);
 

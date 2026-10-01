@@ -4,7 +4,6 @@ import com.auvan.api.AuthenticationTestSupport;
 import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.auth.repository.AppUserRepository;
 import com.auvan.api.notification.config.LineMessagingProperties;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.config.OutboxProperties;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.entity.OutboxStatus;
@@ -27,6 +26,7 @@ import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -178,7 +178,7 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
 
     private UUID record(UUID recipient) {
         return recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), recipient,
-                new BookingNotification("AUV-250101-LINE", "Booked seats A1."), OffsetDateTime.now()).getId();
+                Map.of("reference", "AUV-250101-LINE", "detail", "Booked seats A1."), OffsetDateTime.now()).getId();
     }
 
     private LineMessageSenderImpl lineAlwaysAnswering(

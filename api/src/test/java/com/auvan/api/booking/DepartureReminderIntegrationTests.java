@@ -176,7 +176,8 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getDedupeKey()).isEqualTo(bookingId + ":DEPARTURE_REMINDER_24H");
             assertThat(event.getNextAttemptAt()).isCloseTo(
                     trip.getDepartureAt().minusHours(24), within(1, ChronoUnit.SECONDS));
-            assertThat(event.getPayload()).contains("AU").contains("Asok");
+            assertThat(event.getPayload()).contains("\"origin\":\"AU\"", "\"destination\":\"Asok\"")
+                    .containsPattern("\"seats\":\\[\"A").containsPattern("\"departureAt\":\"20");
         });
         assertThat(reminderOfType(OutboxEventType.DEPARTURE_REMINDER_1H)).satisfies(event -> {
             assertThat(event.getDedupeKey()).isEqualTo(bookingId + ":DEPARTURE_REMINDER_1H");

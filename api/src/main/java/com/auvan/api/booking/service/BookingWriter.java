@@ -12,7 +12,6 @@ import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -72,7 +71,7 @@ public class BookingWriter {
         }
 
         outbox.record(OutboxEventType.BOOKING_CREATED, booking.getId(), userId,
-                new BookingNotification(booking.getReference(), detail), now);
+                BookingNotifications.of(booking, detail), now);
 
         return idempotency.record(userId, endpoint, key, requestHash, HttpStatus.CREATED.value(),
                 BookingResponse.from(booking), now);

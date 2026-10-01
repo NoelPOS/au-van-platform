@@ -9,7 +9,6 @@ import com.auvan.api.booking.entity.PaymentProof;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.PaymentProofRepository;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
@@ -63,7 +62,7 @@ public class PaymentProofService {
         booking.markPaymentUnderReview(
                 bookingProperties.departureBoundFor(booking.getTrip().getDepartureAt()), now);
         outbox.record(OutboxEventType.PAYMENT_PROOF_SUBMITTED, booking.getId(), booking.getUserId(),
-                new BookingNotification(booking.getReference(), detail), now);
+                BookingNotifications.of(booking, detail), now);
         return BookingResponse.from(booking);
     }
 

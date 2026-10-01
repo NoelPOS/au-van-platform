@@ -2,7 +2,6 @@ package com.auvan.api.booking.service;
 
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.inventory.entity.Trip;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
 import com.auvan.api.outbox.service.OutboxRecorder;
@@ -46,7 +45,7 @@ public class DepartureReminderService {
                 continue;
             }
             if (outbox.schedule(offset.type(), booking.getId(), booking.getUserId(),
-                    new BookingNotification(booking.getReference(), detail),
+                    BookingNotifications.of(booking, detail),
                     dedupeKeyFor(booking.getId(), offset.type()), dueAt, now) != null) {
                 queued++;
             }
