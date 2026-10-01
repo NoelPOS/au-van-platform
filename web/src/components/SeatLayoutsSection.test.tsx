@@ -1,15 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AuthSession } from "../types/auth";
+import { adminSession, json, renderAdminPage } from "../test/renderAdminPage";
 import type { SeatLayout } from "../types/inventory";
 import { SeatLayoutsSection } from "./SeatLayoutsSection";
-
-const session: AuthSession = {
-  accessToken: "admin-token",
-  expiresIn: 900,
-  user: { id: "admin-id", role: "ADMIN", displayName: "Noel" },
-};
 
 const hiace: SeatLayout = {
   id: "layout-1",
@@ -21,22 +14,8 @@ const hiace: SeatLayout = {
   ],
 };
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 function renderSection(layouts: SeatLayout[] = []) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <SeatLayoutsSection layouts={layouts} session={session} />
-    </QueryClientProvider>,
-  );
+  renderAdminPage(<SeatLayoutsSection layouts={layouts} session={adminSession} />);
 }
 
 function stubFetch(response: () => Response = () => json(hiace, 201)) {
@@ -174,7 +153,8 @@ describe("SeatLayoutsSection", () => {
         ],
       },
     });
-    await vi.waitFor(() => expect(screen.getByLabelText("Layout name")).toHaveValue(""));
+    expect(await screen.findByText("Seat layout created.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Layout name")).toHaveValue("");
   });
 
   it("refuses to save a van with no seats in it", () => {
@@ -236,7 +216,8 @@ describe("SeatLayoutsSection", () => {
       method: "PUT",
       body: { name: "Hiace", seats: hiace.seats },
     });
-    expect(await screen.findByRole("heading", { name: "New seat layout" })).toBeInTheDocument();
+    expect(await screen.findByText("Seat layout saved.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New seat layout" })).toBeInTheDocument();
   });
 
   it("drops the edit without saving when it is cancelled", () => {

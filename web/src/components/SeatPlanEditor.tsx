@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { VanSeatPlan } from "./VanSeatPlan";
+import { Input } from "./ui/Input";
 import {
   labelSeats,
   renameSeat,
@@ -52,7 +53,7 @@ export function SeatPlanEditor({
       <button
         aria-label={`Row ${rowNumber}, column ${columnNumber}${seat ? `, seat ${seat.label}` : ""}`}
         aria-pressed={Boolean(seat)}
-        className={`group grid h-full w-full place-items-center rounded-lg text-[0.7rem] font-semibold tabular-nums transition-colors duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${
+        className={`group grid h-full w-full place-items-center rounded-lg text-[0.7rem] font-semibold tabular-nums transition-colors duration-150 ease-out ${
           seat
             ? "rounded-t-xl border-b-4 border-brand-900 bg-brand-600 text-white hover:bg-brand-700"
             : aisle(columnNumber)
@@ -97,27 +98,24 @@ export function SeatPlanEditor({
       </div>
       <div className="grid gap-4">
         <p aria-live="polite" className="text-sm text-muted">
-          <span className="block text-4xl font-semibold tabular-nums text-brand-900">
+          <span className="block font-display text-5xl font-light tabular-nums text-brand-900">
             {seats.length}
           </span>
           {seats.length === 1 ? " seat placed" : " seats placed"}
         </p>
         {activeSeat ? (
-          <div className="grid gap-1">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand-500">
+          <div className="grid gap-2">
+            <p className="text-[11px] font-semibold tracking-[0.16em] text-brand-500 uppercase">
               Row {row}, column {column}
             </p>
-            <label className="grid gap-1 text-sm font-semibold text-ink">
-              Seat label
-              <input
-                className="rounded-lg border border-line bg-card px-3 py-2 font-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                maxLength={12}
-                onChange={(event) => onChange(renameSeat(draft, row, column, event.target.value))}
-                placeholder={activeSeat.label}
-                value={activeDraftSeat?.customLabel ?? ""}
-              />
-            </label>
-            <p className="text-xs text-muted">Leave empty to keep the automatic label.</p>
+            <Input
+              hint="Leave empty to keep the automatic label."
+              label="Seat label"
+              maxLength={12}
+              onChange={(event) => onChange(renameSeat(draft, row, column, event.target.value))}
+              placeholder={activeSeat.label}
+              value={activeDraftSeat?.customLabel ?? ""}
+            />
           </div>
         ) : (
           <p className="text-sm text-muted">

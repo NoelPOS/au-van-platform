@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { ErrorMessage, FormActions } from "./FormCard";
 import { SeatPlanEditor } from "./SeatPlanEditor";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Panel } from "./ui/Panel";
 import type { Seat, SeatLayout } from "../types/inventory";
 import {
   fromPreset,
@@ -11,9 +14,6 @@ import {
   presets,
   resize,
 } from "../utils/seatLayout";
-
-const fieldClass =
-  "mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 font-normal text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand-500";
 
 const toSize = (value: string, max: number) =>
   Math.min(max, Math.max(1, Math.trunc(Number(value)) || 1));
@@ -49,49 +49,42 @@ export function SeatLayoutBuilder({
   }
 
   return (
-    <form
-      className="grid gap-6 rounded-2xl border border-line bg-card p-5 sm:p-7"
-      onSubmit={submit}
-    >
-      <div>
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand-500">
-          Seat layout builder
-        </p>
-        <h2 className="mt-1 text-2xl font-semibold text-brand-900">
-          {layout ? `Edit ${layout.name}` : "New seat layout"}
-        </h2>
-      </div>
-      <label className="text-sm font-semibold text-ink">
-        Layout name
-        <input
-          className={fieldClass}
+    <Panel className="p-5 sm:p-7">
+      <form className="grid gap-6" onSubmit={submit}>
+        <div>
+          <p className="text-[11px] font-semibold tracking-[0.16em] text-brand-500 uppercase">
+            Seat layout builder
+          </p>
+          <h2 className="mt-2 font-display text-3xl font-light text-brand-900">
+            {layout ? `Edit ${layout.name}` : "New seat layout"}
+          </h2>
+        </div>
+        <Input
+          label="Layout name"
           name="name"
           onChange={(event) => setName(event.target.value)}
           placeholder="Toyota Commuter 13-seat"
           required
           value={name}
         />
-      </label>
-      <fieldset className="grid gap-2">
-        <legend className="mb-2 text-sm font-semibold text-ink">Start from</legend>
-        <div className="flex flex-wrap gap-2">
-          {presets.map((preset) => (
-            <button
-              className="rounded-full border border-line bg-paper px-4 py-2 text-sm text-ink transition-colors duration-150 ease-out hover:border-brand-500 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500"
-              key={preset.name}
-              onClick={() => setDraft(fromPreset(preset))}
-              type="button"
-            >
-              {preset.name}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <div className="grid max-w-xs grid-cols-2 gap-3">
-        <label className="text-sm font-semibold text-ink">
-          Rows
-          <input
-            className={fieldClass}
+        <fieldset>
+          <legend className="mb-2 text-[13px] font-medium text-ink">Start from</legend>
+          <div className="flex flex-wrap gap-2">
+            {presets.map((preset) => (
+              <Button
+                key={preset.name}
+                onClick={() => setDraft(fromPreset(preset))}
+                type="button"
+                variant="secondary"
+              >
+                {preset.name}
+              </Button>
+            ))}
+          </div>
+        </fieldset>
+        <div className="grid max-w-xs grid-cols-2 gap-3">
+          <Input
+            label="Rows"
             max={maxRows}
             min={1}
             onChange={(event) =>
@@ -100,11 +93,8 @@ export function SeatLayoutBuilder({
             type="number"
             value={draft.rows}
           />
-        </label>
-        <label className="text-sm font-semibold text-ink">
-          Columns
-          <input
-            className={fieldClass}
+          <Input
+            label="Columns"
             max={maxColumns}
             min={1}
             onChange={(event) =>
@@ -113,15 +103,15 @@ export function SeatLayoutBuilder({
             type="number"
             value={draft.columns}
           />
-        </label>
-      </div>
-      <SeatPlanEditor draft={draft} onChange={setDraft} />
-      <ErrorMessage error={inputError ?? error} />
-      <FormActions
-        busy={busy}
-        onCancel={onCancel}
-        submitLabel={layout ? "Save layout" : "Create layout"}
-      />
-    </form>
+        </div>
+        <SeatPlanEditor draft={draft} onChange={setDraft} />
+        <ErrorMessage error={inputError ?? error} />
+        <FormActions
+          busy={busy}
+          onCancel={onCancel}
+          submitLabel={layout ? "Save layout" : "Create layout"}
+        />
+      </form>
+    </Panel>
   );
 }
