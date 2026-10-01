@@ -20,6 +20,7 @@ table below into a chat.
 | `POSTGRES_PASSWORD` | RDS-managed secret in Secrets Manager | RDS, during the demo apply | The API's database login. No person, tfvars file or Terraform state ever holds it |
 | `LINE_CHANNEL_ID` | `line_channel_id` in the gitignored `infra/demo/terraform.tfvars`, passed to the task as plain environment | Owner | The **Login** channel id the API checks id tokens against. An identifier, not a secret |
 | `VITE_LIFF_ID` | Build-time environment of `npm run build`, inlined into the bundle | Owner | The LIFF app id the SDK needs before any network call. Public |
+| `LINE_LIFF_URL` | `line_liff_url` in `infra/demo/terraform.tfvars`, passed to the task as plain environment | Owner | `https://liff.line.me/<LIFF id>`, which the button on a notification card opens. Public. Empty sends cards without a button |
 | Budget email and limit | `notification_email` and `monthly_limit_usd` in the gitignored `infra/budget/terraform.tfvars` | Owner | Where the budget notifications go, and the monthly ceiling in USD |
 | Alarm email (optional) | `alarm_notification_email` in `infra/demo/terraform.tfvars` | Owner | Where the three CloudWatch alarms send. Empty creates no SNS topic |
 
@@ -118,6 +119,7 @@ They are not Terraform outputs.
    - `api_image_tag` = the printed `$TAG`. Never `latest`: the repository's
      tags are immutable.
    - `line_channel_id` = the Login channel id.
+   - `line_liff_url` = `https://liff.line.me/<your LIFF id>`.
    - `db_multi_az = true`, for the evidence session.
    - `api_min_tasks = 2`, for the evidence session. `api_max_tasks` stays `2`.
    - `alarm_notification_email`, optionally. Confirm the subscription email

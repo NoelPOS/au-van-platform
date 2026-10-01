@@ -148,6 +148,14 @@ Two further facts about delivery, both of them normal rather than faults:
   finish in minutes, far inside that window; changing any of the three means
   re-checking it.
 
+Each notification is a Flex Message card: the route, departure in Bangkok time,
+seats, fare and booking reference, with a status word beside its colour.
+`altText`, which LINE shows in the chat list, is the plain sentence the card
+summarises. A card with a next step, such as uploading a payment slip, carries
+one button that opens the LIFF app; set `LINE_LIFF_URL` in the ignored root
+`.env` to `https://liff.line.me/<your LIFF id>`. Left empty, every card is sent
+without a button.
+
 Neither `./gradlew test` nor CI needs the token. The tests substitute a
 recording implementation of the send port, or drive the real one against a
 mocked HTTP server, so the suite runs with no channel and no credential — the
