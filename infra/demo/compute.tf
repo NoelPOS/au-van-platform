@@ -160,11 +160,9 @@ resource "aws_ecs_service" "api" {
   # like a broken image rather than a slow one.
   health_check_grace_period_seconds = 120
 
-  # One task at a time, and a few seconds of downtime during a deployment. The
-  # alternative is paying for a second task to overlap the first, which is the
-  # wrong trade for a demo.
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  # Start the replacement before stopping the old task, so a deployment has no downtime.
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   # assign_public_ip is mandatory, not a preference. These are public subnets
   # with no NAT gateway and no VPC endpoints (network.tf), so the internet
