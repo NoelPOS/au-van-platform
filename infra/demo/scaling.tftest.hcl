@@ -46,6 +46,11 @@ run "defaults_run_one_task_and_scale_to_two_on_cpu" {
     condition     = aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration[0].target_value == 60
     error_message = "The scaler must track average CPU at 60%."
   }
+
+  assert {
+    condition     = aws_ecs_service.api.deployment_minimum_healthy_percent == 100 && aws_ecs_service.api.deployment_maximum_percent == 200
+    error_message = "A deployment must start the replacement task before stopping the old one."
+  }
 }
 
 run "rejects_a_minimum_below_one" {
