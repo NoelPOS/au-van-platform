@@ -16,10 +16,10 @@ export function TicketStub({
     <article
       className={`flex overflow-hidden rounded-2xl border border-line bg-card ${className}`}
     >
-      <div className="flex w-28 shrink-0 flex-col justify-center px-4 py-5 sm:w-32">
+      <div className="flex w-24 shrink-0 flex-col justify-center px-3.5 py-5 sm:w-32 sm:px-5">
         {stub}
       </div>
-      <div className="relative min-w-0 flex-1 border-l border-dashed border-line px-5 py-5">
+      <div className="relative min-w-0 flex-1 border-l border-dashed border-line px-4 py-5 sm:px-5">
         <span aria-hidden className={`${notch} -top-2`} />
         <span aria-hidden className={`${notch} -bottom-2`} />
         {children}
