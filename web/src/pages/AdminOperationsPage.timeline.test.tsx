@@ -12,6 +12,7 @@ import {
 const sooner = { ...trip, id: "trip-sooner", departureAt: inDays(1) };
 const later = { ...trip, id: "trip-later", departureAt: inDays(3) };
 const gone = { ...trip, id: "trip-gone", departureAt: inDays(-2) };
+const longGone = { ...trip, id: "trip-long-gone", departureAt: inDays(-5) };
 
 describe("AdminOperationsPage trip timeline", () => {
   afterEach(() => {
@@ -19,8 +20,8 @@ describe("AdminOperationsPage trip timeline", () => {
     vi.unstubAllGlobals();
   });
 
-  it("lists what is ahead soonest first and keeps departed trips aside", async () => {
-    stubApi({ trips: () => json([later, gone, sooner]) });
+  it("lists what is ahead soonest first and keeps departed trips aside, latest first", async () => {
+    stubApi({ trips: () => json([later, longGone, gone, sooner]) });
 
     renderPage();
     const timeline = (
@@ -29,17 +30,18 @@ describe("AdminOperationsPage trip timeline", () => {
     const days = within(timeline)
       .getAllByRole("list")
       .map((list) => list.getAttribute("aria-label"));
-    const earlier = within(timeline).getByText("Earlier departures (1)")
+    const earlier = within(timeline).getByText("Earlier departures (2)")
       .parentElement as HTMLElement;
 
     expect(days).toEqual([
       formatDay(sooner.departureAt),
       formatDay(later.departureAt),
       formatDay(gone.departureAt),
+      formatDay(longGone.departureAt),
     ]);
-    expect(within(earlier).getByRole("list")).toHaveAccessibleName(
-      formatDay(gone.departureAt),
-    );
+    expect(
+      within(earlier).getAllByRole("list").map((list) => list.getAttribute("aria-label")),
+    ).toEqual([formatDay(gone.departureAt), formatDay(longGone.departureAt)]);
   });
 
   it("loads the trip picked from the timeline and marks it as the one shown", async () => {
