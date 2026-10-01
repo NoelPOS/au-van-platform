@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { AuthSession } from "../types/auth";
 import { SeatLayoutBuilder } from "./SeatLayoutBuilder";
 import { VanSeatPlan } from "./VanSeatPlan";
+import { Button } from "./ui/Button";
+import { EmptyState } from "./ui/EmptyState";
+import { Panel } from "./ui/Panel";
+import { useToast } from "../hooks/useToast";
 import { useCreateSeatLayout, useUpdateSeatLayout } from "../hooks/useInventoryQueries";
 import type { Seat, SeatLayout } from "../types/inventory";
 import { fromSeats, seatAt } from "../utils/seatLayout";
@@ -34,10 +38,12 @@ export function SeatLayoutsSection({
   const createLayout = useCreateSeatLayout(session);
   const updateLayout = useUpdateSeatLayout(session);
   const mutation = editing ? updateLayout : createLayout;
+  const notify = useToast();
 
   function save(input: { name: string; seats: Seat[] }) {
     const done = {
       onSuccess: () => {
+        notify(editing ? "Seat layout saved." : "Seat layout created.");
         setEditing(null);
         setSaved((count) => count + 1);
       },
@@ -57,16 +63,16 @@ export function SeatLayoutsSection({
         onSave={save}
       />
       <div className="grid gap-3">
-        <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted">
+        <h2 className="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
           Saved layouts
         </h2>
         {layouts.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center">
-            <strong className="block text-ink">No seat layouts yet</strong>
-            <span className="mt-1 block text-sm text-muted">
-              Create a reusable layout before adding a vehicle.
-            </span>
-          </p>
+          <Panel>
+            <EmptyState
+              detail="Create a reusable layout before adding a van."
+              title="No seat layouts yet"
+            />
+          </Panel>
         ) : (
           <ul aria-label="Saved layouts" className="grid gap-3">
             {layouts.map((item) => (
@@ -78,19 +84,19 @@ export function SeatLayoutsSection({
                   <VanThumbnail seats={item.seats} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-semibold text-brand-900">{item.name}</h3>
+                  <h3 className="truncate font-display text-xl text-brand-900">{item.name}</h3>
                   <p className="text-sm tabular-nums text-muted">
                     {item.seats.length} {item.seats.length === 1 ? "seat" : "seats"}
                   </p>
                 </div>
-                <button
-                  className="text-sm font-semibold text-brand-600 underline underline-offset-4 hover:text-brand-900 focus-visible:outline-2 focus-visible:outline-brand-500"
+                <Button
+                  aria-label={`Edit ${item.name}`}
                   onClick={() => setEditing(item)}
                   type="button"
+                  variant="text"
                 >
-                  Edit <span className="sr-only">{item.name}</span>
-                  <span aria-hidden="true">→</span>
-                </button>
+                  Edit →
+                </Button>
               </li>
             ))}
           </ul>
