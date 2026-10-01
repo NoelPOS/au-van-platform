@@ -253,7 +253,7 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(sender.messages()).singleElement().satisfies(message -> {
             assertThat(message.to()).isEqualTo("Ustudent-outbox");
-            assertThat(message.text()).contains("AUV-250101-DISPATCH");
+            assertThat(message.message().altText()).contains("AUV-250101-DISPATCH");
             assertThat(message.retryKey()).isEqualTo(eventId.toString());
         });
         assertThat(events.findById(eventId).orElseThrow()).satisfies(event -> {

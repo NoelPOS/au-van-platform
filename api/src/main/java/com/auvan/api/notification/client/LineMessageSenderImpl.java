@@ -55,7 +55,7 @@ class LineMessageSenderImpl implements LineMessageSender {
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.channelAccessToken())
                     .header(RETRY_KEY_HEADER, message.retryKey())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new PushRequest(message.to(), List.of(new TextMessage(message.text()))))
+                    .body(new PushRequest(message.to(), List.of(message.message())))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientResponseException answered) {
@@ -86,11 +86,5 @@ class LineMessageSenderImpl implements LineMessageSender {
                 + ": " + answered.getResponseBodyAsString(), answered);
     }
 
-    private record PushRequest(String to, List<TextMessage> messages) { }
-
-    private record TextMessage(String type, String text) {
-        TextMessage(String text) {
-            this("text", text);
-        }
-    }
+    private record PushRequest(String to, List<FlexMessage> messages) { }
 }

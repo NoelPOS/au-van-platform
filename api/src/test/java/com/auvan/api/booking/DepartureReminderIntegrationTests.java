@@ -239,7 +239,7 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         assertThat(dispatcher.dispatchBatch()).isOne();
         assertThat(sender.messages()).singleElement().satisfies(message -> {
             assertThat(message.to()).isEqualTo("Ustudent-reminder");
-            assertThat(message.text()).contains("departs in 1 hour").contains("AU to Asok");
+            assertThat(message.message().altText()).contains("departs in 1 hour").contains("AU to Asok");
             assertThat(message.retryKey()).isEqualTo(reminder.getId().toString());
         });
         assertThat(events.findById(reminder.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
@@ -263,7 +263,7 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
         dueAt(remindersOf(bookingId).getFirst().getId(), OffsetDateTime.now().minusSeconds(1));
         dispatcher.dispatchBatch();
         assertThat(sender.messages()).noneSatisfy(message ->
-                assertThat(message.text()).contains("departs in"));
+                assertThat(message.message().altText()).contains("departs in"));
     }
 
     @Test
@@ -283,7 +283,7 @@ class DepartureReminderIntegrationTests extends AuthenticationTestSupport {
 
         dispatcher.dispatchBatch();
         assertThat(sender.messages()).noneSatisfy(message ->
-                assertThat(message.text()).contains("departs in"));
+                assertThat(message.message().altText()).contains("departs in"));
     }
 
     @Test
