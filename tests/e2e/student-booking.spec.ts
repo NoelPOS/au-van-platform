@@ -112,7 +112,7 @@ test.describe("the student journey", () => {
     await backToTrips(page);
     await submitProof(page, reference, slip);
     await expect(bookingCard(page, reference)).toContainText(
-      "PAYMENT_UNDER_REVIEW",
+      "In review",
     );
 
     await goToPaymentReview(admin);
@@ -185,7 +185,7 @@ test.describe("the student journey", () => {
 
     await submitProof(page, reference, slip);
     await expect(bookingCard(page, reference)).toContainText(
-      "PAYMENT_UNDER_REVIEW",
+      "In review",
     );
   });
 
