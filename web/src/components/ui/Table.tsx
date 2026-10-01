@@ -11,7 +11,8 @@ const mobileLabel =
 
 function cellClass(index: number, align?: "end") {
   if (align === "end") return "text-right max-md:col-span-2 max-md:-mb-2";
-  if (index === 0) return "font-medium text-ink max-md:col-span-2 max-md:text-base";
+  if (index === 0)
+    return "font-medium text-ink max-md:col-span-2 max-md:text-base";
   return `text-ink/85 ${mobileLabel}`;
 }
 
@@ -38,7 +39,10 @@ export function Table<T>({
 
   return (
     <div className="rounded-2xl border border-line bg-card max-md:border-0 max-md:bg-transparent">
-      <table aria-label={label} className="w-full border-collapse text-sm max-md:block">
+      <table
+        aria-label={label}
+        className="w-full border-collapse text-sm max-md:block"
+      >
         <thead className="max-md:sr-only">
           <tr className="border-b border-line">
             {columns.map((column, index) => (

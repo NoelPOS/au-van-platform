@@ -51,7 +51,12 @@ describe("AdminRoutesPage", () => {
 
     expect(await screen.findByText("Route created")).toBeInTheDocument();
     expect(sentTo(fetcher, "POST /routes")).toEqual([
-      { origin: "AU", destination: "Mega Bangna", fare: 0, durationMinutes: 30 },
+      {
+        origin: "AU",
+        destination: "Mega Bangna",
+        fare: 0,
+        durationMinutes: 30,
+      },
     ]);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -92,7 +97,9 @@ describe("AdminRoutesPage", () => {
       await screen.findByRole("cell", { name: "AU → Mega Bangna" }),
     ).toBeInTheDocument();
     expect(screen.getByText("35.00 THB")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Edit AU → Mega Bangna" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit AU → Mega Bangna" }),
+    );
     expect(drawer().getByLabelText("Origin")).toHaveValue("AU");
     fireEvent.change(drawer().getByLabelText("Fare (THB)"), {
       target: { value: "40" },
@@ -127,8 +134,12 @@ describe("AdminRoutesPage", () => {
     });
     fireEvent.click(drawer().getByRole("button", { name: "Save route" }));
 
-    const question = within(drawer().getByRole("group", { name: "Confirm change" }));
-    expect(question.getByText(/Mark this route as inactive/)).toBeInTheDocument();
+    const question = within(
+      drawer().getByRole("group", { name: "Confirm change" }),
+    );
+    expect(
+      question.getByText(/Mark this route as inactive/),
+    ).toBeInTheDocument();
     expect(sentTo(fetcher, "PUT /routes/route-1")).toEqual([]);
 
     fireEvent.click(question.getByRole("button", { name: "Yes, save" }));

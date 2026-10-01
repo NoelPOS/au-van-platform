@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  bangkokDateTime,
-  fromBangkokInputs,
-  toBangkokInputs,
-} from "./dates";
+import { bangkokDateTime, fromBangkokInputs, toBangkokInputs } from "./dates";
 
 describe("Bangkok dates", () => {
   it("formats an instant as the day and clock time in Bangkok", () => {

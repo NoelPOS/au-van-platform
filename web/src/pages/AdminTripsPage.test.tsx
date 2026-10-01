@@ -17,7 +17,13 @@ const route = {
   durationMinutes: 45,
   status: "ACTIVE",
 };
-const van = { id: "van-1", code: "VAN-01", name: "Hiace", seatLayoutId: "l", status: "ACTIVE" };
+const van = {
+  id: "van-1",
+  code: "VAN-01",
+  name: "Hiace",
+  seatLayoutId: "l",
+  status: "ACTIVE",
+};
 const trip = {
   id: "trip-1",
   routeId: "route-1",
@@ -57,7 +63,9 @@ describe("AdminTripsPage", () => {
     const row = await screen.findByRole("row", { name: /VAN-01/ });
     expect(row).toHaveTextContent("Mon 5 Jan");
     expect(row).toHaveTextContent("16:00");
-    expect(within(row).getByRole("cell", { name: "AU → Mega Bangna" })).toBeInTheDocument();
+    expect(
+      within(row).getByRole("cell", { name: "AU → Mega Bangna" }),
+    ).toBeInTheDocument();
   });
 
   it("schedules a trip from the drawer in Bangkok time", async () => {
@@ -98,12 +106,16 @@ describe("AdminTripsPage", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "New trip" }));
 
-    expect(drawer().getByText("Not quite ready to schedule")).toBeInTheDocument();
+    expect(
+      drawer().getByText("Not quite ready to schedule"),
+    ).toBeInTheDocument();
     expect(drawer().getByRole("link", { name: "Add a van" })).toHaveAttribute(
       "href",
       "/admin/vans",
     );
-    expect(drawer().queryByRole("button", { name: "Schedule trip" })).toBeNull();
+    expect(
+      drawer().queryByRole("button", { name: "Schedule trip" }),
+    ).toBeNull();
     expect(sentTo(fetcher, "POST /trips")).toEqual([]);
   });
 
@@ -156,7 +168,9 @@ describe("AdminTripsPage", () => {
     ).toBeInTheDocument();
     fireEvent.click(drawer().getByRole("button", { name: "Go back" }));
 
-    expect(drawer().getByRole("button", { name: "Save trip" })).toBeInTheDocument();
+    expect(
+      drawer().getByRole("button", { name: "Save trip" }),
+    ).toBeInTheDocument();
     expect(sentTo(fetcher, "PUT /trips/trip-1")).toEqual([]);
   });
 

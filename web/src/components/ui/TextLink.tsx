@@ -2,7 +2,13 @@ import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 
-export function TextLink({ to, children }: { to: string; children: ReactNode }) {
+export function TextLink({
+  to,
+  children,
+}: {
+  to: string;
+  children: ReactNode;
+}) {
   return (
     <Link
       className="group inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand-500 underline decoration-1 underline-offset-4 hover:text-brand-700 hover:decoration-2"

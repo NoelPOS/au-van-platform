@@ -26,11 +26,15 @@ function keyOf(input: RequestInfo | URL, init?: RequestInit) {
 }
 
 export function stubAdminApi(handlers: Record<string, Handler>) {
-  const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const handler = handlers[keyOf(input, init)];
-    const body = init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined;
-    return handler ? handler(body) : json([]);
-  });
+  const fetcher = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const handler = handlers[keyOf(input, init)];
+      const body = init?.body
+        ? (JSON.parse(String(init.body)) as unknown)
+        : undefined;
+      return handler ? handler(body) : json([]);
+    },
+  );
   vi.stubGlobal("fetch", fetcher);
   return fetcher;
 }

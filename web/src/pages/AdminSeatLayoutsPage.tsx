@@ -12,10 +12,7 @@ export function AdminSeatLayoutsPage({ session }: { session: AuthSession }) {
       queries={[seatLayouts]}
       title="Seat layouts"
     >
-      <SeatLayoutsSection
-        session={session}
-        layouts={seatLayouts.data ?? []}
-      />
+      <SeatLayoutsSection session={session} layouts={seatLayouts.data ?? []} />
     </InventoryPage>
   );
 }

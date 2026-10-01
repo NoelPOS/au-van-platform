@@ -17,7 +17,10 @@ function SeatsClaimed({ session, trip }: { session: AuthSession; trip: Trip }) {
   const share = totalSeats ? (claimedSeats / totalSeats) * 100 : 0;
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span aria-hidden className="h-1 w-16 overflow-hidden rounded-full bg-line">
+      <span
+        aria-hidden
+        className="h-1 w-16 overflow-hidden rounded-full bg-line"
+      >
         <span
           className="block h-full rounded-full bg-brand-500"
           style={{ width: `${share}%` }}
@@ -41,7 +44,9 @@ export function NextDepartures({
 }) {
   const [now] = useState(Date.now);
   const upcoming = trips
-    .filter((trip) => trip.status === "ACTIVE" && Date.parse(trip.departureAt) > now)
+    .filter(
+      (trip) => trip.status === "ACTIVE" && Date.parse(trip.departureAt) > now,
+    )
     .sort((a, b) => Date.parse(a.departureAt) - Date.parse(b.departureAt))
     .slice(0, 4);
 
@@ -78,7 +83,10 @@ export function NextDepartures({
             >
               <p className="font-medium text-ink">
                 {route ? (
-                  <RouteLine destination={route.destination} origin={route.origin} />
+                  <RouteLine
+                    destination={route.destination}
+                    origin={route.origin}
+                  />
                 ) : (
                   "Unknown route"
                 )}

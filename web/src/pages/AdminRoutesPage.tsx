@@ -27,7 +27,10 @@ export function AdminRoutesPage({ session }: { session: AuthSession }) {
     },
     { label: "Fare", render: (route) => formatFare(route.fare) },
     { label: "Duration", render: (route) => `${route.durationMinutes} min` },
-    { label: "Status", render: (route) => <StatusBadge value={route.status} /> },
+    {
+      label: "Status",
+      render: (route) => <StatusBadge value={route.status} />,
+    },
     {
       label: "",
       align: "end",

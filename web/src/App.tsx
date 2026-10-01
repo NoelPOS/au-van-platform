@@ -63,7 +63,10 @@ function App() {
           path="operations"
           element={<AdminOperationsPage session={session} />}
         />
-        <Route path="inventory" element={<Navigate replace to="/admin/trips" />} />
+        <Route
+          path="inventory"
+          element={<Navigate replace to="/admin/trips" />}
+        />
       </Route>
       <Route path="*" element={<RedirectHome />} />
     </Routes>

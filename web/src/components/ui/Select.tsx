@@ -7,7 +7,14 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
   hint?: string;
 };
 
-export function Select({ label, hint, className, id, children, ...props }: Props) {
+export function Select({
+  label,
+  hint,
+  className,
+  id,
+  children,
+  ...props
+}: Props) {
   const generated = useId();
   const selectId = id ?? generated;
   return (

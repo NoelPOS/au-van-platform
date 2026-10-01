@@ -17,7 +17,13 @@ const route = {
   durationMinutes: 45,
   status: "ACTIVE",
 };
-const van = { id: "van-1", code: "VAN-01", name: "Hiace", seatLayoutId: "l", status: "ACTIVE" };
+const van = {
+  id: "van-1",
+  code: "VAN-01",
+  name: "Hiace",
+  seatLayoutId: "l",
+  status: "ACTIVE",
+};
 
 function trip(id: string, departureAt: Date, status = "ACTIVE") {
   return {
@@ -55,8 +61,10 @@ describe("AdminOverviewPage", () => {
         ]),
       "GET /routes": () => json([route]),
       "GET /vehicles": () => json([van]),
-      "GET /operations/trips/soon": () => json({ claimedSeats: 3, totalSeats: 13 }),
-      "GET /operations/trips/later": () => json({ claimedSeats: 0, totalSeats: 13 }),
+      "GET /operations/trips/soon": () =>
+        json({ claimedSeats: 3, totalSeats: 13 }),
+      "GET /operations/trips/later": () =>
+        json({ claimedSeats: 0, totalSeats: 13 }),
     });
 
     renderPage();
@@ -120,7 +128,8 @@ describe("AdminOverviewPage", () => {
 
   it("shows a failed count where it belongs and keeps the rest of the board", async () => {
     stubAdminApi({
-      "GET /payment-proofs": () => json({ detail: "Review queue is down." }, 503),
+      "GET /payment-proofs": () =>
+        json({ detail: "Review queue is down." }, 503),
     });
 
     renderPage();
