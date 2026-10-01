@@ -28,13 +28,7 @@ test.describe("the administrator journey", () => {
     await expect(row).toContainText("4");
 
     await goToOperations(page);
-    // Selected by the option's value, because its label is the departure
-    // instant followed by the route and only the route half is known here.
-    const chooser = page.getByLabel(/^Trip/);
-    const tripId = await chooser
-      .locator("option", { hasText: trip.routeLabel })
-      .getAttribute("value");
-    await chooser.selectOption(tripId);
+    await page.getByRole("button", { name: trip.routeLabel }).click();
     await expect(
       page.getByRole("heading", { name: new RegExp(trip.routeLabel) }),
     ).toBeVisible();
