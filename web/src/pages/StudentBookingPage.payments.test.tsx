@@ -72,7 +72,7 @@ describe("StudentBookingPage", () => {
     expect(
       await screen.findByText("The slip is too blurred to read."),
     ).toBeInTheDocument();
-    expect(screen.getByText("PAYMENT_REJECTED")).toHaveClass("text-danger");
+    expect(screen.getByText("Sent back")).toHaveClass("text-danger");
 
     fireEvent.change(screen.getByLabelText("Upload your payment slip"), {
       target: {
@@ -130,8 +130,8 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("CONFIRMED")).toHaveClass("text-success");
-    expect(screen.getByText("CANCELLED")).toHaveClass("text-danger");
+    expect(await screen.findByText("Confirmed")).toHaveClass("text-success");
+    expect(screen.getByText("Cancelled")).toHaveClass("text-danger");
   });
 
   it("tells a student when their unpaid booking loses its seats", async () => {
@@ -173,7 +173,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("CANCELLED")).toBeInTheDocument();
+    expect(await screen.findByText("Cancelled")).toBeInTheDocument();
     expect(screen.queryByText(/Expired unpaid/)).not.toBeInTheDocument();
   });
 });
