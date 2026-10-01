@@ -160,7 +160,7 @@ export function Select({
                 role="option"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] text-ink">
+                  <span className="block text-[15px] text-ink">
                     {option.label}
                   </span>
                   {option.detail && (

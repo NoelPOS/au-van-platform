@@ -17,7 +17,7 @@ export function TimeField({
     <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
       <Input
         autoComplete="off"
-        className="w-32"
+        className="w-48"
         error={error}
         inputMode="numeric"
         label="Time"
