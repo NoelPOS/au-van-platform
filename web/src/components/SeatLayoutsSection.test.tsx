@@ -107,8 +107,11 @@ describe("SeatLayoutsSection", () => {
     fireEvent.keyDown(cell(2, 2), { key: "ArrowLeft" });
     fireEvent.keyDown(cell(2, 1), { key: "ArrowLeft" });
     expect(cell(2, 1)).toHaveFocus();
+    expect(cell(2, 1)).toHaveAttribute("tabindex", "0");
     fireEvent.keyDown(cell(2, 1), { key: "ArrowUp" });
+    fireEvent.keyDown(cell(1, 1), { key: "ArrowUp" });
     expect(cell(1, 1)).toHaveFocus();
+    expect(cell(1, 1)).toHaveAttribute("tabindex", "0");
 
     fireEvent.click(document.activeElement as HTMLElement);
     expect(cell(1, 1)).toHaveAttribute("aria-pressed", "true");

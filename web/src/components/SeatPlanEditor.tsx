@@ -38,10 +38,7 @@ export function SeatPlanEditor({
     const move = moves[event.key];
     if (!move) return;
     event.preventDefault();
-    const next = {
-      row: clamp(rowNumber + move[0], draft.rows),
-      column: clamp(columnNumber + move[1], draft.columns),
-    };
+    const next = { row: rowNumber + move[0], column: columnNumber + move[1] };
     setActive(next);
     cells.current[`${next.row}:${next.column}`]?.focus();
   }
