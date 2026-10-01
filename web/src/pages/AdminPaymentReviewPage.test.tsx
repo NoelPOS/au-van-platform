@@ -1,89 +1,18 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AuthSession } from "../types/auth";
-import { AdminPaymentReviewPage } from "./AdminPaymentReviewPage";
+import {
+  json,
+  openSlip,
+  proof,
+  renderPage,
+  stubApi,
+  stubObjectUrls,
+} from "../test/paymentFixtures";
 
-const session: AuthSession = {
-  accessToken: "admin-token",
-  expiresIn: 900,
-  user: { id: "admin-id", role: "ADMIN", displayName: "Noel" },
-};
-
-const proof = {
-  id: "proof-1",
-  bookingId: "booking-1",
-  bookingReference: "AUV-260921-7KQ2M4XR",
-  passengerName: "Somchai P.",
-  passengerPhone: "0812345678",
-  totalFare: 35,
-  trip: {
-    id: "trip-1",
-    origin: "AU",
-    destination: "Mega Bangna",
-    departureAt: "2026-10-01T01:00:00Z",
-  },
-  submittedByUserId: "student-id",
-  contentType: "image/jpeg",
-  sizeBytes: 12,
-  status: "SUBMITTED",
-  submittedAt: "2026-09-21T10:01:12Z",
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-type Routes = {
-  queue?: () => Response;
-  image?: () => Response;
-  decision?: (init: RequestInit) => Response;
-};
-
-function stubApi(routes: Routes = {}) {
-  const fetcher = vi.fn(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith("/image"))
-        return (
-          routes.image?.() ??
-          new Response("slip-bytes", {
-            headers: { "Content-Type": "image/jpeg" },
-          })
-        );
-      if (url.includes("/approve") || url.includes("/reject"))
-        return routes.decision?.(init ?? {}) ?? json({ id: "booking-1" });
-      if (url.endsWith("/payment-proofs")) return routes.queue?.() ?? json([proof]);
-      throw new Error(`unexpected request: ${url}`);
-    },
-  );
-  vi.stubGlobal("fetch", fetcher);
-  return fetcher;
-}
-
-function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AdminPaymentReviewPage session={session} />
-    </QueryClientProvider>,
-  );
-}
+const reference = proof.bookingReference;
 
 describe("AdminPaymentReviewPage", () => {
-  beforeEach(() => {
-    // jsdom implements neither, and the slip is rendered from an object URL.
-    vi.stubGlobal("URL", {
-      ...URL,
-      createObjectURL: vi.fn(() => "blob:the-slip"),
-      revokeObjectURL: vi.fn(),
-    });
-  });
+  beforeEach(stubObjectUrls);
 
   afterEach(() => {
     cleanup();
@@ -94,9 +23,7 @@ describe("AdminPaymentReviewPage", () => {
     const fetcher = stubApi();
 
     renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "AUV-260921-7KQ2M4XR" }),
-    );
+    await openSlip(reference);
 
     expect(await screen.findByAltText(/Payment slip for booking/)).toHaveAttribute(
       "src",
@@ -107,17 +34,18 @@ describe("AdminPaymentReviewPage", () => {
     expect(new Headers(call?.[1]?.headers).get("Authorization")).toBe(
       "Bearer admin-token",
     );
-    expect(screen.getByText("Somchai P.")).toBeInTheDocument();
-    expect(screen.getByText(/AU → Mega Bangna/)).toBeInTheDocument();
+    const queue = within(screen.getByRole("list", { name: "Slips waiting for review" }));
+    expect(queue.getByText(reference)).toBeInTheDocument();
+    expect(queue.getByText("Somchai P.")).toBeInTheDocument();
+    expect(queue.getByText(/AU → Mega Bangna/)).toBeInTheDocument();
+    expect(queue.getByText("35.00 THB")).toBeInTheDocument();
   });
 
   it("revokes the slip's object URL when the screen goes away", async () => {
     stubApi();
 
     const view = renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "AUV-260921-7KQ2M4XR" }),
-    );
+    await openSlip(reference);
     await screen.findByAltText(/Payment slip for booking/);
     view.unmount();
 
@@ -135,9 +63,7 @@ describe("AdminPaymentReviewPage", () => {
     });
 
     renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "AUV-260921-7KQ2M4XR" }),
-    );
+    await openSlip(reference);
     fireEvent.click(screen.getByRole("button", { name: "Approve payment" }));
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
@@ -150,18 +76,16 @@ describe("AdminPaymentReviewPage", () => {
     expect(init.body).toBe(JSON.stringify({ note: "" }));
   });
 
-  it("refuses to reject without a reason and sends the reason once it has one", async () => {
+  it("refuses to send a slip back without a reason and sends the reason once it has one", async () => {
     const fetcher = stubApi();
 
     renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "AUV-260921-7KQ2M4XR" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Reject payment" }));
+    await openSlip(reference);
+    fireEvent.click(screen.getByRole("button", { name: "Send back to student" }));
 
     expect(
       await screen.findByText(
-        "Say why the slip was rejected, so the student can fix it.",
+        "Say why you are sending it back, so the student can fix it.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -171,7 +95,7 @@ describe("AdminPaymentReviewPage", () => {
     fireEvent.change(screen.getByLabelText("Note to the student"), {
       target: { value: "  The slip is too blurred to read.  " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Reject payment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send back to student" }));
 
     await vi.waitFor(() =>
       expect(fetcher).toHaveBeenCalledWith(
@@ -208,9 +132,7 @@ describe("AdminPaymentReviewPage", () => {
     });
 
     renderPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "AUV-260921-7KQ2M4XR" }),
-    );
+    await openSlip(reference);
     fireEvent.click(screen.getByRole("button", { name: "Approve payment" }));
 
     expect(
