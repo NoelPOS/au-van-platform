@@ -7,19 +7,22 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createLiffSession } from "./services/liffService";
+import { resumeLiffSession } from "./services/liffService";
 import { renderApp } from "./test/renderApp";
 import type { ApplicationRole } from "./types/auth";
 
-vi.mock("./services/liffService", () => ({ createLiffSession: vi.fn() }));
+vi.mock("./services/liffService", () => ({
+  createLiffSession: vi.fn(),
+  resumeLiffSession: vi.fn(),
+}));
 
-function signInAs(role: ApplicationRole) {
-  vi.mocked(createLiffSession).mockResolvedValue({
+function openSignedIn(path: string, role: ApplicationRole) {
+  vi.mocked(resumeLiffSession).mockResolvedValue({
     accessToken: `${role}-token`,
     expiresIn: 900,
     user: { id: `${role}-id`, role, displayName: "Somchai" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Sign in with LINE" }));
+  return renderApp(path);
 }
 
 type TestRouter = ReturnType<typeof renderApp>;
@@ -35,6 +38,7 @@ async function expectLocation(router: TestRouter, path: string) {
 describe("App routing", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_LIFF_ID", "1234567890-abcdefgh");
+    vi.mocked(resumeLiffSession).mockResolvedValue(null);
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
@@ -55,8 +59,7 @@ describe("App routing", () => {
   });
 
   it("sends an administrator at the old /admin/inventory address on to trips", async () => {
-    const router = renderApp("/admin/inventory");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin/inventory", "ADMIN");
 
     expect(
       await screen.findByRole("heading", { name: "Trips", level: 1 }),
@@ -72,8 +75,7 @@ describe("App routing", () => {
   ])(
     "opens %s for an administrator who signs in there",
     async (path, title) => {
-      const router = renderApp(path);
-      signInAs("ADMIN");
+      const router = openSignedIn(path, "ADMIN");
 
       expect(
         await screen.findByRole("heading", { name: title, level: 1 }),
@@ -83,16 +85,14 @@ describe("App routing", () => {
   );
 
   it("opens payment review for an administrator who signs in at /admin/payments", async () => {
-    const router = renderApp("/admin/payments");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin/payments", "ADMIN");
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
     expect(locationOf(router)).toBe("/admin/payments");
   });
 
   it("opens operations for an administrator who signs in at /admin/operations", async () => {
-    const router = renderApp("/admin/operations");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin/operations", "ADMIN");
 
     expect(
       await screen.findByRole("heading", { name: "Operations" }),
@@ -101,8 +101,7 @@ describe("App routing", () => {
   });
 
   it("opens the overview for an administrator at /admin", async () => {
-    const router = renderApp("/admin");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin", "ADMIN");
 
     expect(
       await screen.findByRole("heading", { name: "Overview" }),
@@ -111,8 +110,7 @@ describe("App routing", () => {
   });
 
   it("takes an administrator who signs in at / to the overview", async () => {
-    const router = renderApp("/");
-    signInAs("ADMIN");
+    const router = openSignedIn("/", "ADMIN");
 
     expect(
       await screen.findByRole("heading", { name: "Overview" }),
@@ -121,8 +119,7 @@ describe("App routing", () => {
   });
 
   it("moves between administration destinations with links that mark the current one", async () => {
-    const router = renderApp("/admin/trips");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin/trips", "ADMIN");
     await screen.findByRole("heading", { name: "Trips", level: 1 });
 
     expect(screen.getByRole("link", { name: "Trips" })).toHaveAttribute(
@@ -149,8 +146,7 @@ describe("App routing", () => {
   });
 
   it("reaches the tucked-away destinations from the More sheet", async () => {
-    const router = renderApp("/admin");
-    signInAs("ADMIN");
+    const router = openSignedIn("/admin", "ADMIN");
     await screen.findByRole("heading", { name: "Overview" });
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
@@ -165,8 +161,7 @@ describe("App routing", () => {
   });
 
   it("sends a student who opens /admin/payments to the booking page", async () => {
-    const router = renderApp("/admin/payments");
-    signInAs("STUDENT");
+    const router = openSignedIn("/admin/payments", "STUDENT");
 
     expect(await screen.findByText("Book a seat")).toBeInTheDocument();
     await expectLocation(router, "/");
@@ -176,8 +171,7 @@ describe("App routing", () => {
   });
 
   it("sends a student who opens /admin to the booking page", async () => {
-    const router = renderApp("/admin");
-    signInAs("STUDENT");
+    const router = openSignedIn("/admin", "STUDENT");
 
     expect(await screen.findByText("Book a seat")).toBeInTheDocument();
     await expectLocation(router, "/");
@@ -188,7 +182,7 @@ describe("App routing", () => {
 
     expect(await screen.findByText("Available")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Sign in with LINE" }),
+      await screen.findByRole("button", { name: "Sign in with LINE" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Payment review" }),
@@ -209,15 +203,13 @@ describe("App routing", () => {
   });
 
   it("sends a signed-in user on an unknown path to their own area", async () => {
-    const admin = renderApp("/");
-    signInAs("ADMIN");
+    const admin = openSignedIn("/", "ADMIN");
     await screen.findByRole("heading", { name: "Overview" });
     await act(() => admin.navigate("/nowhere"));
     await expectLocation(admin, "/admin");
     cleanup();
 
-    const student = renderApp("/");
-    signInAs("STUDENT");
+    const student = openSignedIn("/", "STUDENT");
     await screen.findByText("Book a seat");
     await act(() => student.navigate("/nowhere"));
     await expectLocation(student, "/");

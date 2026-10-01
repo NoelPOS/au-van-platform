@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLiffSession } from "./services/liffService";
 import { renderApp } from "./test/renderApp";
 
-vi.mock("./services/liffService", () => ({ createLiffSession: vi.fn() }));
+vi.mock("./services/liffService", () => ({
+  createLiffSession: vi.fn(),
+  resumeLiffSession: vi.fn().mockResolvedValue(null),
+}));
 
 describe("App", () => {
   afterEach(() => {
@@ -49,7 +52,9 @@ describe("App", () => {
     });
 
     renderApp();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with LINE" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Sign in with LINE" }),
+    );
 
     expect(await screen.findByText("Book a seat")).toBeInTheDocument();
     expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
@@ -74,7 +79,9 @@ describe("App", () => {
     });
 
     renderApp();
-    fireEvent.click(screen.getByRole("button", { name: "Sign in with LINE" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Sign in with LINE" }),
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Overview" }),
