@@ -35,9 +35,9 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:8081",
-    // Pinned, because the specs write `datetime-local` values and read back
-    // what `Intl.DateTimeFormat` rendered from them. Left to the machine, a
-    // developer's timezone and CI's UTC would disagree about the same trip.
+    // Pinned, because the specs read back what `Intl.DateTimeFormat` rendered
+    // in the browser's timezone. Left to the machine, a developer's timezone
+    // and CI's UTC would disagree about the same trip.
     timezoneId: "UTC",
     locale: "en-GB",
     trace: "retain-on-failure",
