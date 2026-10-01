@@ -119,15 +119,15 @@ test.describe("the student journey", () => {
     await openProof(admin, reference);
     // Refused before anything goes out: the student is being asked to send a
     // better slip and cannot without being told why.
-    await admin.getByRole("button", { name: "Reject payment" }).click();
+    await admin.getByRole("button", { name: "Send back to student" }).click();
     await expect(admin.getByRole("alert")).toContainText(
-      "Say why the slip was rejected, so the student can fix it.",
+      "Say why you are sending it back, so the student can fix it.",
     );
 
     await admin
       .getByLabel("Note to the student")
       .fill("The slip shows 100 THB and the fare is 120 THB.");
-    await admin.getByRole("button", { name: "Reject payment" }).click();
+    await admin.getByRole("button", { name: "Send back to student" }).click();
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
     await signInAsStudent(page, subject);
