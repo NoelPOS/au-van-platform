@@ -129,9 +129,9 @@ describe("AdminRoutesPage", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Edit AU → Mega Bangna" }),
     );
-    fireEvent.change(drawer().getByLabelText("Status"), {
-      target: { value: "INACTIVE" },
-    });
+    const status = within(drawer().getByRole("radiogroup", { name: "Status" }));
+    expect(status.getByRole("radio", { name: "Active" })).toBeChecked();
+    fireEvent.click(status.getByRole("radio", { name: "Inactive" }));
     fireEvent.click(drawer().getByRole("button", { name: "Save route" }));
 
     const question = within(

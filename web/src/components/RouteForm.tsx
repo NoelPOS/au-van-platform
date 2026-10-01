@@ -5,7 +5,12 @@ import type { AuthSession } from "../types/auth";
 import type { RouteStatus, VanRoute } from "../types/inventory";
 import { ErrorMessage, FormActions } from "./FormCard";
 import { Input } from "./ui/Input";
-import { Select } from "./ui/Select";
+import { SegmentedControl } from "./ui/SegmentedControl";
+
+const statuses: { value: RouteStatus; label: string }[] = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+];
 
 export function RouteForm({
   session,
@@ -89,14 +94,12 @@ export function RouteForm({
         />
       </div>
       {route && (
-        <Select
+        <SegmentedControl
           label="Status"
-          onChange={(event) => setStatus(event.target.value as RouteStatus)}
+          onChange={setStatus}
+          options={statuses}
           value={status}
-        >
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </Select>
+        />
       )}
       <ErrorMessage error={createRoute.error ?? updateRoute.error} />
       <FormActions
