@@ -56,11 +56,8 @@ resource "aws_ecs_task_definition" "api" {
       # from `ecs:DescribeTaskDefinition`, which is exactly why nothing secret
       # is in this list.
       #
-      # ADMIN_BOOTSTRAP_LINE_SUBJECT is deliberately absent. The image carries
-      # only app.jar, so the first administrator is created by a one-off
-      # `aws ecs run-task` against this same task definition with a command and
-      # an environment override -- #76's runbook owns that. Baking a subject in
-      # here would make the definition single-purpose and the override a lie.
+      # ADMIN_BOOTSTRAP_LINE_SUBJECT is absent on purpose: docs/deployment.md creates the
+      # first admin with a one-off task definition, since run-task cannot override the entrypoint.
       environment = [
         {
           # Composed from the instance rather than taken from a variable, so
