@@ -37,14 +37,17 @@ api_image_tag = "replace-me"
 db_instance_class    = "db.t4g.micro"
 db_allocated_storage = 20
 db_engine_version    = "17"
-db_multi_az          = false
 
 enable_redis    = false
 redis_node_type = "cache.t4g.micro"
 
-task_cpu      = 512
-task_memory   = 1024
-desired_count = 1
+task_cpu    = 512
+task_memory = 1024
+
+# The deployment-evidence session sets api_min_tasks = 2 and db_multi_az = true.
+api_min_tasks = 1
+api_max_tasks = 2
+db_multi_az   = false
 
 # A LINE Login channel id -- an audience identifier, not a credential. Empty
 # leaves the LIFF exchange unconfigured.

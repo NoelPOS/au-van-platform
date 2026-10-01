@@ -151,7 +151,7 @@ resource "aws_ecs_service" "api" {
   name            = "${local.name_prefix}-api"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = var.desired_count
+  desired_count   = var.api_min_tasks
   launch_type     = "FARGATE"
 
   # Long enough for Flyway plus the Spring context. api/Dockerfile's own probe
@@ -185,4 +185,9 @@ resource "aws_ecs_service" "api" {
   # A target group has to be attached to a load balancer before a service may
   # reference it.
   depends_on = [aws_lb_listener.http]
+
+  # The scaler in scaling.tf owns the count once the service exists.
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
