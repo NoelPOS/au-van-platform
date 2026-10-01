@@ -36,3 +36,15 @@ export function toBangkokInputs(value: string): { date: string; time: string } {
 export function fromBangkokInputs(date: string, clock: string): string {
   return new Date(`${date}T${clock}:00+07:00`).toISOString();
 }
+
+export function parseClock(text: string): string | null {
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(text.trim());
+  return match ? `${match[1].padStart(2, "0")}:${match[2]}` : null;
+}
+
+export function addMinutes(clock: string, minutes: number): string {
+  const [hours, mins] = clock.split(":").map(Number);
+  const total = (hours * 60 + mins + minutes) % 1440;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
