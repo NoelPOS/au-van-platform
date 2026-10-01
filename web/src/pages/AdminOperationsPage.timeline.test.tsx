@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDay } from "../utils/format";
+import { bangkokDay } from "../utils/dates";
 import {
   inDays,
-  json,
   renderPage,
   stubApi,
   trip,
 } from "../test/operationsFixtures";
+import { json } from "../test/renderAdminPage";
 
 const sooner = { ...trip, id: "trip-sooner", departureAt: inDays(1) };
 const later = { ...trip, id: "trip-later", departureAt: inDays(3) };
@@ -34,14 +34,14 @@ describe("AdminOperationsPage trip timeline", () => {
       .parentElement as HTMLElement;
 
     expect(days).toEqual([
-      formatDay(sooner.departureAt),
-      formatDay(later.departureAt),
-      formatDay(gone.departureAt),
-      formatDay(longGone.departureAt),
+      bangkokDay(sooner.departureAt),
+      bangkokDay(later.departureAt),
+      bangkokDay(gone.departureAt),
+      bangkokDay(longGone.departureAt),
     ]);
     expect(
       within(earlier).getAllByRole("list").map((list) => list.getAttribute("aria-label")),
-    ).toEqual([formatDay(gone.departureAt), formatDay(longGone.departureAt)]);
+    ).toEqual([bangkokDay(gone.departureAt), bangkokDay(longGone.departureAt)]);
   });
 
   it("loads the trip picked from the timeline and marks it as the one shown", async () => {

@@ -1,18 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
 import { vi } from "vitest";
 import { AdminOperationsPage } from "../pages/AdminOperationsPage";
-import type { AuthSession } from "../types/auth";
+import { adminSession, json, renderAdminPage } from "./renderAdminPage";
 
 export function inDays(days: number) {
   return new Date(Date.now() + days * 86_400_000).toISOString();
 }
-
-export const session: AuthSession = {
-  accessToken: "admin-token",
-  expiresIn: 900,
-  user: { id: "admin-id", role: "ADMIN", displayName: "Noel" },
-};
 
 export const route = {
   id: "route-1",
@@ -97,13 +89,6 @@ export const deadLetter = {
   processedAt: "2026-09-21T09:10:00Z",
 };
 
-export function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 type Routes = {
   trips?: () => Response;
   trip?: () => Response;
@@ -128,12 +113,5 @@ export function stubApi(overrides: Routes = {}) {
 }
 
 export function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AdminOperationsPage session={session} />
-    </QueryClientProvider>,
-  );
+  return renderAdminPage(<AdminOperationsPage session={adminSession} />);
 }

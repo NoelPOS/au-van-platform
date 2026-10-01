@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  json,
   renderPage,
   route,
   stubApi,
   trip,
 } from "../test/operationsFixtures";
+import { json } from "../test/renderAdminPage";
 
 async function chooseTheTrip() {
   fireEvent.click(

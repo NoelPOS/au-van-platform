@@ -3,7 +3,11 @@ import { DeadLettersTable } from "../components/DeadLettersTable";
 import { TripOperationsPanel } from "../components/TripOperationsPanel";
 import { TripTimeline } from "../components/TripTimeline";
 import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
 import { FailurePanel } from "../components/ui/FailurePanel";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Panel } from "../components/ui/Panel";
+import { Skeleton } from "../components/ui/Skeleton";
 import { useRoutes, useTrips } from "../hooks/useInventoryQueries";
 import {
   useDeadLetters,
@@ -11,7 +15,7 @@ import {
 } from "../hooks/useOperationsQueries";
 import type { AuthSession } from "../types/auth";
 
-const skeleton = "rounded-2xl border border-line bg-card motion-safe:animate-pulse";
+const page = "mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-14";
 
 export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const [tripId, setTripId] = useState<string | null>(null);
@@ -23,11 +27,11 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const listing = trips.error ?? routes.error;
   if (trips.isPending || routes.isPending) {
     return (
-      <main aria-busy="true" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <p className="sr-only">Loading operations…</p>
-        <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <div className={`h-96 ${skeleton}`} />
-          <div className={`h-96 ${skeleton}`} />
+      <main className={page}>
+        <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]" role="status">
+          <span className="sr-only">Loading operations…</span>
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
         </div>
       </main>
     );
@@ -35,12 +39,12 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
 
   if (listing) {
     return (
-      <main className="mx-auto max-w-xl px-4 py-16 sm:px-6">
-        <section className="rounded-2xl border border-danger/30 bg-card p-6">
-          <h1 className="font-serif text-2xl text-brand-900">
+      <main className={page}>
+        <Panel className="max-w-xl p-6">
+          <h1 className="font-display text-2xl font-light text-brand-900">
             Could not load operations
           </h1>
-          <p className="my-4 text-muted" role="alert">
+          <p className="mt-2 mb-5 text-muted" role="alert">
             {listing.message}
           </p>
           <Button
@@ -51,7 +55,7 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
           >
             Try again
           </Button>
-        </section>
+        </Panel>
       </main>
     );
   }
@@ -59,21 +63,14 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const trip = operations.data ?? null;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-      <header className="mb-10 max-w-2xl">
-        <p className="text-xs font-semibold tracking-[0.14em] text-brand-500 uppercase">
-          Dispatch
-        </p>
-        <h1 className="mt-2 font-serif text-4xl text-brand-900 sm:text-5xl">
-          Operations
-        </h1>
-        <p className="mt-3 text-muted">
-          What a trip&apos;s bookings are doing, who is queued behind it, and
-          which notifications were given up on.
-        </p>
-      </header>
+    <main className={page}>
+      <PageHeader
+        description="What a trip's bookings are doing, who is queued behind it, and which notifications were given up on."
+        eyebrow="Dispatch"
+        title="Operations"
+      />
 
-      <div className="grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="mt-10 grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <TripTimeline
           onSelect={setTripId}
           routes={routes.data ?? []}
@@ -82,15 +79,14 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
         />
         <div>
           {tripId === null && (
-            <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center">
-              <p className="max-w-xs font-serif text-xl text-muted italic">
-                Choose a trip to see its bookings and waitlist.
-              </p>
+            <div className="rounded-2xl border border-dashed border-line">
+              <EmptyState title="Choose a trip to see its bookings and waitlist." />
             </div>
           )}
           {tripId !== null && operations.isPending && (
-            <div className={`h-96 ${skeleton}`}>
-              <p className="sr-only">Loading this trip…</p>
+            <div role="status">
+              <span className="sr-only">Loading this trip…</span>
+              <Skeleton className="h-96" />
             </div>
           )}
           {operations.error && (
