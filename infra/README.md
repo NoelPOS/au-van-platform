@@ -112,6 +112,15 @@ argument in here (`force_delete`, `force_destroy`, `skip_final_snapshot`,
 `deletion_protection = false`, `backup_retention_period = 0`) is wrong for
 production and deliberate for a demo that has to come down in one command.
 
+The API service scales on CPU. It runs between `api_min_tasks` and
+`api_max_tasks` tasks — one and two by default — and a target-tracking policy
+holds their average CPU at 60%. The tasks are placed across both public subnets,
+so a second task runs in the second availability zone. Each task above one is
+another Fargate task-hour, and the defaults keep a plain apply at one. Terraform
+ignores the service's running count after it is created, so an apply does not
+undo the scaler; a changed `api_min_tasks` reaches the service through the
+scaler's floor.
+
 There is no NAT gateway and there are no private subnets. A NAT gateway is
 roughly $32-58 a month for a demo that runs for an hour, so the isolation comes
 from the security groups instead. ADR-007 records that as the production delta.
@@ -144,9 +153,10 @@ Those are two separate failures, and each policy prevents one of them.
   would answer 401.
 
 There is no automated check behind this. `terraform validate` accepts any
-policy id, and `terraform test` would have to resolve data sources, which needs
-an AWS credential — the one thing `Infrastructure checks` is built never to
-hold. So the pairing is verified by reading `infra/demo/cdn.tf`, which states
+policy id, and `terraform test` runs here only against a mocked provider, whose
+data sources return invented ids rather than the managed policies' real ones —
+a real lookup needs an AWS credential, the one thing `Infrastructure checks` is
+built never to hold. So the pairing is verified by reading `infra/demo/cdn.tf`, which states
 the same reasoning directly above the two behaviours, and by the review note on
 the pull request that changes it. Anyone editing those behaviours is changing a
 security control, not a performance setting.
@@ -286,13 +296,15 @@ terraform init -backend=false -input=false
 terraform validate
 ```
 
-All three work with no credential, no backend and no AWS account, which is why
+and then `terraform -chdir=infra/demo test`, which plans and applies the demo
+module against a mocked AWS provider to check the API's scaling settings. All
+four work with no credential, no backend and no AWS account, which is why
 they are the checks this project runs. The job holds no credential and has no
 `permissions:` block, so it cannot reach AWS even by mistake. It is not yet a
 required status check; it becomes one after it has been green on real pull
 requests, the same way `Commit checks` was promoted.
 
-Run the same three locally if you have Terraform installed. There is no need
+Run the same four locally if you have Terraform installed. There is no need
 to install it to review a change — CI runs them on every pull request.
 
 ## Never
