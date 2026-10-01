@@ -138,6 +138,12 @@ variable "line_channel_id" {
   default     = ""
 }
 
+variable "line_liff_url" {
+  description = "LIFF URL the buttons on LINE notification cards open, such as https://liff.line.me/<LIFF id>. Public, like the LIFF id itself. Empty sends every card without a button."
+  type        = string
+  default     = ""
+}
+
 variable "alarm_notification_email" {
   description = "Address the CloudWatch alarms notify. Empty by default, which creates no SNS topic and no subscription: an alarm with no action still shows its state, and a topic is created only when somebody has asked to be told."
   type        = string

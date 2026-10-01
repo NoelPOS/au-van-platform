@@ -53,6 +53,10 @@ db_multi_az   = false
 # leaves the LIFF exchange unconfigured.
 line_channel_id = ""
 
+# The LIFF URL notification card buttons open -- public, like the LIFF id.
+# Empty sends every card without a button.
+line_liff_url = ""
+
 # Empty creates no SNS topic and no subscription; the alarms still show their
 # state.
 alarm_notification_email = ""

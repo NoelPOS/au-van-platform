@@ -95,6 +95,10 @@ resource "aws_ecs_task_definition" "api" {
           value = var.line_channel_id
         },
         {
+          name  = "LINE_LIFF_URL"
+          value = var.line_liff_url
+        },
+        {
           name  = "PAYMENT_PROOF_BUCKET"
           value = aws_s3_bucket.payment_proofs.id
         },
