@@ -7,9 +7,10 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variants = {
   primary:
-    "border-brand bg-brand text-white hover:bg-brand/90 disabled:bg-brand/60",
-  secondary: "border-line bg-white text-muted hover:border-muted",
-  text: "border-transparent bg-transparent text-brand hover:bg-brand-soft",
+    "rounded-full bg-brand-600 px-5 text-white hover:bg-brand-700 active:bg-brand-900",
+  secondary:
+    "rounded-full border border-line bg-card px-5 text-ink hover:border-ink/30",
+  text: "px-1 text-brand-500 underline decoration-1 underline-offset-4 hover:text-brand-700 hover:decoration-2",
 };
 
 export function Button({
@@ -20,7 +21,7 @@ export function Button({
 }: Props) {
   return (
     <button
-      className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-wait ${variants[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 text-sm font-semibold transition-colors duration-150 ease-out disabled:cursor-wait disabled:opacity-60 ${variants[variant]} ${className}`}
       {...props}
     >
       {children}

@@ -1,16 +1,24 @@
-const tones: Record<string, string> = {
-  ACTIVE: "bg-emerald-50 text-emerald-700",
-  CONFIRMED: "bg-emerald-50 text-emerald-700",
-  PENDING_PAYMENT: "bg-amber-50 text-amber-800",
-  PAYMENT_UNDER_REVIEW: "bg-amber-50 text-amber-800",
+import { CircleCheck, CircleX, Clock, type LucideIcon } from "lucide-react";
+import { Chip, type ChipTone } from "./Chip";
+
+type Look = { tone: ChipTone; icon: LucideIcon };
+
+const settled: Look = { tone: "success", icon: CircleCheck };
+const waiting: Look = { tone: "warning", icon: Clock };
+const stopped: Look = { tone: "danger", icon: CircleX };
+
+const looks: Record<string, Look> = {
+  ACTIVE: settled,
+  CONFIRMED: settled,
+  PENDING_PAYMENT: waiting,
+  PAYMENT_UNDER_REVIEW: waiting,
 };
 
 export function StatusBadge({ value }: { value: string }) {
+  const { tone, icon } = looks[value] ?? stopped;
   return (
-    <span
-      className={`rounded-full px-2 py-1 text-xs font-bold ${tones[value] ?? "bg-red-50 text-red-700"}`}
-    >
+    <Chip tone={tone} icon={icon}>
       {value}
-    </span>
+    </Chip>
   );
 }
