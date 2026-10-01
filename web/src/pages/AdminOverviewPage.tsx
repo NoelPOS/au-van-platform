@@ -3,8 +3,10 @@ import { OverviewCounter } from "../components/OverviewCounter";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Skeleton } from "../components/ui/Skeleton";
 import { useRoutes, useTrips, useVehicles } from "../hooks/useInventoryQueries";
-import { useDeadLetters } from "../hooks/useOperationsQueries";
-import { usePaymentProofs } from "../hooks/usePaymentQueries";
+import {
+  useGivenUpNotifications,
+  useWaitingProofs,
+} from "../hooks/useOverviewQueries";
 import type { AuthSession } from "../types/auth";
 import { bangkokDay } from "../utils/dates";
 
@@ -12,8 +14,8 @@ export function AdminOverviewPage({ session }: { session: AuthSession }) {
   const trips = useTrips(session);
   const routes = useRoutes(session);
   const vehicles = useVehicles(session);
-  const proofs = usePaymentProofs(session);
-  const deadLetters = useDeadLetters(session);
+  const proofs = useWaitingProofs(session);
+  const deadLetters = useGivenUpNotifications(session);
   const board = [trips, routes, vehicles];
   const boardError = board.find((query) => query.error)?.error;
 
