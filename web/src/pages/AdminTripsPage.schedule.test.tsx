@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   adminSession,
@@ -22,6 +22,11 @@ const inventory = {
   "GET /vehicles": () => json([van]),
   "GET /seat-layouts": () => json([layout]),
 };
+
+async function submitAndSettle(name: string) {
+  fireEvent.click(drawer().getByRole("button", { name }));
+  await act(async () => {});
+}
 
 async function openSchedule(handlers: Parameters<typeof stubAdminApi>[0]) {
   const fetcher = stubAdminApi({ ...inventory, ...handlers });
@@ -113,12 +118,13 @@ describe("AdminTripsPage scheduling", () => {
 
     fireEvent.click(day("Tomorrow"));
     typeTime("25:00");
-    fireEvent.click(drawer().getByRole("button", { name: "Schedule trip" }));
+    await submitAndSettle("Schedule trip");
 
     expect(drawer().getByLabelText("Time")).toHaveAttribute("aria-invalid", "true");
     expect(
       drawer().getByText("Enter a 24-hour time, like 07:30."),
     ).toBeInTheDocument();
+    expect(drawer().queryByRole("alert")).toBeNull();
     expect(sentTo(fetcher, "POST /trips")).toEqual([]);
   });
 
@@ -126,9 +132,10 @@ describe("AdminTripsPage scheduling", () => {
     const fetcher = await openSchedule({});
 
     typeTime("08:00");
-    fireEvent.click(drawer().getByRole("button", { name: "Schedule trip" }));
+    await submitAndSettle("Schedule trip");
 
     expect(drawer().getByText("Choose at least one day.")).toBeInTheDocument();
+    expect(screen.queryByText(/trips? scheduled/)).toBeNull();
     expect(sentTo(fetcher, "POST /trips")).toEqual([]);
   });
 
