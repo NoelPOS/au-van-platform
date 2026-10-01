@@ -105,11 +105,18 @@ export async function createTrip(
 
   await adminDestination(page, "Seat layouts").click();
   await page.getByLabel("Layout name").fill(layoutName);
-  await page
-    .getByLabel(/^Seats/)
-    .fill(seatLabels.map((label, index) => `${label}, 1, ${index + 1}`).join("\n"));
+  await page.getByRole("button", { name: "Blank" }).click();
+  await page.getByLabel("Columns").fill(String(seatLabels.length));
+  for (const [index, label] of seatLabels.entries()) {
+    await page.getByRole("button", { name: `Row 1, column ${index + 1}` }).click();
+    await expect(
+      page.getByRole("button", { name: `Row 1, column ${index + 1}, seat ${label}` }),
+    ).toHaveAttribute("aria-pressed", "true");
+  }
   await page.getByRole("button", { name: "Create layout" }).click();
-  await expect(page.getByRole("cell", { name: layoutName })).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Saved layouts" }).getByRole("heading", { name: layoutName }),
+  ).toBeVisible();
 
   await adminDestination(page, "Vans").click();
   await page.getByRole("button", { name: "New van" }).click();
