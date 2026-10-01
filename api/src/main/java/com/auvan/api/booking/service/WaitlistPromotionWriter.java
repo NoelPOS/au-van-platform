@@ -17,16 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
 public class WaitlistPromotionWriter {
-    private static final DateTimeFormatter MOMENT =
-            DateTimeFormatter.ofPattern("d MMM yyyy 'at' HH:mm", Locale.ENGLISH);
-
     private final WaitlistEntryRepository entries;
     private final SeatClaimRepository claims;
     private final SeatAvailabilityService availability;
@@ -65,7 +60,7 @@ public class WaitlistPromotionWriter {
         UUID holdId = UUID.randomUUID();
         entry.promote(holdId, expiresAt, now);
         outbox.record(OutboxEventType.WAITLIST_PROMOTED, entry.getId(), userId,
-                notificationOf(trip, "Take the seats by " + MOMENT.format(expiresAt) + ".",
+                notificationOf(trip, "Take the seats by " + BookingNotifications.moment(expiresAt) + ".",
                         taking.stream().map(TripSeat::getLabel).sorted().toList(),
                         trip.getFare().multiply(BigDecimal.valueOf(taking.size())), expiresAt),
                 now);
@@ -89,7 +84,7 @@ public class WaitlistPromotionWriter {
         entry.expire(now);
         outbox.record(OutboxEventType.WAITLIST_PROMOTION_EXPIRED, entry.getId(), entry.getUserId(),
                 notificationOf(entry.getTrip(),
-                        "The offer ran out on " + MOMENT.format(entry.getPromotionExpiresAt()) + ".",
+                        "The offer ran out on " + BookingNotifications.moment(entry.getPromotionExpiresAt()) + ".",
                         null, null, entry.getPromotionExpiresAt()), now);
         return true;
     }
@@ -118,7 +113,7 @@ public class WaitlistPromotionWriter {
     private static WaitlistNotification notificationOf(Trip trip, String detail, List<String> seats,
                                                        BigDecimal fare, OffsetDateTime offerExpiresAt) {
         String summary = trip.getRoute().getOrigin() + " to " + trip.getRoute().getDestination()
-                + ", departing " + MOMENT.format(trip.getDepartureAt()) + ".";
+                + ", departing " + BookingNotifications.moment(trip.getDepartureAt()) + ".";
         return new WaitlistNotification(summary, detail, trip.getRoute().getOrigin(),
                 trip.getRoute().getDestination(), trip.getDepartureAt(), seats, fare, offerExpiresAt);
     }

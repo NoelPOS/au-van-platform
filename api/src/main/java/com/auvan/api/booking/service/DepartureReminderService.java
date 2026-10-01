@@ -9,9 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 // Not @Transactional: joins the caller's, so a rolled-back approval schedules nothing.
@@ -20,9 +18,6 @@ public class DepartureReminderService {
     private static final List<Offset> OFFSETS = List.of(
             new Offset(OutboxEventType.DEPARTURE_REMINDER_24H, Duration.ofHours(24)),
             new Offset(OutboxEventType.DEPARTURE_REMINDER_1H, Duration.ofHours(1)));
-
-    private static final DateTimeFormatter DEPARTURE =
-            DateTimeFormatter.ofPattern("d MMM yyyy 'at' HH:mm", Locale.ENGLISH);
 
     private static final String NO_LONGER_ELIGIBLE = "The booking is no longer eligible for a reminder.";
 
@@ -37,7 +32,7 @@ public class DepartureReminderService {
     public int schedule(Booking booking, OffsetDateTime now) {
         Trip trip = booking.getTrip();
         String detail = trip.getRoute().getOrigin() + " to " + trip.getRoute().getDestination()
-                + ", departing " + DEPARTURE.format(trip.getDepartureAt()) + ".";
+                + ", departing " + BookingNotifications.moment(trip.getDepartureAt()) + ".";
         int queued = 0;
         for (Offset offset : OFFSETS) {
             OffsetDateTime dueAt = trip.getDepartureAt().minus(offset.before());
