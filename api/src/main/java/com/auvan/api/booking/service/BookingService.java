@@ -9,7 +9,6 @@ import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.TripSeat;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
@@ -81,7 +80,7 @@ public class BookingService {
         // Record, flush and build the response before deleteByBookingId: it clears the context,
         // silently discarding unflushed changes and detaching the booking.
         outbox.record(OutboxEventType.BOOKING_CANCELLED, booking.getId(), booking.getUserId(),
-                new BookingNotification(booking.getReference(), detail), now);
+                BookingNotifications.of(booking, detail), now);
         bookings.flush();
         BookingResponse response = BookingResponse.from(booking);
         claims.deleteByBookingId(booking.getId());

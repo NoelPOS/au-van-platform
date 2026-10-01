@@ -241,6 +241,9 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getRecipientUserId()).isEqualTo(studentA);
             assertThat(event.getDedupeKey()).isNull();
             assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+            assertThat(event.getPayload()).contains("\"origin\":\"AU\"", "\"destination\":\"Asok\"")
+                    .containsPattern("\"seats\":\\[\"A").containsPattern("\"fare\":\\d")
+                    .containsPattern("\"offerExpiresAt\":\"20");
         });
 
         // Aged a minute back: the column keeps less precision than the clock, so a row

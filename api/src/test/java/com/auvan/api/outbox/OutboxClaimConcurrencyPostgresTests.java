@@ -3,7 +3,6 @@ package com.auvan.api.outbox;
 import com.auvan.api.PostgresTestSupport;
 import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.auth.repository.AppUserRepository;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.entity.OutboxStatus;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
@@ -22,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -78,7 +78,7 @@ class OutboxClaimConcurrencyPostgresTests extends PostgresTestSupport {
     @Test
     void onlyOneOfTwoWorkersClaimsADueRowAndOnlyOneMessageIsSent() throws Exception {
         UUID eventId = recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), student,
-                new BookingNotification("AUV-250101-PGRC", "Booked seats A1."), OffsetDateTime.now()).getId();
+                Map.of("reference", "AUV-250101-PGRC", "detail", "Booked seats A1."), OffsetDateTime.now()).getId();
         CountDownLatch bothHoldTheCandidate = new CountDownLatch(2);
 
         doAnswer(invocation -> {

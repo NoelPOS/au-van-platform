@@ -26,7 +26,6 @@ import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import com.auvan.api.inventory.repository.VehicleRepository;
 import com.auvan.api.notification.client.LinePushMessage;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.entity.OutboxStatus;
@@ -54,6 +53,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -180,7 +180,10 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
             assertThat(event.getAttempts()).isZero();
             assertThat(event.getProcessedAt()).isNull();
             assertThat(event.getNextAttemptAt()).isBeforeOrEqualTo(OffsetDateTime.now());
-            assertThat(event.getPayload()).contains(bookings.findById(bookingId).orElseThrow().getReference());
+            assertThat(event.getPayload()).contains(bookings.findById(bookingId).orElseThrow().getReference())
+                    .contains("\"origin\":\"AU\"", "\"destination\":\"Asok\"", "\"seats\":[\"A1\"]")
+                    .containsPattern("\"fare\":35").containsPattern("\"departureAt\":\"20")
+                    .containsPattern("\"paymentDeadlineAt\":\"20");
         });
     }
 
@@ -237,7 +240,8 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
         assertThat(eventsOfType(OutboxEventType.PAYMENT_REJECTED)).singleElement().satisfies(event -> {
             assertThat(event.getRecipientUserId()).isEqualTo(student);
-            assertThat(event.getPayload()).contains("The slip is unreadable.");
+            assertThat(event.getPayload()).contains("The slip is unreadable.")
+                    .containsPattern("\"paymentDeadlineAt\":\"20");
         });
     }
 
@@ -404,7 +408,7 @@ class OutboxIntegrationTests extends AuthenticationTestSupport {
 
     private UUID record(String reference) {
         return recorder.record(OutboxEventType.BOOKING_CREATED, UUID.randomUUID(), student,
-                new BookingNotification(reference, "Booked seats A1."), OffsetDateTime.now()).getId();
+                Map.of("reference", reference, "detail", "Booked seats A1."), OffsetDateTime.now()).getId();
     }
 
     private void dueAt(UUID eventId, OffsetDateTime when) {

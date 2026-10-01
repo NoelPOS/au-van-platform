@@ -6,7 +6,6 @@ import com.auvan.api.booking.entity.BookingSeat;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.TripSeat;
-import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
@@ -44,7 +43,7 @@ public class BookingExpiryWriter {
         // Record and flush before deleteByBookingId: it clears the context and would silently
         // discard the expiry and its outbox row.
         outbox.record(OutboxEventType.BOOKING_EXPIRED, booking.getId(), booking.getUserId(),
-                new BookingNotification(booking.getReference(), detail), now);
+                BookingNotifications.of(booking, detail), now);
         bookings.flush();
         claims.deleteByBookingId(booking.getId());
         reminders.cancel(booking.getId(), now);
