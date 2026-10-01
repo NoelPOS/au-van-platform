@@ -1,7 +1,9 @@
+import { ZoomIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { AuthSession } from "../types/auth";
 import { paymentsApi } from "../services/paymentsApi";
 import { SlipLightbox } from "./SlipLightbox";
+import { Skeleton } from "./ui/Skeleton";
 
 export function ProofImage({
   session,
@@ -44,7 +46,7 @@ export function ProofImage({
   if (error)
     return (
       <p
-        className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger"
+        className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger"
         role="alert"
       >
         {error}
@@ -53,8 +55,9 @@ export function ProofImage({
 
   if (!source)
     return (
-      <div className="flex h-80 items-center justify-center rounded-xl border border-line bg-brand-50 motion-safe:animate-pulse">
-        <p className="text-sm text-muted">Loading the slip…</p>
+      <div className="relative grid h-80 place-items-center">
+        <Skeleton className="absolute inset-0" />
+        <p className="relative text-sm text-muted">Loading the slip…</p>
       </div>
     );
 
@@ -73,18 +76,7 @@ export function ProofImage({
           type="button"
         >
           <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full bg-brand-900 px-3 py-1.5 text-xs font-semibold text-paper">
-            <svg
-              aria-hidden="true"
-              className="size-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="11" cy="11" r="6.5" />
-              <path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5" />
-            </svg>
+            <ZoomIn aria-hidden className="size-3.5" />
             Enlarge
           </span>
         </button>

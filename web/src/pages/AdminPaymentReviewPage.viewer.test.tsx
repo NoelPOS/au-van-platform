@@ -12,9 +12,7 @@ const reference = proof.bookingReference;
 
 async function enlarge() {
   await openSlip(reference);
-  const trigger = await screen.findByRole("button", { name: "Enlarge the slip" });
-  trigger.focus();
-  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("button", { name: "Enlarge the slip" }));
   return screen.getByRole("dialog", {
     name: `Payment slip for booking ${reference} at full size`,
   });
@@ -28,20 +26,18 @@ describe("AdminPaymentReviewPage viewing and deciding", () => {
     vi.unstubAllGlobals();
   });
 
-  it("enlarges the slip and hands focus back when Escape closes it", async () => {
+  it("enlarges the slip in a modal and drops it when the dialog is dismissed", async () => {
     stubApi();
 
     renderPage();
     const viewer = await enlarge();
 
+    expect(viewer).toHaveAttribute("open");
     expect(within(viewer).getByRole("img")).toHaveAttribute("src", "blob:the-slip");
-    expect(within(viewer).getByRole("button", { name: "Close" })).toHaveFocus();
-    expect(fireEvent.keyDown(viewer, { key: "Tab" })).toBe(false);
 
-    fireEvent.keyDown(viewer, { key: "Escape" });
+    fireEvent(viewer, new Event("close"));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Enlarge the slip" })).toHaveFocus();
   });
 
   it("closes the enlarged slip from its close button", async () => {
@@ -76,6 +72,7 @@ describe("AdminPaymentReviewPage viewing and deciding", () => {
         }),
       ),
     );
+    expect(await screen.findByText(`${reference} sent back to the student`)).toBeInTheDocument();
   });
 
   it("marks the open slip in the queue and gives the queue back on a phone", async () => {

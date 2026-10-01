@@ -1,14 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { AdminPaymentReviewPage } from "../pages/AdminPaymentReviewPage";
-import type { AuthSession } from "../types/auth";
-
-export const session: AuthSession = {
-  accessToken: "admin-token",
-  expiresIn: 900,
-  user: { id: "admin-id", role: "ADMIN", displayName: "Noel" },
-};
+import { adminSession, json, renderAdminPage } from "./renderAdminPage";
 
 export function slip(id: string, bookingReference: string) {
   return {
@@ -33,13 +26,6 @@ export function slip(id: string, bookingReference: string) {
 }
 
 export const proof = slip("proof-1", "AUV-260921-7KQ2M4XR");
-
-export function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 type Routes = {
   queue?: () => Response;
@@ -78,14 +64,7 @@ export function stubObjectUrls() {
 }
 
 export function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AdminPaymentReviewPage session={session} />
-    </QueryClientProvider>,
-  );
+  return renderAdminPage(<AdminPaymentReviewPage session={adminSession} />);
 }
 
 export async function openSlip(reference: string) {
