@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  json,
   openSlip,
   proof,
   renderPage,
   stubApi,
   stubObjectUrls,
 } from "../test/paymentFixtures";
+import { json } from "../test/renderAdminPage";
 
 const reference = proof.bookingReference;
 
@@ -34,11 +34,12 @@ describe("AdminPaymentReviewPage", () => {
     expect(new Headers(call?.[1]?.headers).get("Authorization")).toBe(
       "Bearer admin-token",
     );
-    const queue = within(screen.getByRole("list", { name: "Slips waiting for review" }));
-    expect(queue.getByText(reference)).toBeInTheDocument();
-    expect(queue.getByText("Somchai P.")).toBeInTheDocument();
-    expect(queue.getByText(/AU → Mega Bangna/)).toBeInTheDocument();
-    expect(queue.getByText("35.00 THB")).toBeInTheDocument();
+    const row = within(screen.getByRole("list", { name: "Slips waiting for review" }))
+      .getByRole("listitem");
+    expect(row).toHaveTextContent(reference);
+    expect(row).toHaveTextContent("Somchai P.");
+    expect(row).toHaveTextContent("AU → Mega Bangna");
+    expect(row).toHaveTextContent("35THB");
   });
 
   it("revokes the slip's object URL when the screen goes away", async () => {
@@ -67,6 +68,9 @@ describe("AdminPaymentReviewPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve payment" }));
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `Payment approved for ${reference}`,
+    );
     const call = fetcher.mock.calls.find(([url]) =>
       String(url).includes("/approve"),
     );

@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  json,
   openSlip,
   renderPage,
   slip,
   stubObjectUrls,
 } from "../test/paymentFixtures";
+import { json } from "../test/renderAdminPage";
 
 const slipA = slip("proof-a", "AUV-260921-AAAAAAAA");
 const slipB = slip("proof-b", "AUV-260921-BBBBBBBB");

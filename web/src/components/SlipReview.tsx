@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useApproveProof, useRejectProof } from "../hooks/usePaymentQueries";
+import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
 import type { PaymentProof } from "../types/payments";
-import { formatFare, formatWhen } from "../utils/format";
+import { formatFare } from "../utils/format";
+import { bangkokDateTime } from "../utils/dates";
 import { ProofImage } from "./ProofImage";
+import { RouteLine } from "./ui/RouteLine";
 import { Button } from "./ui/Button";
 
 // Mirrors the API's own ceiling; its 400 is the backstop.
@@ -30,6 +34,7 @@ export function SlipReview({
   const [noteError, setNoteError] = useState<string | null>(null);
   const approve = useApproveProof(session);
   const reject = useRejectProof(session);
+  const notify = useToast();
   const busy = approve.isPending || reject.isPending;
   const failure = approve.error ?? reject.error ?? null;
 
@@ -43,6 +48,11 @@ export function SlipReview({
     const mutation = decision === "approve" ? approve : reject;
     try {
       await mutation.mutateAsync({ proofId: proof.id, note: trimmed });
+      notify(
+        decision === "approve"
+          ? `Payment approved for ${proof.bookingReference}`
+          : `${proof.bookingReference} sent back to the student`,
+      );
       onDecided();
     } catch {
     }
@@ -51,15 +61,11 @@ export function SlipReview({
   return (
     <article className="rounded-2xl border border-line bg-card">
       <header className="border-b border-dashed border-line p-5 sm:p-6">
-        <button
-          className="mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-500 underline underline-offset-4 lg:hidden"
-          onClick={onBack}
-          type="button"
-        >
-          <span aria-hidden="true">←</span>
+        <Button className="mb-4 lg:hidden" onClick={onBack} variant="text">
+          <ArrowLeft aria-hidden className="size-4" />
           Back to the queue
-        </button>
-        <p className="text-xs font-semibold tracking-[0.14em] text-muted uppercase">
+        </Button>
+        <p className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">
           Slip under review
         </p>
         <h2 className="mt-1 font-mono text-lg font-semibold text-brand-900 sm:text-xl">
@@ -72,7 +78,12 @@ export function SlipReview({
           <Fact
             className="col-span-3"
             label="Trip"
-            value={`${proof.trip.origin} → ${proof.trip.destination} · ${formatWhen(proof.trip.departureAt)}`}
+            value={
+              <>
+                <RouteLine destination={proof.trip.destination} origin={proof.trip.origin} />
+                <span className="ml-2.5 text-muted">{bangkokDateTime(proof.trip.departureAt)}</span>
+              </>
+            }
           />
         </dl>
       </header>
@@ -95,7 +106,7 @@ export function SlipReview({
             ))}
           </div>
           <textarea
-            className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500 focus-visible:outline-2 focus-visible:outline-brand-500"
+            className="w-full rounded-lg border border-line bg-card px-3 py-2 text-[15px] text-ink transition-colors duration-150 ease-out hover:border-ink/25 focus:border-brand-500"
             id="review-note"
             maxLength={maxNoteLength}
             onChange={(event) => setNote(event.target.value)}
@@ -124,12 +135,12 @@ function Fact({
   className = "",
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   className?: string;
 }) {
   return (
     <div className={`min-w-0 ${className}`}>
-      <dt className="text-xs tracking-[0.14em] text-muted uppercase">{label}</dt>
+      <dt className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{label}</dt>
       <dd className="mt-0.5 truncate font-medium text-ink tabular-nums">{value}</dd>
     </div>
   );
@@ -138,7 +149,7 @@ function Fact({
 function Alert({ message }: { message: string }) {
   return (
     <p
-      className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+      className="rounded-lg border border-danger/20 bg-danger-soft px-3 py-2 text-sm text-danger"
       role="alert"
     >
       {message}

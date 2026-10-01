@@ -2,8 +2,14 @@ import { useState } from "react";
 import { PaymentQueue } from "../components/PaymentQueue";
 import { SlipReview } from "../components/SlipReview";
 import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Panel } from "../components/ui/Panel";
+import { Skeleton } from "../components/ui/Skeleton";
 import { usePaymentProofs } from "../hooks/usePaymentQueries";
 import type { AuthSession } from "../types/auth";
+
+const page = "mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-14";
 
 export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -11,13 +17,12 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
 
   if (proofs.isPending) {
     return (
-      <main aria-busy="true" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-        <p className="sr-only">Loading payment proofs…</p>
-        <div className="h-24 max-w-md rounded-xl bg-brand-50 motion-safe:animate-pulse" />
-        <div className="mt-8 grid gap-3 lg:max-w-md">
-          {[0, 1, 2].map((row) => (
-            <div className="h-24 rounded-xl border border-line bg-card motion-safe:animate-pulse" key={row} />
-          ))}
+      <main className={page}>
+        <div className="flex flex-col gap-3 lg:max-w-md" role="status">
+          <span className="sr-only">Loading payment proofs…</span>
+          <Skeleton className="mb-7 h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
         </div>
       </main>
     );
@@ -25,16 +30,16 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
 
   if (proofs.error) {
     return (
-      <main className="mx-auto max-w-xl px-4 py-16 sm:px-6">
-        <section className="rounded-2xl border border-danger/30 bg-card p-6">
-          <h1 className="font-serif text-2xl text-brand-900">
+      <main className={page}>
+        <Panel className="max-w-xl p-6">
+          <h1 className="font-display text-2xl font-light text-brand-900">
             Could not load payment proofs
           </h1>
-          <p className="my-4 text-muted" role="alert">
+          <p className="mt-2 mb-5 text-muted" role="alert">
             {proofs.error.message}
           </p>
           <Button onClick={() => void proofs.refetch()}>Try again</Button>
-        </section>
+        </Panel>
       </main>
     );
   }
@@ -43,25 +48,18 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
   const selected = queue.find((proof) => proof.id === reviewing) ?? null;
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-      <header className="mb-8 max-w-2xl">
-        <p className="text-xs font-semibold tracking-[0.14em] text-brand-500 uppercase">
-          Payments
-        </p>
-        <h1 className="mt-2 font-serif text-4xl text-brand-900 sm:text-5xl">
-          Payment review
-        </h1>
-        <p className="mt-3 text-muted">
-          Check each payment slip, then approve the booking or send it back with
-          a reason.
-        </p>
-      </header>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)]">
+    <main className={page}>
+      <PageHeader
+        description="Check each payment slip, then approve the booking or send it back with a reason."
+        eyebrow="Payments"
+        title="Payment review"
+      />
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
         <section
           aria-label="Review queue"
           className={selected ? "hidden lg:block" : undefined}
         >
-          <p className="mb-3 text-xs font-semibold tracking-[0.14em] text-muted uppercase tabular-nums">
+          <p className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase tabular-nums">
             {`${queue.length} waiting`}
           </p>
           <PaymentQueue
@@ -79,10 +77,8 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
             session={session}
           />
         ) : (
-          <div className="hidden min-h-80 items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center lg:flex">
-            <p className="max-w-xs font-serif text-xl text-muted italic">
-              Choose a booking reference to see its payment slip.
-            </p>
+          <div className="hidden rounded-2xl border border-dashed border-line lg:block">
+            <EmptyState title="Choose a booking reference to see its payment slip." />
           </div>
         )}
       </div>
