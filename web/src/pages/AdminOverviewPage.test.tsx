@@ -1,6 +1,11 @@
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { adminSession, json, renderAdminPage } from "../test/renderAdminPage";
+import {
+  adminSession,
+  json,
+  renderAdminPage,
+  stubAdminApi,
+} from "../test/renderAdminPage";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 
 const hour = 3_600_000;
@@ -27,16 +32,6 @@ function trip(id: string, departureAt: Date, status = "ACTIVE") {
   };
 }
 
-function stubApi(responses: Record<string, () => Response>) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
-      const path = String(input).replace("/api/v1/admin", "");
-      return (responses[path] ?? (() => json([])))();
-    }),
-  );
-}
-
 function renderPage() {
   renderAdminPage(<AdminOverviewPage session={adminSession} />);
 }
@@ -50,18 +45,18 @@ describe("AdminOverviewPage", () => {
   it("lists upcoming active departures soonest first, with the seats each has claimed", async () => {
     const soon = new Date(Date.now() + 2 * hour);
     const later = new Date(Date.now() + 26 * hour);
-    stubApi({
-      "/trips": () =>
+    stubAdminApi({
+      "GET /trips": () =>
         json([
           trip("later", later),
           trip("gone", new Date(Date.now() - hour)),
           trip("cancelled", new Date(Date.now() + hour), "CANCELLED"),
           trip("soon", soon),
         ]),
-      "/routes": () => json([route]),
-      "/vehicles": () => json([van]),
-      "/operations/trips/soon": () => json({ claimedSeats: 3, totalSeats: 13 }),
-      "/operations/trips/later": () => json({ claimedSeats: 0, totalSeats: 13 }),
+      "GET /routes": () => json([route]),
+      "GET /vehicles": () => json([van]),
+      "GET /operations/trips/soon": () => json({ claimedSeats: 3, totalSeats: 13 }),
+      "GET /operations/trips/later": () => json({ claimedSeats: 0, totalSeats: 13 }),
     });
 
     renderPage();
@@ -82,9 +77,9 @@ describe("AdminOverviewPage", () => {
   });
 
   it("counts the slips waiting for review and the notifications given up on", async () => {
-    stubApi({
-      "/payment-proofs": () => json([{ id: "p1" }, { id: "p2" }]),
-      "/operations/dead-letters": () => json([{ id: "d1" }]),
+    stubAdminApi({
+      "GET /payment-proofs": () => json([{ id: "p1" }, { id: "p2" }]),
+      "GET /operations/dead-letters": () => json([{ id: "d1" }]),
     });
 
     renderPage();
@@ -107,7 +102,7 @@ describe("AdminOverviewPage", () => {
   });
 
   it("reads as a clear board when nothing is scheduled and nothing is waiting", async () => {
-    stubApi({});
+    stubAdminApi({});
 
     renderPage();
 
@@ -124,8 +119,8 @@ describe("AdminOverviewPage", () => {
   });
 
   it("shows a failed count where it belongs and keeps the rest of the board", async () => {
-    stubApi({
-      "/payment-proofs": () => json({ detail: "Review queue is down." }, 503),
+    stubAdminApi({
+      "GET /payment-proofs": () => json({ detail: "Review queue is down." }, 503),
     });
 
     renderPage();
