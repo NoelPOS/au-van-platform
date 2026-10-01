@@ -117,6 +117,18 @@ describe("SeatLayoutsSection", () => {
     expect(cell(1, 1)).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("keeps the selected space when an arrow key points out of the van", () => {
+    renderSection();
+    startBlank();
+
+    fireEvent.click(cell(1, 4));
+    fireEvent.keyDown(cell(1, 4), { key: "ArrowRight" });
+    fireEvent.change(screen.getByLabelText("Columns"), { target: { value: "6" } });
+
+    expect(cell(1, 4)).toHaveAttribute("tabindex", "0");
+    expect(cell(1, 5)).toHaveAttribute("tabindex", "-1");
+  });
+
   it("creates the layout with the placed seats in the API's shape", async () => {
     const fetcher = stubFetch();
     renderSection();
