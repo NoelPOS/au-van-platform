@@ -1,19 +1,17 @@
 import { useState } from "react";
 import { DeadLettersTable } from "../components/DeadLettersTable";
 import { TripOperationsPanel } from "../components/TripOperationsPanel";
+import { TripTimeline } from "../components/TripTimeline";
 import { Button } from "../components/ui/Button";
 import { FailurePanel } from "../components/ui/FailurePanel";
-import { Panel } from "../components/ui/Panel";
 import { useRoutes, useTrips } from "../hooks/useInventoryQueries";
 import {
   useDeadLetters,
   useTripOperations,
 } from "../hooks/useOperationsQueries";
 import type { AuthSession } from "../types/auth";
-import { formatDeparture } from "../utils/format";
 
-const fieldClass =
-  "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-normal text-ink outline-none focus:border-brand";
+const skeleton = "rounded-2xl border border-line bg-card motion-safe:animate-pulse";
 
 export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const [tripId, setTripId] = useState<string | null>(null);
@@ -25,17 +23,21 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const listing = trips.error ?? routes.error;
   if (trips.isPending || routes.isPending) {
     return (
-      <main className="mx-auto max-w-6xl px-6 py-16 text-center text-muted">
-        Loading operations…
+      <main aria-busy="true" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <p className="sr-only">Loading operations…</p>
+        <div className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+          <div className={`h-96 ${skeleton}`} />
+          <div className={`h-96 ${skeleton}`} />
+        </div>
       </main>
     );
   }
 
   if (listing) {
     return (
-      <main className="mx-auto max-w-xl px-6 py-16">
-        <section className="rounded-2xl border border-red-200 bg-white p-6">
-          <h1 className="text-2xl font-bold text-ink">
+      <main className="mx-auto max-w-xl px-4 py-16 sm:px-6">
+        <section className="rounded-2xl border border-danger/30 bg-card p-6">
+          <h1 className="font-serif text-2xl text-brand-900">
             Could not load operations
           </h1>
           <p className="my-4 text-muted" role="alert">
@@ -55,64 +57,48 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   }
 
   const trip = operations.data ?? null;
-  const schedule = trips.data ?? [];
-  const routeList = routes.data ?? [];
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <header className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand">
-          AU Van Admin
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
+      <header className="mb-10 max-w-2xl">
+        <p className="text-xs font-semibold tracking-[0.14em] text-brand-500 uppercase">
+          Dispatch
         </p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight text-ink">
+        <h1 className="mt-2 font-serif text-4xl text-brand-900 sm:text-5xl">
           Operations
         </h1>
-        <p className="mt-2 text-muted">
+        <p className="mt-3 text-muted">
           What a trip&apos;s bookings are doing, who is queued behind it, and
           which notifications were given up on.
         </p>
       </header>
 
-      <label className="mb-6 block max-w-md text-sm font-semibold text-ink">
-        Trip
-        <select
-          className={fieldClass}
-          onChange={(event) => setTripId(event.target.value || null)}
-          value={tripId ?? ""}
-        >
-          <option value="">Choose a trip…</option>
-          {schedule.map((entry) => {
-            const route = routeList.find((value) => value.id === entry.routeId);
-            const label = route
-              ? `${route.origin} → ${route.destination}`
-              : "Unknown route";
-            return (
-              <option key={entry.id} value={entry.id}>
-                {`${formatDeparture(entry.departureAt)} · ${label}`}
-              </option>
-            );
-          })}
-        </select>
-      </label>
-
-      {tripId === null && (
-        <Panel className="mb-8 p-5 text-sm text-muted">
-          Choose a trip to see its bookings and waitlist.
-        </Panel>
-      )}
-      {tripId !== null && operations.isPending && (
-        <p className="mb-8 text-sm text-muted">Loading this trip…</p>
-      )}
-      {operations.error && (
-        <div className="mb-8">
-          <FailurePanel
-            title="Could not load this trip"
-            error={operations.error}
-          />
+      <div className="grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <TripTimeline
+          onSelect={setTripId}
+          routes={routes.data ?? []}
+          selectedId={tripId}
+          trips={trips.data ?? []}
+        />
+        <div>
+          {tripId === null && (
+            <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center">
+              <p className="max-w-xs font-serif text-xl text-muted italic">
+                Choose a trip to see its bookings and waitlist.
+              </p>
+            </div>
+          )}
+          {tripId !== null && operations.isPending && (
+            <div className={`h-96 ${skeleton}`}>
+              <p className="sr-only">Loading this trip…</p>
+            </div>
+          )}
+          {operations.error && (
+            <FailurePanel title="Could not load this trip" error={operations.error} />
+          )}
+          {trip && <TripOperationsPanel trip={trip} />}
         </div>
-      )}
-
-      {trip && <TripOperationsPanel trip={trip} />}
+      </div>
 
       <DeadLettersTable
         error={deadLetters.error}
