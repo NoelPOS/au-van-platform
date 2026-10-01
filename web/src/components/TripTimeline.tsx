@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Trip, VanRoute } from "../types/inventory";
-import { formatDay, formatTime } from "../utils/format";
+import { bangkokDay, bangkokTime } from "../utils/dates";
+import { EmptyState } from "./ui/EmptyState";
+import { RouteLine } from "./ui/RouteLine";
 import { StatusBadge } from "./ui/StatusBadge";
 
 type Props = {
@@ -13,7 +15,7 @@ type Props = {
 function byDay(trips: Trip[]): [string, Trip[]][] {
   const days = new Map<string, Trip[]>();
   for (const trip of trips) {
-    const day = formatDay(trip.departureAt);
+    const day = bangkokDay(trip.departureAt);
     days.set(day, [...(days.get(day) ?? []), trip]);
   }
   return [...days];
@@ -31,15 +33,15 @@ export function TripTimeline({ trips, routes, selectedId, onSelect }: Props) {
   return (
     <section aria-labelledby="timeline-heading">
       <h2
-        className="mb-4 text-xs font-semibold tracking-[0.14em] text-muted uppercase"
+        className="mb-4 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase"
         id="timeline-heading"
       >
         Upcoming departures
       </h2>
       {upcoming.length === 0 ? (
-        <p className="font-serif text-lg text-muted italic">
-          No departures ahead. Schedule one from Trips and it lands here.
-        </p>
+        <div className="rounded-2xl border border-dashed border-line">
+          <EmptyState title="No departures ahead. Schedule one from Trips and it lands here." />
+        </div>
       ) : (
         <TripDays trips={upcoming} {...shared} />
       )}
@@ -58,7 +60,7 @@ export function TripTimeline({ trips, routes, selectedId, onSelect }: Props) {
 function TripDays({ trips, routes, selectedId, onSelect }: Props) {
   return byDay(trips).map(([day, entries]) => (
     <div className="mb-5" key={day}>
-      <h3 className="mb-2 font-serif text-sm text-brand-700 italic">{day}</h3>
+      <h3 className="mb-2 font-display text-sm text-brand-700 italic">{day}</h3>
       <ol aria-label={day} className="ml-1.5 border-l border-line">
         {entries.map((trip) => {
           const route = routes.find((value) => value.id === trip.routeId);
@@ -82,12 +84,16 @@ function TripDays({ trips, routes, selectedId, onSelect }: Props) {
                 onClick={() => onSelect(trip.id)}
                 type="button"
               >
-                <span className="font-serif text-2xl text-brand-900 tabular-nums">
-                  {formatTime(trip.departureAt)}
+                <span className="font-display text-2xl font-light text-brand-900 tabular-nums">
+                  {bangkokTime(trip.departureAt)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-ink">
-                    {route ? `${route.origin} → ${route.destination}` : "Unknown route"}
+                  <span className="block text-sm font-medium text-ink">
+                    {route ? (
+                      <RouteLine destination={route.destination} origin={route.origin} />
+                    ) : (
+                      "Unknown route"
+                    )}
                   </span>
                   <span className="text-xs text-muted">
                     {`${seats} seat${seats === 1 ? "" : "s"}`}
