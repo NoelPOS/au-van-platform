@@ -201,8 +201,13 @@ export async function backToTrips(page: Page): Promise<void> {
  * every student's, so it is found by reference rather than by position.
  */
 export async function openProof(page: Page, reference: string): Promise<void> {
-  await expect(page.getByRole("button", { name: reference })).toBeVisible();
-  await page.getByRole("button", { name: reference }).click();
+  const row = page.getByRole("button", { name: reference });
+  await expect(row).toBeVisible();
+  // Clicked on the fare stub, well away from the reference, so the whole ticket is the target.
+  await page
+    .getByRole("listitem")
+    .filter({ has: row })
+    .click({ position: { x: 24, y: 24 } });
   await expect(page.getByRole("heading", { name: reference })).toBeVisible();
   await expect(
     page.getByRole("img", { name: `Payment slip for booking ${reference}` }),
