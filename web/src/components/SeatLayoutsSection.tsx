@@ -1,30 +1,14 @@
 import { useState } from "react";
 import type { AuthSession } from "../types/auth";
 import { SeatLayoutBuilder } from "./SeatLayoutBuilder";
-import { VanSeatPlan } from "./VanSeatPlan";
+import { VanThumbnail } from "./VanThumbnail";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
 import { Panel } from "./ui/Panel";
 import { useToast } from "../hooks/useToast";
 import { useCreateSeatLayout, useUpdateSeatLayout } from "../hooks/useInventoryQueries";
 import type { Seat, SeatLayout } from "../types/inventory";
-import { fromSeats, seatAt } from "../utils/seatLayout";
-
-function VanThumbnail({ seats }: { seats: Seat[] }) {
-  const { rows, columns } = fromSeats(seats);
-  return (
-    <VanSeatPlan
-      cellSize={9}
-      columns={columns}
-      renderCell={(rowNumber, columnNumber) =>
-        seatAt(seats, rowNumber, columnNumber) && (
-          <span className="block h-full w-full rounded-[3px] bg-brand-600" />
-        )
-      }
-      rows={rows}
-    />
-  );
-}
+import { seatCount } from "../utils/format";
 
 export function SeatLayoutsSection({
   session,
@@ -86,7 +70,7 @@ export function SeatLayoutsSection({
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate font-display text-xl text-brand-900">{item.name}</h3>
                   <p className="text-sm tabular-nums text-muted">
-                    {item.seats.length} {item.seats.length === 1 ? "seat" : "seats"}
+                    {seatCount(item.seats.length)}
                   </p>
                 </div>
                 <Button
