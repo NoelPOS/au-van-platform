@@ -91,4 +91,18 @@ describe("AdminPaymentReviewPage viewing and deciding", () => {
     expect(row).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("region", { name: "Review queue" })).not.toHaveClass("hidden");
   });
+
+  it("makes the whole ticket, stub included, the row's one click target", async () => {
+    stubApi();
+
+    renderPage();
+    const row = await screen.findByRole("button", { name: reference });
+    const ticket = row.closest("article") as HTMLElement;
+
+    expect(row).toHaveClass("after:absolute", "after:inset-0");
+    expect(ticket).toHaveClass("relative");
+    for (let node = row.parentElement; node !== ticket; node = node!.parentElement)
+      expect(node).not.toHaveClass("relative");
+    expect(within(ticket).getAllByRole("button")).toEqual([row]);
+  });
 });
