@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { EmptyState } from "./ui/EmptyState";
 import { Panel } from "./ui/Panel";
 
 export function InventoryTable({
@@ -12,11 +13,11 @@ export function InventoryTable({
     <Panel className="overflow-hidden p-0">
       <div className="overflow-x-auto">
         <table className="w-full min-w-150 border-collapse text-sm">
-          <thead className="bg-surface text-left text-xs uppercase tracking-wider text-muted">
+          <thead className="border-b border-line text-left text-[11px] tracking-[0.14em] text-muted uppercase">
             <tr>
               {headings.map((heading, index) => (
                 <th
-                  className="px-4 py-3 font-semibold"
+                  className="px-5 pt-4 pb-3 font-semibold"
                   key={`${heading}-${index}`}
                 >
                   {heading}
@@ -42,9 +43,8 @@ export function EmptyRow({
 }) {
   return (
     <tr>
-      <td colSpan={columns} className="px-4 py-10 text-center">
-        <strong className="block text-ink">{title}</strong>
-        <span className="mt-1 block text-muted">{detail}</span>
+      <td colSpan={columns}>
+        <EmptyState title={title} detail={detail} />
       </td>
     </tr>
   );

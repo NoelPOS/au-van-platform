@@ -72,7 +72,7 @@ describe("StudentBookingPage", () => {
     expect(
       await screen.findByText("The slip is too blurred to read."),
     ).toBeInTheDocument();
-    expect(screen.getByText("PAYMENT_REJECTED")).toHaveClass("text-red-700");
+    expect(screen.getByText("PAYMENT_REJECTED")).toHaveClass("text-danger");
 
     fireEvent.change(screen.getByLabelText("Upload your payment slip"), {
       target: {
@@ -130,8 +130,8 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("CONFIRMED")).toHaveClass("text-emerald-700");
-    expect(screen.getByText("CANCELLED")).toHaveClass("text-red-700");
+    expect(await screen.findByText("CONFIRMED")).toHaveClass("text-success");
+    expect(screen.getByText("CANCELLED")).toHaveClass("text-danger");
   });
 
   it("tells a student when their unpaid booking loses its seats", async () => {
