@@ -25,7 +25,7 @@ export function SeatLayoutPicker({
             <input
               aria-describedby={`${id}-${layout.id}`}
               aria-label={layout.name}
-              className="sr-only"
+              className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl opacity-0"
               defaultChecked={layout.id === defaultValue}
               name="seatLayoutId"
               required
