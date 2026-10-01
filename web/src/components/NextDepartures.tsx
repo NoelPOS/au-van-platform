@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTripOperations } from "../hooks/useOperationsQueries";
+import { useTripSeats } from "../hooks/useOverviewQueries";
 import type { AuthSession } from "../types/auth";
 import type { Trip, VanRoute, Vehicle } from "../types/inventory";
 import { bangkokDay, bangkokTime } from "../utils/dates";
@@ -9,7 +9,7 @@ import { TextLink } from "./ui/TextLink";
 import { TicketStub } from "./ui/TicketStub";
 
 function SeatsClaimed({ session, trip }: { session: AuthSession; trip: Trip }) {
-  const operations = useTripOperations(session, trip.id);
+  const operations = useTripSeats(session, trip.id);
   if (operations.isPending) return <span>Counting seats…</span>;
   if (!operations.data) return <span>{trip.seats.length} seats</span>;
 
