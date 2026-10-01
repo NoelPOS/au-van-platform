@@ -171,6 +171,8 @@ jobs:
             terraform -chdir="$dir" validate || status=1
           done <<< "$modules"
           exit $status
+      - name: Test the demo module against a mocked provider
+        run: terraform -chdir=infra/demo test
       - name: Test the CloudFront Function
         run: node --test infra/demo/spa-fallback.test.mjs
 
