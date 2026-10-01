@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { authenticatedFetch, exchangeLineIdToken } from "./authService";
+import {
+  authenticatedFetch,
+  exchangeLineIdToken,
+  LineTokenRejected,
+} from "./authService";
 
 describe("LIFF session boundary", () => {
   it("exchanges only the LINE ID token for an AU-Van session", async () => {
@@ -50,5 +54,17 @@ describe("LIFF session boundary", () => {
     await expect(
       exchangeLineIdToken("invalid", vi.fn().mockResolvedValue({ ok: false })),
     ).rejects.toThrow("LINE authentication could not be completed.");
+  });
+
+  it("marks a token the API rejects as unauthorised apart from other failures", async () => {
+    const answering = (status: number) =>
+      vi.fn().mockResolvedValue(new Response(null, { status }));
+
+    await expect(
+      exchangeLineIdToken("expired", answering(401)),
+    ).rejects.toBeInstanceOf(LineTokenRejected);
+    await expect(
+      exchangeLineIdToken("line-id-token", answering(500)),
+    ).rejects.not.toBeInstanceOf(LineTokenRejected);
   });
 });

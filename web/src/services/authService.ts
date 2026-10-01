@@ -3,6 +3,10 @@ import { apiBaseUrl } from "./apiBaseUrl";
 
 type ExchangeResponse = AuthSession;
 
+const exchangeFailed = "LINE authentication could not be completed.";
+
+export class LineTokenRejected extends Error {}
+
 export async function exchangeLineIdToken(
   idToken: string,
   fetcher: typeof fetch = fetch,
@@ -13,9 +17,8 @@ export async function exchangeLineIdToken(
     body: JSON.stringify({ idToken }),
   });
 
-  if (!response.ok) {
-    throw new Error("LINE authentication could not be completed.");
-  }
+  if (response.status === 401) throw new LineTokenRejected(exchangeFailed);
+  if (!response.ok) throw new Error(exchangeFailed);
 
   return (await response.json()) as ExchangeResponse;
 }
