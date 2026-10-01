@@ -268,8 +268,8 @@ It is not a dependency cycle: the distribution depends on the load balancer, the
 task definition depends on the distribution, and neither the load balancer nor
 the target group depends on the task definition.
 
-#76 owns the runbook that sequences all of this, and the teardown that reverses
-it.
+[`docs/deployment.md`](../docs/deployment.md) is the runbook that sequences all
+of this, and the teardown that reverses it.
 
 ## Conventions
 

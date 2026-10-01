@@ -193,6 +193,11 @@ delete the local database volume as well.
 
 Run validation locally with `cd web && npm run lint && npm run test && npm run build` and `cd api && ./gradlew test`.
 
+## Deploy the AWS demo
+
+[`docs/deployment.md`](docs/deployment.md) is the owner's runbook for the AWS
+demo: the secrets it needs, the deployment, the smoke test, and the teardown.
+
 ## Run the end-to-end suite
 
 `tests/e2e/` is a Playwright suite covering the two critical journeys — an
