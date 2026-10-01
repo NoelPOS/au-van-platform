@@ -129,6 +129,17 @@ describe("SeatLayoutsSection", () => {
     expect(cell(1, 5)).toHaveAttribute("tabindex", "-1");
   });
 
+  it("moves the selected space inside the van when the van shrinks", () => {
+    renderSection();
+    startBlank();
+
+    fireEvent.click(cell(5, 4));
+    fireEvent.change(screen.getByLabelText("Rows"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Columns"), { target: { value: "2" } });
+
+    expect(cell(3, 2)).toHaveAttribute("tabindex", "0");
+  });
+
   it("creates the layout with the placed seats in the API's shape", async () => {
     const fetcher = stubFetch();
     renderSection();
