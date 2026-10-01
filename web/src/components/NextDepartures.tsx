@@ -67,7 +67,7 @@ export function NextDepartures({
             <TicketStub
               stub={
                 <>
-                  <span className="font-display text-[2.5rem] leading-none font-light text-brand-900 tabular-nums">
+                  <span className="font-display text-[2.125rem] leading-none font-light text-brand-900 tabular-nums sm:text-[2.5rem]">
                     {bangkokTime(trip.departureAt)}
                   </span>
                   <span className="mt-2 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">
