@@ -110,10 +110,26 @@ variable "task_memory" {
   default     = 1024
 }
 
-variable "desired_count" {
-  description = "How many API tasks the service runs. More than one is safe by design -- Flyway takes its own lock, and the expiry, waitlist and outbox sweeps are decided by a row lock and a conditional-update claim (ADR-010, ADR-011) -- but a demo does not need two."
+variable "api_min_tasks" {
+  description = "Fewest API tasks the service runs, and how many it starts with. More than one is safe: Flyway takes its own lock, and the sweeps claim work with a row lock and a conditional update (ADR-010, ADR-011)."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.api_min_tasks >= 1
+    error_message = "api_min_tasks must be at least 1."
+  }
+}
+
+variable "api_max_tasks" {
+  description = "Most API tasks the CPU scaler may run. Each extra task is another Fargate task-hour."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.api_max_tasks >= var.api_min_tasks
+    error_message = "api_max_tasks must be at least api_min_tasks."
+  }
 }
 
 variable "line_channel_id" {
