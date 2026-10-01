@@ -26,8 +26,7 @@ export function SlipLightbox({
     <div
       aria-label={`Payment slip for booking ${reference} at full size`}
       aria-modal="true"
-      className="fixed inset-0 z-50 flex cursor-zoom-out flex-col gap-4 bg-brand-900/95 p-4 sm:p-8"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex flex-col gap-4 bg-brand-900/95 p-4 sm:p-8"
       onKeyDown={onKeyDown}
       role="dialog"
     >
