@@ -92,7 +92,7 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
           {operations.error && (
             <FailurePanel title="Could not load this trip" error={operations.error} />
           )}
-          {trip && <TripOperationsPanel trip={trip} />}
+          {trip && <TripOperationsPanel session={session} trip={trip} />}
         </div>
       </div>
 

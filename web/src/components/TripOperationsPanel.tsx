@@ -1,13 +1,20 @@
+import type { AuthSession } from "../types/auth";
 import type { TripOperations } from "../types/operations";
 import { bangkokDateTime } from "../utils/dates";
-import { OccupancyGrid } from "./OccupancyGrid";
+import { SeatOccupancy } from "./SeatOccupancy";
 import { WaitlistQueue } from "./WaitlistQueue";
 import { RouteLine } from "./ui/RouteLine";
 import { StatusBadge } from "./ui/StatusBadge";
 
 const eyebrow = "mb-3 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase";
 
-export function TripOperationsPanel({ trip }: { trip: TripOperations }) {
+export function TripOperationsPanel({
+  session,
+  trip,
+}: {
+  session: AuthSession;
+  trip: TripOperations;
+}) {
   return (
     <article className="rounded-2xl border border-line bg-card">
       <header className="p-5 sm:p-6">
@@ -26,7 +33,12 @@ export function TripOperationsPanel({ trip }: { trip: TripOperations }) {
           <h3 className={eyebrow} id="occupancy-heading">
             Seats
           </h3>
-          <OccupancyGrid claimed={trip.claimedSeats} total={trip.totalSeats} />
+          <SeatOccupancy
+            claimed={trip.claimedSeats}
+            session={session}
+            total={trip.totalSeats}
+            tripId={trip.tripId}
+          />
         </section>
         <section aria-labelledby="bookings-heading">
           <h3 className={eyebrow} id="bookings-heading">
