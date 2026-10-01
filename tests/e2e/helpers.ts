@@ -20,13 +20,18 @@ export function studentSubject(): string {
 }
 
 /**
- * Date and time inputs as the trip form reads them: Bangkok wall-clock time,
- * which is UTC+7 all year, whatever timezone the browser runs in.
+ * The day chip and clock time the trip form shows for a departure this many
+ * days out: Bangkok wall-clock time, which is UTC+7 all year, whatever timezone
+ * the browser runs in.
  */
-function departureInDays(days: number): { date: string; time: string } {
+function departureInDays(days: number): { dayChip: string; time: string } {
   const bangkok = new Date(Date.now() + days * 86_400_000 + 7 * 3_600_000);
-  const stamp = bangkok.toISOString();
-  return { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
+  const dayChip = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+  }).format(bangkok);
+  return { dayChip, time: bangkok.toISOString().slice(11, 16) };
 }
 
 export async function signIn(
@@ -123,25 +128,28 @@ export async function createTrip(
   const vanForm = page.getByRole("dialog", { name: "New van" });
   await vanForm.getByLabel("Van code").fill(vehicleCode);
   await vanForm.getByLabel("Name", { exact: true }).fill(`White Hiace ${suffix}`);
-  await vanForm
-    .getByLabel("Seat layout")
-    .selectOption({ label: `${layoutName} · ${seatLabels.length} seats` });
+  await vanForm.getByRole("radio", { name: layoutName, exact: true }).check();
   await vanForm.getByRole("button", { name: "Add van" }).click();
   await expect(page.getByRole("cell", { name: vehicleCode, exact: true })).toBeVisible();
 
   await adminDestination(page, "Trips").click();
   await page.getByRole("button", { name: "New trip" }).click();
   const tripForm = page.getByRole("dialog", { name: "Schedule a trip" });
-  await tripForm.getByLabel("Route").selectOption({ label: routeLabel });
+  await tripForm.getByRole("button", { name: /^Route/ }).click();
+  await tripForm.getByRole("option", { name: routeLabel }).click();
+  await tripForm.getByRole("button", { name: /^Van/ }).click();
   await tripForm
-    .getByLabel("Van")
-    .selectOption({ label: `${vehicleCode} — White Hiace ${suffix}` });
+    .getByRole("option", { name: `${vehicleCode} — White Hiace ${suffix}` })
+    .click();
   // A week out, so that a booking's deadline is always the two-hour payment
   // window rather than `departureAt - departure-cutoff`, and the live expiry
   // sweep can never reach a booking made during a test.
   const departure = departureInDays(7);
-  await tripForm.getByLabel("Date").fill(departure.date);
-  await tripForm.getByLabel("Time").fill(departure.time);
+  await tripForm
+    .getByRole("group", { name: "Days" })
+    .getByRole("button", { name: departure.dayChip, exact: true })
+    .click();
+  await tripForm.getByLabel("Time", { exact: true }).fill(departure.time);
   await tripForm.getByRole("button", { name: "Schedule trip" }).click();
   await expect(
     page.getByRole("row", { name: new RegExp(vehicleCode) }),

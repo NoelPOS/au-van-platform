@@ -8,7 +8,12 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { RouteLine } from "../components/ui/RouteLine";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Table, type Column } from "../components/ui/Table";
-import { useRoutes, useTrips, useVehicles } from "../hooks/useInventoryQueries";
+import {
+  useRoutes,
+  useSeatLayouts,
+  useTrips,
+  useVehicles,
+} from "../hooks/useInventoryQueries";
 import type { AuthSession } from "../types/auth";
 import type { Trip } from "../types/inventory";
 import { bangkokDateTime, bangkokDay, bangkokTime } from "../utils/dates";
@@ -17,6 +22,7 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
   const trips = useTrips(session);
   const routes = useRoutes(session);
   const vans = useVehicles(session);
+  const layouts = useSeatLayouts(session);
   const [editing, setEditing] = useState<Trip | "new" | null>(null);
   const routeList = routes.data ?? [];
   const vanList = vans.data ?? [];
@@ -83,7 +89,7 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
         </Button>
       }
       description="Every scheduled departure, in Bangkok time."
-      queries={[trips, routes, vans]}
+      queries={[trips, routes, vans, layouts]}
       title="Trips"
     >
       <Table
@@ -104,10 +110,12 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
         title={editing === "new" ? "Schedule a trip" : "Edit trip"}
       >
         <TripForm
+          layouts={layouts.data ?? []}
           onDone={close}
           routes={routeList}
           session={session}
           trip={editing === "new" ? null : editing}
+          trips={trips.data ?? []}
           vans={vanList}
         />
       </Drawer>
