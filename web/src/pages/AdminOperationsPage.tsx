@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DeadLettersTable } from "../components/DeadLettersTable";
 import { TripOperationsPanel } from "../components/TripOperationsPanel";
 import { TripTimeline } from "../components/TripTimeline";
@@ -23,6 +23,15 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const routes = useRoutes(session);
   const operations = useTripOperations(session, tripId);
   const deadLetters = useDeadLetters(session);
+  const detail = useRef<HTMLElement>(null);
+
+  function choose(id: string) {
+    setTripId(id);
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    detail.current?.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
+    detail.current?.focus({ preventScroll: true });
+  }
 
   const listing = trips.error ?? routes.error;
   if (trips.isPending || routes.isPending) {
@@ -72,12 +81,17 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
 
       <div className="mt-10 grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <TripTimeline
-          onSelect={setTripId}
+          onSelect={choose}
           routes={routes.data ?? []}
           selectedId={tripId}
           trips={trips.data ?? []}
         />
-        <div>
+        <section
+          aria-label="Selected trip"
+          className="scroll-mt-20 outline-none"
+          ref={detail}
+          tabIndex={-1}
+        >
           {tripId === null && (
             <div className="rounded-2xl border border-dashed border-line">
               <EmptyState title="Choose a trip to see its bookings and waitlist." />
@@ -93,7 +107,7 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
             <FailurePanel title="Could not load this trip" error={operations.error} />
           )}
           {trip && <TripOperationsPanel session={session} trip={trip} />}
-        </div>
+        </section>
       </div>
 
       <DeadLettersTable
