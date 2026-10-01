@@ -80,6 +80,7 @@ notification:
     enabled: ${LINE_MESSAGING_ENABLED:true}
     api-base-url: ${LINE_MESSAGING_API_BASE_URL:https://api.line.me}
     channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
+    liff-url: ${LINE_LIFF_URL:}
 
 payment-proof:
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}

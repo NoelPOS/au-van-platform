@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -32,15 +33,20 @@ class LineMessageSenderImplTests {
         RestClient.Builder builder = RestClient.builder();
         line = MockRestServiceServer.bindTo(builder).build();
         sender = new LineMessageSenderImpl(
-                new LineMessagingProperties(token, "https://api.line.me", true), builder);
+                new LineMessagingProperties(token, "https://api.line.me", true, ""), builder);
     }
 
     private static LinePushMessage message() {
-        return new LinePushMessage("Ustudent-line", "AU-Van booking AUV-1\nYour seats are held.", ROW_ID.toString());
+        return new LinePushMessage("Ustudent-line", card("AU-Van booking AUV-1\nYour seats are held."),
+                ROW_ID.toString());
+    }
+
+    private static FlexMessage card(String altText) {
+        return new FlexMessage(altText, Map.of("type", "bubble"));
     }
 
     @Test
-    void anAcceptedPushCarriesTheRecipientTheTextAndTheRowIdAsTheRetryKey() {
+    void anAcceptedPushCarriesTheRecipientTheFlexCardAndTheRowIdAsTheRetryKey() {
         withLine(TOKEN);
         line.expect(requestTo("https://api.line.me/v2/bot/message/push"))
                 .andExpect(method(HttpMethod.POST))
@@ -48,8 +54,10 @@ class LineMessageSenderImplTests {
                 .andExpect(header("X-Line-Retry-Key", ROW_ID.toString()))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.to").value("Ustudent-line"))
-                .andExpect(jsonPath("$.messages[0].type").value("text"))
-                .andExpect(jsonPath("$.messages[0].text").value(message().text()))
+                .andExpect(jsonPath("$.messages.length()").value(1))
+                .andExpect(jsonPath("$.messages[0].type").value("flex"))
+                .andExpect(jsonPath("$.messages[0].altText").value(message().message().altText()))
+                .andExpect(jsonPath("$.messages[0].contents.type").value("bubble"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
         assertThatCode(() -> sender.send(message())).doesNotThrowAnyException();
@@ -143,7 +151,7 @@ class LineMessageSenderImplTests {
     void aRecipientWithNoLineUserIdIsPermanentAndIsNeverPutOnTheWire() {
         withLine(TOKEN);
 
-        assertThatThrownBy(() -> sender.send(new LinePushMessage("  ", "Anything.", ROW_ID.toString())))
+        assertThatThrownBy(() -> sender.send(new LinePushMessage("  ", card("Anything."), ROW_ID.toString())))
                 .isInstanceOf(PermanentFailureException.class)
                 .hasMessageContaining("no LINE user id");
 

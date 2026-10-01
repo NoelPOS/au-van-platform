@@ -254,7 +254,7 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
         assertThat(events.findById(recorded.getId()).orElseThrow().getStatus()).isEqualTo(OutboxStatus.SENT);
         assertThat(sender.messages()).singleElement().satisfies(message -> {
             assertThat(message.to()).isEqualTo("Uwait-a");
-            assertThat(message.text()).contains("AU-Van waitlist")
+            assertThat(message.message().altText()).contains("AU-Van waitlist")
                     .contains("held for you")
                     .contains("AU to Asok")
                     .contains("Take the seats by");

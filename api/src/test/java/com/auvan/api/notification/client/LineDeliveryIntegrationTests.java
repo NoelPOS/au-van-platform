@@ -203,6 +203,6 @@ class LineDeliveryIntegrationTests extends AuthenticationTestSupport {
 
     private static LineMessageSenderImpl senderOn(RestClient.Builder builder, String token) {
         return new LineMessageSenderImpl(
-                new LineMessagingProperties(token, "https://api.line.me", true), builder);
+                new LineMessagingProperties(token, "https://api.line.me", true, ""), builder);
     }
 }
