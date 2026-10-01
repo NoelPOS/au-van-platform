@@ -1,41 +1,25 @@
-import { useState, type FormEvent } from "react";
-import { Button } from "./ui/Button";
+import { useState } from "react";
 import type { AuthSession } from "../types/auth";
-import { EmptyRow, InventoryTable } from "./InventoryTable";
-import { ErrorMessage, FormActions, FormCard } from "./FormCard";
+import { SeatLayoutBuilder } from "./SeatLayoutBuilder";
+import { VanSeatPlan } from "./VanSeatPlan";
 import { useCreateSeatLayout, useUpdateSeatLayout } from "../hooks/useInventoryQueries";
 import type { Seat, SeatLayout } from "../types/inventory";
+import { fromSeats, seatAt } from "../utils/seatLayout";
 
-const fieldClass =
-  "mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 font-normal text-ink outline-none focus:border-brand";
-
-function parseSeats(value: string): Seat[] {
-  const seats = value
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const [label, rowNumber, columnNumber] = line
-        .split(",")
-        .map((part) => part.trim());
-      return {
-        label,
-        rowNumber: Number(rowNumber),
-        columnNumber: Number(columnNumber),
-      };
-    });
-  if (
-    !seats.length ||
-    seats.some(
-      (seat) =>
-        !seat.label ||
-        !Number.isInteger(seat.rowNumber) ||
-        !Number.isInteger(seat.columnNumber),
-    )
-  )
-    throw new Error(
-      "Use one seat per line: label, row number, column number. Example: A1, 1, 1",
-    );
-  return seats;
+function VanThumbnail({ seats }: { seats: Seat[] }) {
+  const { rows, columns } = fromSeats(seats);
+  return (
+    <VanSeatPlan
+      cellSize={9}
+      columns={columns}
+      renderCell={(rowNumber, columnNumber) =>
+        seatAt(seats, rowNumber, columnNumber) && (
+          <span className="block h-full w-full rounded-[3px] bg-brand-600" />
+        )
+      }
+      rows={rows}
+    />
+  );
 }
 
 export function SeatLayoutsSection({
@@ -46,107 +30,72 @@ export function SeatLayoutsSection({
   layouts: SeatLayout[];
 }) {
   const [editing, setEditing] = useState<SeatLayout | null>(null);
-  const [inputError, setInputError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(0);
   const createLayout = useCreateSeatLayout(session);
   const updateLayout = useUpdateSeatLayout(session);
-  const layout = editing ?? { name: "", seats: [] };
-  const busy = createLayout.isPending || updateLayout.isPending;
+  const mutation = editing ? updateLayout : createLayout;
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    try {
-      const input = {
-        name: String(form.get("name")).trim(),
-        seats: parseSeats(String(form.get("seats"))),
-      };
-      setInputError(null);
-      if (editing) await updateLayout.mutateAsync({ id: editing.id, input });
-      else await createLayout.mutateAsync(input);
-      setEditing(null);
-    } catch (error) {
-      setInputError(
-        error instanceof Error ? error.message : "Invalid seat layout.",
-      );
-    }
+  function save(input: { name: string; seats: Seat[] }) {
+    const done = {
+      onSuccess: () => {
+        setEditing(null);
+        setSaved((count) => count + 1);
+      },
+    };
+    if (editing) updateLayout.mutate({ id: editing.id, input }, done);
+    else createLayout.mutate(input, done);
   }
 
   return (
-    <section className="grid items-start gap-5 lg:grid-cols-[minmax(18rem,.8fr)_minmax(0,1.6fr)]">
-      <FormCard title={editing ? "Edit seat layout" : "New seat layout"}>
-        <form
-          key={editing?.id ?? "new"}
-          onSubmit={(event) => void submit(event)}
-          className="grid gap-3"
-        >
-          <label className="text-sm font-semibold text-ink">
-            Layout name
-            <input
-              className={fieldClass}
-              required
-              name="name"
-              defaultValue={layout.name}
-              placeholder="Toyota Hiace 12-seat"
-            />
-          </label>
-          <label className="text-sm font-semibold text-ink">
-            Seats
-            <textarea
-              className={`${fieldClass} min-h-32`}
-              required
-              name="seats"
-              defaultValue={layout.seats
-                .map(
-                  (seat) =>
-                    `${seat.label}, ${seat.rowNumber}, ${seat.columnNumber}`,
-                )
-                .join("\n")}
-              placeholder={"A1, 1, 1\nA2, 1, 2"}
-            />
-            <span className="mt-1 block text-xs font-normal text-muted">
-              One seat per line: label, row number, column number.
-            </span>
-          </label>
-          {inputError && (
-            <p
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-              role="alert"
-            >
-              {inputError}
-            </p>
-          )}
-          <ErrorMessage error={createLayout.error ?? updateLayout.error} />
-          <FormActions
-            busy={busy}
-            submitLabel={editing ? "Save layout" : "Create layout"}
-            onCancel={editing ? () => setEditing(null) : undefined}
-          />
-        </form>
-      </FormCard>
-      <InventoryTable headings={["Layout", "Seats", "Preview", ""]}>
+    <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(16rem,1fr)]">
+      <SeatLayoutBuilder
+        busy={mutation.isPending}
+        error={mutation.error}
+        key={`${editing?.id ?? "new"}-${saved}`}
+        layout={editing}
+        onCancel={editing ? () => setEditing(null) : undefined}
+        onSave={save}
+      />
+      <div className="grid gap-3">
+        <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted">
+          Saved layouts
+        </h2>
         {layouts.length === 0 ? (
-          <EmptyRow
-            columns={4}
-            title="No seat layouts yet"
-            detail="Create a reusable layout before adding a vehicle."
-          />
+          <p className="rounded-2xl border border-dashed border-line px-5 py-8 text-center">
+            <strong className="block text-ink">No seat layouts yet</strong>
+            <span className="mt-1 block text-sm text-muted">
+              Create a reusable layout before adding a vehicle.
+            </span>
+          </p>
         ) : (
-          layouts.map((item) => (
-            <tr className="border-t border-line" key={item.id}>
-              <td className="px-4 py-3 font-semibold text-ink">{item.name}</td>
-              <td className="px-4 py-3">{item.seats.length}</td>
-              <td className="px-4 py-3">
-                {item.seats.map((seat) => seat.label).join(", ")}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <Button variant="text" onClick={() => setEditing(item)}>
-                  Edit
-                </Button>
-              </td>
-            </tr>
-          ))
+          <ul aria-label="Saved layouts" className="grid gap-3">
+            {layouts.map((item) => (
+              <li
+                className="flex items-center gap-4 rounded-2xl border border-line bg-card p-4"
+                key={item.id}
+              >
+                <div className="w-14 shrink-0">
+                  <VanThumbnail seats={item.seats} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-semibold text-brand-900">{item.name}</h3>
+                  <p className="text-sm tabular-nums text-muted">
+                    {item.seats.length} {item.seats.length === 1 ? "seat" : "seats"}
+                  </p>
+                </div>
+                <button
+                  className="text-sm font-semibold text-brand-600 underline underline-offset-4 hover:text-brand-900 focus-visible:outline-2 focus-visible:outline-brand-500"
+                  onClick={() => setEditing(item)}
+                  type="button"
+                >
+                  Edit <span className="sr-only">{item.name}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
-      </InventoryTable>
+      </div>
     </section>
   );
 }
