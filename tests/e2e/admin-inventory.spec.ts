@@ -61,6 +61,12 @@ test.describe("the administrator journey", () => {
     await expect(page).toHaveURL(/\/admin\/payments$/);
   });
 
+  test("sends an old inventory link on to the trips page", async ({ page }) => {
+    await signIn(page, adminSubject, "/admin/inventory");
+    await expect(page.getByRole("heading", { name: "Trips", level: 1 })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/trips$/);
+  });
+
   test("sends a student who opens an administration address to the booking page", async ({
     page,
   }) => {

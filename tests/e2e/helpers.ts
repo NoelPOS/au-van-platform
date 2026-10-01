@@ -20,13 +20,13 @@ export function studentSubject(): string {
 }
 
 /**
- * A `datetime-local` value, in the browser's timezone. The configuration pins
- * that to UTC so this string and what the page renders cannot disagree.
+ * Date and time inputs as the trip form reads them: Bangkok wall-clock time,
+ * which is UTC+7 all year, whatever timezone the browser runs in.
  */
-function departureInDays(days: number): string {
-  const when = new Date(Date.now() + days * 86_400_000);
-  when.setUTCSeconds(0, 0);
-  return when.toISOString().slice(0, 16);
+function departureInDays(days: number): { date: string; time: string } {
+  const bangkok = new Date(Date.now() + days * 86_400_000 + 7 * 3_600_000);
+  const stamp = bangkok.toISOString();
+  return { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
 }
 
 export async function signIn(
@@ -42,7 +42,7 @@ export async function signIn(
 export async function signInAsAdmin(page: Page): Promise<void> {
   await signIn(page, adminSubject);
   await expect(
-    page.getByRole("heading", { name: "Transport inventory" }),
+    page.getByRole("heading", { name: "Overview" }),
   ).toBeVisible();
 }
 
@@ -60,14 +60,8 @@ function adminDestination(page: Page, label: string) {
     .getByRole("link", { name: label });
 }
 
-function inventoryTab(page: Page, label: string) {
-  return page
-    .getByRole("navigation", { name: "Transport inventory sections" })
-    .getByRole("button", { name: new RegExp(`^${label}`) });
-}
-
 export async function goToPaymentReview(page: Page): Promise<void> {
-  await adminDestination(page, "Payment review").click();
+  await adminDestination(page, "Payments").click();
   await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
 }
 
@@ -84,7 +78,7 @@ export type TripFixture = {
 
 /**
  * A route, a seat layout, a van and a departure, created through the four
- * sections of the administrator's own inventory screen rather than seeded into
+ * pages of the administrator's own inventory rather than seeded into
  * the database. That is the point: it is the administrator journey, and it is
  * also every other test's fixture, so a break in it is a break in the product.
  */
@@ -99,15 +93,17 @@ export async function createTrip(
   const layoutName = `Hiace ${suffix}`;
   const vehicleCode = `VAN-${suffix}`;
 
-  await inventoryTab(page, "Routes").click();
-  await page.getByLabel("Origin", { exact: true }).fill(origin);
-  await page.getByLabel("Destination", { exact: true }).fill(destination);
-  await page.getByLabel("Fare (THB)").fill("120");
-  await page.getByLabel("Duration (minutes)").fill("45");
-  await page.getByRole("button", { name: "Create route" }).click();
-  await expect(page.getByRole("cell", { name: routeLabel })).toBeVisible();
+  await adminDestination(page, "Routes").click();
+  await page.getByRole("button", { name: "New route" }).click();
+  const routeForm = page.getByRole("dialog", { name: "New route" });
+  await routeForm.getByLabel("Origin", { exact: true }).fill(origin);
+  await routeForm.getByLabel("Destination", { exact: true }).fill(destination);
+  await routeForm.getByLabel("Fare (THB)").fill("120");
+  await routeForm.getByLabel("Duration (minutes)").fill("45");
+  await routeForm.getByRole("button", { name: "Create route" }).click();
+  await expect(page.getByRole("cell", { name: routeLabel, exact: true })).toBeVisible();
 
-  await inventoryTab(page, "Seat layouts").click();
+  await adminDestination(page, "Seat layouts").click();
   await page.getByLabel("Layout name").fill(layoutName);
   await page
     .getByLabel(/^Seats/)
@@ -115,23 +111,31 @@ export async function createTrip(
   await page.getByRole("button", { name: "Create layout" }).click();
   await expect(page.getByRole("cell", { name: layoutName })).toBeVisible();
 
-  await inventoryTab(page, "Vehicles").click();
-  await page.getByLabel("Vehicle code").fill(vehicleCode);
-  await page.getByLabel("Name", { exact: true }).fill(`White Hiace ${suffix}`);
-  await page.getByLabel("Seat layout").selectOption({ label: layoutName });
-  await page.getByRole("button", { name: "Create vehicle" }).click();
-  await expect(page.getByRole("cell", { name: vehicleCode })).toBeVisible();
+  await adminDestination(page, "Vans").click();
+  await page.getByRole("button", { name: "New van" }).click();
+  const vanForm = page.getByRole("dialog", { name: "New van" });
+  await vanForm.getByLabel("Van code").fill(vehicleCode);
+  await vanForm.getByLabel("Name", { exact: true }).fill(`White Hiace ${suffix}`);
+  await vanForm
+    .getByLabel("Seat layout")
+    .selectOption({ label: `${layoutName} · ${seatLabels.length} seats` });
+  await vanForm.getByRole("button", { name: "Add van" }).click();
+  await expect(page.getByRole("cell", { name: vehicleCode, exact: true })).toBeVisible();
 
-  await inventoryTab(page, "Trips").click();
-  await page.getByLabel(/^Route/).selectOption({ label: routeLabel });
-  await page
-    .getByLabel(/^Vehicle/)
+  await adminDestination(page, "Trips").click();
+  await page.getByRole("button", { name: "New trip" }).click();
+  const tripForm = page.getByRole("dialog", { name: "Schedule a trip" });
+  await tripForm.getByLabel("Route").selectOption({ label: routeLabel });
+  await tripForm
+    .getByLabel("Van")
     .selectOption({ label: `${vehicleCode} — White Hiace ${suffix}` });
   // A week out, so that a booking's deadline is always the two-hour payment
   // window rather than `departureAt - departure-cutoff`, and the live expiry
   // sweep can never reach a booking made during a test.
-  await page.getByLabel("Departure").fill(departureInDays(7));
-  await page.getByRole("button", { name: "Schedule trip" }).click();
+  const departure = departureInDays(7);
+  await tripForm.getByLabel("Date").fill(departure.date);
+  await tripForm.getByLabel("Time").fill(departure.time);
+  await tripForm.getByRole("button", { name: "Schedule trip" }).click();
   await expect(
     page.getByRole("row", { name: new RegExp(vehicleCode) }),
   ).toBeVisible();
