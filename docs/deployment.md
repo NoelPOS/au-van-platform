@@ -349,3 +349,155 @@ The module defaults, one task and a single-AZ database, cost roughly $0.10 an
 hour. Each deployment also runs double the tasks for a few minutes. Every line
 bills while the demo is up, whether anyone is using it or not, so deploy,
 capture the evidence, and destroy in one sitting.
+
+## Free always-on host
+
+The live demo runs on an Oracle Cloud Always Free VM
+([ADR-014](adr/014-free-always-on-host-with-ssh-deploys.md)), separate from the
+AWS topology above. `compose.prod.yaml` overlays `compose.yaml` there: Caddy
+serves `https://$PUBLIC_HOST` and is the only container that publishes ports,
+and Redis is not started. Every step here belongs to the owner, and no value
+from the server's `.env` ever goes into a chat, a commit or a workflow log.
+
+### Create the VM
+
+1. In the Oracle Cloud console, create a compute instance: image **Canonical
+   Ubuntu 24.04** (aarch64), shape **VM.Standard.A1.Flex** with 2 OCPU and
+   12 GB, or 4 OCPU and 24 GB (the whole Always Free allowance), a 100 GB boot
+   volume, a public IPv4 address, and your own SSH public key.
+2. In the VCN's security list, add ingress rules for TCP 80 and TCP 443 from
+   `0.0.0.0/0`. Port 22 is open by default.
+3. `PUBLIC_HOST` is the public address with dashes for dots, followed by
+   `.sslip.io`: `203.0.113.7` becomes `203-0-113-7.sslip.io`. No DNS record is
+   needed.
+
+### Bootstrap
+
+```sh
+ssh ubuntu@<public address>
+curl -fsSLO https://raw.githubusercontent.com/NoelPOS/au-van-platform/main/deploy/bootstrap.sh
+sudo bash bootstrap.sh
+```
+
+It is safe to re-run. It installs Docker Engine and the compose plugin from
+Docker's apt repository, accepts TCP 80 and 443 ahead of the image's iptables
+`REJECT` rule (live and in `/etc/iptables/rules.v4`, which
+`netfilter-persistent` restores at boot), adds a 4 GB swapfile, turns on
+unattended upgrades, creates a `deploy` user in the `docker` group, clones the
+repository to `/opt/au-van`, and installs the nightly backup in
+`/etc/cron.d/au-van-backup`.
+
+### Fill the server's `.env`
+
+```sh
+sudo -u deploy sh -c 'umask 077 && cp /opt/au-van/.env.example /opt/au-van/.env'
+sudo -u deploy nano /opt/au-van/.env
+```
+
+Generate every secret on the server, not on a laptop:
+
+- `PUBLIC_HOST`: the sslip.io name above.
+- `POSTGRES_PASSWORD`: `openssl rand -base64 24`.
+- `JWT_SECRET`: `openssl rand -base64 32`.
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `openssl rand -hex 16`
+  each. They are the object store's root credential, not an AWS key.
+- `LINE_CHANNEL_ID`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_LIFF_URL` and
+  `VITE_LIFF_ID`, as in the secrets contract above.
+
+Leave `CORS_ALLOWED_ORIGINS` and `PAYMENT_PROOF_ENDPOINT` as they are:
+`compose.prod.yaml` sets the first to `https://$PUBLIC_HOST` and `compose.yaml`
+sets the second.
+
+### Continuous deployment
+
+`.github/workflows/deploy.yml` runs after **Continuous integration** succeeds on
+a push to `main`, and from the Actions tab by hand. It SSHes to the server as
+`deploy`, runs `deploy/deploy.sh` on the commit CI checked, and then requires
+`https://$PUBLIC_HOST/actuator/health` to answer `"status":"UP"`.
+
+1. On your laptop, create a key used for nothing else:
+   `ssh-keygen -t ed25519 -N '' -C au-van-deploy -f au-van-deploy`.
+2. On the server, append the public key to
+   `/home/deploy/.ssh/authorized_keys`, on one line, bound to the deploy script:
+
+   ```text
+   command="/opt/au-van/deploy/deploy.sh",restrict ssh-ed25519 AAAA... au-van-deploy
+   ```
+
+   `restrict` turns off forwarding and terminals. The client's command, the
+   commit sha, reaches `deploy.sh` as `SSH_ORIGINAL_COMMAND`, which it refuses
+   unless it is a full 40-character sha.
+3. On the server, print the host key line to pin:
+   `awk -v h="$PUBLIC_HOST" '{print h, $1, $2}' /etc/ssh/ssh_host_ed25519_key.pub`.
+   Reading it on the server, rather than with `ssh-keyscan` from elsewhere, is
+   what makes the pin trustworthy.
+4. In the repository settings, create an environment named `production` whose
+   deployment branches are limited to `main`, and give it three secrets:
+   `DEPLOY_HOST` (the sslip.io name), `DEPLOY_SSH_KEY` (the contents of the
+   private key file `au-van-deploy`) and `DEPLOY_KNOWN_HOSTS` (the line from
+   step 3). Then delete the private key from your laptop.
+
+### First deploy
+
+```sh
+sudo -u deploy /opt/au-van/deploy/deploy.sh
+curl -fsS "https://$PUBLIC_HOST/actuator/health"
+```
+
+`deploy.sh` refuses to run without `/opt/au-van/.env`. It fetches `main`,
+checks out its tip (or the sha it is given), rebuilds and restarts the stack,
+waits until every container reports healthy, and prunes dangling images. Caddy
+obtains the certificate when it first starts, so the first `curl` may fail for a
+few seconds.
+
+Then:
+
+1. Create the first administrator with your LINE user id, as in deploy step 9
+   above. The process should exit `0` and log
+   `Administrator bootstrap completed.`
+
+   ```sh
+   cd /opt/au-van
+   sudo -u deploy docker compose -f compose.yaml -f compose.prod.yaml run --rm --no-deps \
+     -e LOADER_MAIN=com.auvan.api.auth.bootstrap.AdminBootstrapApplication \
+     -e ADMIN_BOOTSTRAP_LINE_SUBJECT='<your LINE user id>' \
+     --entrypoint 'java -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher' api
+   ```
+
+2. In the LINE Developers console, set the LIFF app's endpoint URL to
+   `https://$PUBLIC_HOST`. It changes only if the VM's public address does.
+3. Run the smoke test above against `https://$PUBLIC_HOST`.
+
+### Rollback
+
+Deploy an earlier commit of `main` by its full sha:
+
+```sh
+cd /opt/au-van
+sudo -u deploy git log --oneline -10 origin/main
+sudo -u deploy deploy/deploy.sh "$(sudo -u deploy git rev-parse <short sha>)"
+```
+
+The next push to `main` deploys its tip again. A rollback does not undo a
+database migration; restore a backup for that.
+
+### Backups
+
+At 03:00 server time, `deploy/backup.sh` writes a `pg_dump` in custom format to
+`/opt/au-van/backups/` and keeps the newest seven. It logs to syslog as
+`au-van-backup`. The dumps share the VM's disk and only `deploy` can read
+them, so copy one off the server before any change you might want to undo:
+
+```sh
+ssh ubuntu@<public address> sudo cat /opt/au-van/backups/<file>.dump > <file>.dump
+```
+
+To restore one, as `deploy` in `/opt/au-van`, with the API stopped so nothing
+writes during the restore:
+
+```sh
+docker compose -f compose.yaml -f compose.prod.yaml stop api
+docker compose -f compose.yaml -f compose.prod.yaml exec -T postgres \
+  sh -c 'pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backups/<file>.dump
+docker compose -f compose.yaml -f compose.prod.yaml start api
+```
