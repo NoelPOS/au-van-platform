@@ -176,6 +176,14 @@ jobs:
       - name: Test the CloudFront Function
         run: node --test infra/demo/spa-fallback.test.mjs
 
+  deploy:
+    name: Deploy script checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: shellcheck deploy/*.sh
+      - run: deploy/test-deploy.sh
+
   # Like `Infrastructure checks` above, this job deliberately holds no
   # credential: no registry login, no `docker push`, no `permissions:` block
   # and no `secrets.` reference. It builds the images and runs them, which is
