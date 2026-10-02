@@ -17,9 +17,9 @@ git -C "$work/origin" add deploy
 commit() { git -C "$work/origin" -c user.name=test -c user.email=test@example.com commit --quiet --allow-empty -m "$1"; }
 commit first
 first=$(git -C "$work/origin" rev-parse HEAD)
+git clone --quiet --single-branch --branch main "$work/origin" "$work/server"
 commit second
 second=$(git -C "$work/origin" rev-parse HEAD)
-git clone --quiet --single-branch --branch main "$work/origin" "$work/server"
 deploy=$work/server/deploy/deploy.sh
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
@@ -39,6 +39,6 @@ grep -qx 'compose -f compose.yaml -f compose.prod.yaml up -d --build --remove-or
 grep -qx 'image prune -f' "$work/docker.log" || fail "did not prune dangling images"
 
 "$deploy" >/dev/null
-head_is "$second" || fail "did not check out origin/main by default"
+head_is "$second" || fail "did not fetch and check out the tip of main by default"
 
 echo "deploy.sh: all checks passed"
