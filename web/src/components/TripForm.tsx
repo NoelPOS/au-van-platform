@@ -26,11 +26,11 @@ import { EmptyState } from "./ui/EmptyState";
 import { SegmentedControl } from "./ui/SegmentedControl";
 import { Select } from "./ui/Select";
 import { TextLink } from "./ui/TextLink";
+import { statusLabel } from "../utils/statusLabels";
 
-const statuses: { value: TripStatus; label: string }[] = [
-  { value: "ACTIVE", label: "Active" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
+const statuses = (["ACTIVE", "CANCELLED"] satisfies TripStatus[]).map(
+  (value) => ({ value, label: statusLabel(value) }),
+);
 
 export function TripForm({
   session,

@@ -15,6 +15,7 @@ import {
   tripAt,
   van,
 } from "../test/tripFixtures";
+import { statusLabel } from "../utils/statusLabels";
 import { AdminTripsPage } from "./AdminTripsPage";
 
 const trip = tripAt("2026-01-05T09:00:00Z", { id: "trip-1" });
@@ -73,9 +74,7 @@ describe("AdminTripsPage", () => {
     for (const value of offered) {
       fireEvent.click(screen.getByRole("button", editTrip));
       fireEvent.click(
-        drawer().getByRole("radio", {
-          name: value === "ACTIVE" ? "Active" : "Cancelled",
-        }),
+        drawer().getByRole("radio", { name: statusLabel(value) }),
       );
       fireEvent.click(drawer().getByRole("button", { name: "Save trip" }));
       if (value === "CANCELLED")

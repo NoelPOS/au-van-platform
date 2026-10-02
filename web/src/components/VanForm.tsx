@@ -12,11 +12,11 @@ import { EmptyState } from "./ui/EmptyState";
 import { Input } from "./ui/Input";
 import { SegmentedControl } from "./ui/SegmentedControl";
 import { TextLink } from "./ui/TextLink";
+import { statusLabel } from "../utils/statusLabels";
 
-const statuses: { value: VehicleStatus; label: string }[] = [
-  { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Inactive" },
-];
+const statuses = (["ACTIVE", "INACTIVE"] satisfies VehicleStatus[]).map(
+  (value) => ({ value, label: statusLabel(value) }),
+);
 
 export function VanForm({
   session,
