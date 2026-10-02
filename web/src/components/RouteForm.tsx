@@ -6,11 +6,11 @@ import type { RouteStatus, VanRoute } from "../types/inventory";
 import { ErrorMessage, FormActions } from "./FormCard";
 import { Input } from "./ui/Input";
 import { SegmentedControl } from "./ui/SegmentedControl";
+import { statusLabel } from "../utils/statusLabels";
 
-const statuses: { value: RouteStatus; label: string }[] = [
-  { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Inactive" },
-];
+const statuses = (["ACTIVE", "INACTIVE"] satisfies RouteStatus[]).map(
+  (value) => ({ value, label: statusLabel(value) }),
+);
 
 export function RouteForm({
   session,
