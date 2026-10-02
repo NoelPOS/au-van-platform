@@ -1,0 +1,65 @@
+# The free always-on host (docs/deployment.md):
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build --wait
+x-service: &service
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '3'
+
+services:
+  postgres:
+    <<: *service
+    ports: !reset []
+    mem_limit: 1g
+
+  redis:
+    profiles: [local]
+
+  object-store:
+    <<: *service
+    ports: !reset []
+    mem_limit: 256m
+
+  api:
+    <<: *service
+    ports: !reset []
+    mem_limit: 2g
+    environment:
+      CORS_ALLOWED_ORIGINS: https://${PUBLIC_HOST:?set PUBLIC_HOST in .env}
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      object-store:
+        condition: service_healthy
+
+  web:
+    <<: *service
+    build:
+      context: web
+      args:
+        VITE_LIFF_ID: ${VITE_LIFF_ID:-}
+    ports: !reset []
+    mem_limit: 128m
+
+  caddy:
+    <<: *service
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST in .env}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 256m
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  caddy-data:
+  caddy-config:
