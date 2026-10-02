@@ -35,3 +35,6 @@ crash.*.log
 
 # Per-track git worktrees
 .worktrees/
+
+# Database dumps written by deploy/backup.sh on the server
+/backups/
