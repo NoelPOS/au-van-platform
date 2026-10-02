@@ -29,7 +29,20 @@ jobs:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
+      - name: Check that a host is configured
+        id: host
+        run: |
+          if [ -n "$DEPLOY_HOST" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo "::error::DEPLOY_HOST is not set; add it to the production environment"
+            exit 1
+          else
+            echo "::notice::DEPLOY_HOST is not set; skipping deploy"
+          fi
+
       - name: Install the deploy key and pin the host key
+        if: steps.host.outputs.configured == 'true'
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -39,12 +52,14 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Deploy
+        if: steps.host.outputs.configured == 'true'
         run: >-
           ssh -i ~/.ssh/deploy_key
           -o BatchMode=yes -o StrictHostKeyChecking=yes
           "deploy@$DEPLOY_HOST" "$SHA"
 
       - name: Check health through the public host
+        if: steps.host.outputs.configured == 'true'
         run: >-
           curl -fsS --retry 12 --retry-delay 5 --retry-all-errors
           "https://$DEPLOY_HOST/actuator/health" | grep -q '"status":"UP"'

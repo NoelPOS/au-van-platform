@@ -413,7 +413,9 @@ sets the second.
 `.github/workflows/deploy.yml` runs after **Continuous integration** succeeds on
 a push to `main`, and from the Actions tab by hand. It SSHes to the server as
 `deploy`, runs `deploy/deploy.sh` on the commit CI checked, and then requires
-`https://$PUBLIC_HOST/actuator/health` to answer `"status":"UP"`.
+`https://$PUBLIC_HOST/actuator/health` to answer `"status":"UP"`. Until
+`DEPLOY_HOST` is set, a run after CI skips the deploy with a notice, and a run by
+hand fails.
 
 1. On your laptop, create a key used for nothing else:
    `ssh-keygen -t ed25519 -N '' -C au-van-deploy -f au-van-deploy`.
