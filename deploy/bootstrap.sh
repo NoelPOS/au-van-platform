@@ -20,6 +20,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+# Oracle Cloud's Ubuntu image rejects these ports in iptables; harmless on EC2.
 for port in 80 443; do
   rule=(-p tcp -m state --state NEW -m tcp --dport "$port" -j ACCEPT)
   iptables -C INPUT "${rule[@]}" 2>/dev/null || iptables -I INPUT "${rule[@]}"
