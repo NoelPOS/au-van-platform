@@ -38,3 +38,7 @@ crash.*.log
 
 # Database dumps written by deploy/backup.sh on the server
 /backups/
+
+# Locally installed agent skills
+.agents/
+skills-lock.json
