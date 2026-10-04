@@ -64,18 +64,27 @@ They are not Terraform outputs.
 1. Sign in, and check that the printed ARN ends in `user/noel-admin`.
 
    ```sh
-   export AWS_PROFILE=auvan AWS_REGION=ap-southeast-1
+   export AWS_REGION=ap-southeast-1
    aws login --profile auvan
-   aws sts get-caller-identity --query Arn --output text
    ```
 
    The AWS provider is pinned to 5.x (`versions.tf`) and may not read an
-   `aws login` session directly. If `terraform plan` reports no valid credential
-   source, export the session's temporary credentials into this shell, and
-   repeat it if a later step reports an expired token:
+   `aws login` session directly, and the credentials the session hands out last
+   about fifteen minutes, less than an apply that creates the database. Do not
+   export them into the shell. Add this profile to `~/.aws/config` once, so
+   that Terraform and the CLI ask the session for fresh credentials whenever
+   the old ones expire:
+
+   ```ini
+   [profile auvan-tf]
+   credential_process = aws configure export-credentials --profile auvan --format process
+   ```
+
+   Then use it for every step that follows:
 
    ```sh
-   eval "$(aws configure export-credentials --profile auvan --format env)"
+   export AWS_PROFILE=auvan-tf
+   aws sts get-caller-identity --query Arn --output text
    ```
 
 2. Apply the budget. Set `notification_email` and `monthly_limit_usd` first.
@@ -86,8 +95,8 @@ They are not Terraform outputs.
    terraform -chdir=infra/budget apply
    ```
 
-   The first `init` of each module creates `.terraform.lock.hcl`; commit it
-   afterwards ([infra/README.md](../infra/README.md#conventions)).
+   `init` installs the provider build pinned in the committed
+   `.terraform.lock.hcl` ([infra/README.md](../infra/README.md#conventions)).
 
 3. Create the two SecureString parameters. The JWT key is generated straight
    into the command, and the LINE token is typed into a silent prompt, so
@@ -138,6 +147,21 @@ They are not Terraform outputs.
    failure and the target group stays unhealthy. The web bucket is empty, so the
    distribution has nothing to serve. Check that `required_ssm_parameters`
    matches the two names from step 3.
+
+   If an apply stops with `ExpiredToken`, Terraform marks whatever it was still
+   waiting on as tainted, even a database that finished creating, and the next
+   apply would destroy and recreate it. Check the database is `available`, then
+   clear the mark before applying again:
+
+   ```sh
+   aws rds describe-db-instances --db-instance-identifier au-van-demo-db \
+     --query 'DBInstances[0].DBInstanceStatus' --output text
+   terraform -chdir=infra/demo untaint aws_db_instance.main
+   ```
+
+   Some AWS rules are checked only by a real apply, not by `validate` or the
+   mocked tests: a security-group rule description, for one, may not contain
+   an apostrophe.
 
    ```sh
    REPO=$(terraform -chdir=infra/demo output -raw ecr_repository_url)
@@ -350,26 +374,34 @@ hour. Each deployment also runs double the tasks for a few minutes. Every line
 bills while the demo is up, whether anyone is using it or not, so deploy,
 capture the evidence, and destroy in one sitting.
 
-## Free always-on host
+## Always-on host
 
-The live demo runs on an Oracle Cloud Always Free VM
-([ADR-014](adr/014-free-always-on-host-with-ssh-deploys.md)), separate from the
-AWS topology above. `compose.prod.yaml` overlays `compose.yaml` there: Caddy
-serves `https://$PUBLIC_HOST` and is the only container that publishes ports,
-and Redis is not started. Every step here belongs to the owner, and no value
-from the server's `.env` ever goes into a chat, a commit or a workflow log.
+The live demo runs on one AWS EC2 instance
+([ADR-015](adr/015-live-demo-on-an-ec2-host.md), which keeps the deploy design of
+[ADR-014](adr/014-free-always-on-host-with-ssh-deploys.md)), separate from the AWS
+topology above and from Terraform. `compose.prod.yaml` overlays `compose.yaml`
+there: Caddy serves `https://$PUBLIC_HOST` and is the only container that
+publishes ports, and Redis is not started. Every step here belongs to the
+owner, and no value from the server's `.env` ever goes into a chat, a commit or
+a workflow log.
 
-### Create the VM
+### The host
 
-1. In the Oracle Cloud console, create a compute instance: image **Canonical
-   Ubuntu 24.04** (aarch64), shape **VM.Standard.A1.Flex** with 2 OCPU and
-   12 GB, or 4 OCPU and 24 GB (the whole Always Free allowance), a 100 GB boot
-   volume, a public IPv4 address, and your own SSH public key.
-2. In the VCN's security list, add ingress rules for TCP 80 and TCP 443 from
-   `0.0.0.0/0`. Port 22 is open by default.
-3. `PUBLIC_HOST` is the public address with dashes for dots, followed by
-   `.sslip.io`: `203.0.113.7` becomes `203-0-113-7.sslip.io`. No DNS record is
-   needed.
+The owner created it with the AWS CLI on 2026-10-04, in `ap-southeast-1`:
+
+- A `t4g.small` instance (2 vCPU, 2 GB, arm64) from the Ubuntu 24.04 arm64
+  image, with the owner's SSH key and IMDSv2 required.
+- A 20 GB encrypted gp3 root volume.
+- An Elastic IP, so the address survives a stop and start and the DNS record
+  below never needs updating.
+- A security group that accepts TCP 22, 80 and 443 and nothing else.
+
+It costs about $17 a month, paid from AWS credits.
+
+`PUBLIC_HOST` is `auvan.duckdns.org`, a free DuckDNS subdomain whose A record
+points at the Elastic IP. The owner manages it at duckdns.org, signed in with
+GitHub. A name needs no DNS at all if it is the address with dashes for dots,
+followed by `.sslip.io`: `203.0.113.7` becomes `203-0-113-7.sslip.io`.
 
 ### Bootstrap
 
@@ -380,12 +412,38 @@ sudo bash bootstrap.sh
 ```
 
 It is safe to re-run. It installs Docker Engine and the compose plugin from
-Docker's apt repository, accepts TCP 80 and 443 ahead of the image's iptables
-`REJECT` rule (live and in `/etc/iptables/rules.v4`, which
-`netfilter-persistent` restores at boot), adds a 4 GB swapfile, turns on
-unattended upgrades, creates a `deploy` user in the `docker` group, clones the
-repository to `/opt/au-van`, and installs the nightly backup in
-`/etc/cron.d/au-van-backup`.
+Docker's apt repository, accepts TCP 80 and 443 ahead of any iptables `REJECT`
+rule (live and in `/etc/iptables/rules.v4`, which `netfilter-persistent`
+restores at boot), adds a 4 GB swapfile, turns on unattended upgrades, creates
+a `deploy` user in the `docker` group, clones the repository to `/opt/au-van`,
+and installs the nightly backup in `/etc/cron.d/au-van-backup`. The iptables
+step is for images that ship a `REJECT` rule, as Oracle Cloud's Ubuntu does;
+on EC2 the security group is the firewall and the step is harmless.
+
+### Pull with a deploy key
+
+The repository is public, so the `https://` clone above works, but the live
+server pulls over SSH with a read-only deploy key instead, which keeps working
+if the repository goes private again. As `deploy`, generate a key used for
+nothing else and print its public half:
+
+```sh
+sudo -u deploy ssh-keygen -t ed25519 -N '' -C au-van-live -f /home/deploy/.ssh/id_ed25519
+sudo cat /home/deploy/.ssh/id_ed25519.pub
+```
+
+Add it under the repository's **Settings → Deploy keys** with write access
+off. The live one is titled `au-van-live (EC2, read-only)`. Then point the
+checkout at the SSH remote and check that `deploy` can fetch:
+
+```sh
+cd /opt/au-van
+sudo -u deploy git remote set-url origin git@github.com:NoelPOS/au-van-platform.git
+sudo -u deploy git fetch origin main
+```
+
+Compare the host key the first fetch offers with GitHub's published SSH key
+fingerprints before accepting it.
 
 ### Fill the server's `.env`
 
@@ -396,7 +454,7 @@ sudo -u deploy nano /opt/au-van/.env
 
 Generate every secret on the server, not on a laptop:
 
-- `PUBLIC_HOST`: the sslip.io name above.
+- `PUBLIC_HOST`: the host name above.
 - `POSTGRES_PASSWORD`: `openssl rand -base64 24`.
 - `JWT_SECRET`: `openssl rand -base64 32`.
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: `openssl rand -hex 16`
@@ -417,6 +475,11 @@ a push to `main`, and from the Actions tab by hand. It SSHes to the server as
 `DEPLOY_HOST` is set, a run after CI skips the deploy with a notice, and a run by
 hand fails.
 
+The repository is public. Secret scanning and push protection are on, and a
+workflow run from an outside contributor's pull request waits for approval.
+Only `main` can use the `production` environment, so no pull request reaches
+the deploy key.
+
 1. On your laptop, create a key used for nothing else:
    `ssh-keygen -t ed25519 -N '' -C au-van-deploy -f au-van-deploy`.
 2. On the server, append the public key to
@@ -435,9 +498,14 @@ hand fails.
    what makes the pin trustworthy.
 4. In the repository settings, create an environment named `production` whose
    deployment branches are limited to `main`, and give it three secrets:
-   `DEPLOY_HOST` (the sslip.io name), `DEPLOY_SSH_KEY` (the contents of the
+   `DEPLOY_HOST` (the host name), `DEPLOY_SSH_KEY` (the contents of the
    private key file `au-van-deploy`) and `DEPLOY_KNOWN_HOSTS` (the line from
    step 3). Then delete the private key from your laptop.
+
+All of this is in place for the live host: the three secrets are set in
+`production`, and the first deploy after CI
+([run 37192159826](https://github.com/NoelPOS/au-van-platform/actions/runs/37192159826))
+succeeded on 2026-10-04.
 
 ### First deploy
 
@@ -467,8 +535,20 @@ Then:
    ```
 
 2. In the LINE Developers console, set the LIFF app's endpoint URL to
-   `https://$PUBLIC_HOST`. It changes only if the VM's public address does.
+   `https://$PUBLIC_HOST`. It changes only if `PUBLIC_HOST` does.
 3. Run the smoke test above against `https://$PUBLIC_HOST`.
+
+### Change the host name
+
+1. Point the new name at the Elastic IP: at duckdns.org for a DuckDNS name, or
+   nothing to do for an sslip.io one.
+2. Set `PUBLIC_HOST` to it in `/opt/au-van/.env`, and redeploy with
+   `sudo -u deploy /opt/au-van/deploy/deploy.sh`. Caddy obtains a certificate
+   for the new name, and `CORS_ALLOWED_ORIGINS` follows it.
+3. Update `DEPLOY_HOST`, and replace `DEPLOY_KNOWN_HOSTS` with the line from
+   continuous deployment step 3, printed again now that `PUBLIC_HOST` has
+   changed. The pin names the host, so the old line no longer matches.
+4. Set the LIFF app's endpoint URL to the new `https://$PUBLIC_HOST`.
 
 ### Rollback
 
@@ -487,7 +567,7 @@ database migration; restore a backup for that.
 
 At 03:00 server time, `deploy/backup.sh` writes a `pg_dump` in custom format to
 `/opt/au-van/backups/` and keeps the newest seven. It logs to syslog as
-`au-van-backup`. The dumps share the VM's disk and only `deploy` can read
+`au-van-backup`. The dumps share the instance's disk and only `deploy` can read
 them, so copy one off the server before any change you might want to undo:
 
 ```sh
