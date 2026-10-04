@@ -424,26 +424,33 @@ on EC2 the security group is the firewall and the step is harmless.
 
 The repository is public, so the `https://` clone above works, but the live
 server pulls over SSH with a read-only deploy key instead, which keeps working
-if the repository goes private again. As `deploy`, generate a key used for
-nothing else and print its public half:
+if the repository goes private again. As `deploy`, create a key used for
+nothing else, pin GitHub's host key, and point `github.com` at the new key:
 
 ```sh
-sudo -u deploy ssh-keygen -t ed25519 -N '' -C au-van-live -f /home/deploy/.ssh/id_ed25519
-sudo cat /home/deploy/.ssh/id_ed25519.pub
+sudo -iu deploy
+ssh-keygen -t ed25519 -N "" -C au-van-live-readonly -f ~/.ssh/github_ro
+ssh-keyscan -t ed25519 github.com > ~/.ssh/known_hosts
+ssh-keygen -lf ~/.ssh/known_hosts
+printf 'Host github.com\n  IdentityFile ~/.ssh/github_ro\n  IdentitiesOnly yes\n' > ~/.ssh/config
 ```
 
-Add it under the repository's **Settings → Deploy keys** with write access
-off. The live one is titled `au-van-live (EC2, read-only)`. Then point the
-checkout at the SSH remote and check that `deploy` can fetch:
+Compare the printed fingerprint with GitHub's published SSH key fingerprints
+before going on. Then, from a machine signed in to `gh`, add the public half,
+`~/.ssh/github_ro.pub`, as a deploy key. `gh` makes it read-only unless told
+otherwise:
 
 ```sh
-cd /opt/au-van
-sudo -u deploy git remote set-url origin git@github.com:NoelPOS/au-van-platform.git
-sudo -u deploy git fetch origin main
+gh repo deploy-key add github_ro.pub --repo NoelPOS/au-van-platform \
+  --title "au-van-live (EC2, read-only)"
 ```
 
-Compare the host key the first fetch offers with GitHub's published SSH key
-fingerprints before accepting it.
+Still as `deploy`, clone over SSH, and then run `bootstrap.sh` again. It skips
+its own `https://` clone because `/opt/au-van/.git` already exists:
+
+```sh
+git clone --single-branch --branch main git@github.com:NoelPOS/au-van-platform.git /opt/au-van
+```
 
 ### Fill the server's `.env`
 
