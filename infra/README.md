@@ -280,10 +280,11 @@ of this, and the teardown that reverses it.
 - Real values live in `terraform.tfvars`, which is gitignored. Each module
   ships a `terraform.tfvars.example` holding placeholders only; copy it and
   fill it in.
-- `.terraform.lock.hcl` is tracked once a module has been initialized, so that
-  everyone resolves the same provider build. Neither module has been
-  initialized yet, so neither lock file exists; the first `terraform init` run
-  by someone with Terraform installed creates one, and it should be committed.
+- Each module's `.terraform.lock.hcl` is tracked, so that everyone resolves
+  the same provider build. It holds hashes for `darwin_arm64`, `linux_amd64`
+  and `linux_arm64`; after changing a provider version, regenerate it with
+  `terraform providers lock -platform=darwin_arm64 -platform=linux_amd64
+  -platform=linux_arm64`.
 
 ## Checks
 
