@@ -12,6 +12,9 @@
 |  ap-southeast-1b |  unhealthy  |
 |  ap-southeast-1a |  unhealthy  |
 +------------------+-------------+
+Note (added when publishing): captured during JVM startup, about 72 s on
+0.5 vCPU; re-polled a few minutes later both targets were healthy — see
+aws-ecs-service.webp.
 ## RDS
 ----------------------------------
 |       DescribeDBInstances      |
