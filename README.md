@@ -1,21 +1,173 @@
 # AU-Van
 
-LINE-integrated van booking system for Assumption University.
+Seat booking and payment review for Assumption University's van services, used
+from inside LINE, built as a React app and a Spring Boot modular monolith on
+PostgreSQL.
 
-This repository is a clean rebuild of the legacy Next.js application. It will use React for the web experiences and Spring Boot, PostgreSQL, and Redis for the backend platform.
+[![Continuous integration](https://github.com/NoelPOS/au-van-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/NoelPOS/au-van-platform/actions/workflows/ci.yml)
+[![Deploy](https://github.com/NoelPOS/au-van-platform/actions/workflows/deploy.yml/badge.svg)](https://github.com/NoelPOS/au-van-platform/actions/workflows/deploy.yml)
+
+A student opens the app from LINE, holds seats on a trip, books them, and
+uploads a payment slip. An administrator builds seat layouts, routes, vans and
+trips, reviews each slip, and watches every departure's seat plan. Students hear
+back through LINE notifications and departure reminders, and a full trip has a
+waitlist that promotes the longest-waiting student when a seat comes free.
+
+This repository rebuilds a legacy Next.js application. It keeps the business
+rules the legacy app had validated and replaces its runtime.
+
+## Live demo
+
+- **Web:** <https://auvan.duckdns.org>
+  ([health](https://auvan.duckdns.org/actuator/health))
+- **In LINE:** <https://liff.line.me/2009602829-rdEqBUZ5>
+
+Every page needs a LINE sign-in, so a visitor without an account sees only the
+sign-in page. The [screenshots](#screenshots) show the signed-in admin portal.
+
+## Architecture
+
+The design target is a highly available AWS stack, written in Terraform under
+[`infra/demo`](infra/demo). It was applied for one evidence session and
+destroyed the same day; the [evidence](#deployment-evidence) below comes from
+that session.
+
+```mermaid
+flowchart LR
+  subgraph region["ap-southeast-1"]
+    alb["Application Load Balancer<br/>admits CloudFront only"]
+    taskA["Fargate API task<br/>AZ 1a"]
+    taskB["Fargate API task<br/>AZ 1b"]
+    db[("RDS PostgreSQL 17<br/>primary, AZ 1a")]
+    standby[("Standby<br/>AZ 1b")]
+    proofs[("Private S3<br/>payment proofs")]
+    secrets["ECR images, SSM SecureString,<br/>RDS-managed password"]
+  end
+  user["Browser or LINE LIFF"] --> cf["CloudFront"]
+  cf -->|"/api/*, /actuator/*"| alb
+  cf -->|"/assets/*, default<br/>SPA fallback function"| web[("Private S3 web bucket<br/>origin access control")]
+  alb --> taskA
+  alb --> taskB
+  secrets -.-> taskA
+  secrets -.-> taskB
+  taskA --> db
+  taskB --> db
+  db -.->|"synchronous standby"| standby
+  taskA --> proofs
+  taskB --> proofs
+```
+
+The live demo runs the same containers on one host with Docker Compose, and
+every green build of `main` deploys to it.
+
+```mermaid
+flowchart LR
+  subgraph host["EC2 t4g.small, ap-southeast-1"]
+    compose["docker compose up --build"]
+    caddy["Caddy<br/>Let's Encrypt certificate"]
+    nginx["web: nginx SPA<br/>proxies /api"]
+    api["Spring Boot API"]
+    pg[("PostgreSQL 17<br/>nightly pg_dump, 7 kept")]
+    store[("S3-compatible<br/>object store")]
+  end
+  push["Push to main"] --> ci["Continuous integration"]
+  ci -->|"success"| deploy["Deploy workflow<br/>production environment"]
+  deploy -->|"SSH key limited to<br/>deploy/deploy.sh sha"| compose
+  deploy -.->|"GET /actuator/health"| caddy
+  user["Browser or LINE LIFF"] -->|"HTTPS"| caddy
+  caddy --> nginx
+  nginx --> api
+  api --> pg
+  api --> store
+  api -->|"push messages"| line["LINE Messaging API"]
+```
+
+The high-availability stack is torn down between sessions to save cost; the live
+demo runs on a single EC2 host.
+
+## Deployment evidence
+
+All of it is from the AWS session on 2026-10-04 unless the row says otherwise.
+Screenshots have the account id cropped or blacked out, and
+[`cli-evidence.txt`](docs/evidence/cli-evidence.txt) has it replaced with
+`<account>`.
+
+| Claim | Evidence |
+|---|---|
+| The API runs as two Fargate tasks in two Availability Zones, both healthy behind the load balancer | [ECS service](docs/evidence/aws-ecs-service.webp): 2 running, 2 healthy targets. [`cli-evidence.txt`](docs/evidence/cli-evidence.txt), "ECS tasks": one task in `ap-southeast-1a`, one in `ap-southeast-1b` |
+| PostgreSQL 17 is Multi-AZ and encrypted | [RDS configuration](docs/evidence/aws-rds-multi-az.webp): Multi-AZ Yes, secondary zone `ap-southeast-1b`, encryption enabled. `cli-evidence.txt`, "RDS" |
+| A rolling deploy drops no requests | [`rolling-deploy-requests.log`](docs/evidence/rolling-deploy-requests.log): 362 of 362 health checks returned HTTP 200 during a forced redeploy, 08:13:25 to 08:17:20 UTC. The ECS events at the end of `cli-evidence.txt` show the old tasks draining and the deployment completing inside that window |
+| The service scales on CPU | `cli-evidence.txt`, "Autoscaling": target tracking on average CPU at 60%. The session pinned the task count to 2, so [CloudWatch](docs/evidence/aws-cloudwatch-alarms.webp) shows its scale-in alarm firing with nowhere to scale to |
+| CloudFront splits API and static traffic | [CloudFront behaviours](docs/evidence/aws-cloudfront-behaviours.webp): `/api/*` and `/actuator/*` to the load balancer, `/assets/*` and the default to the web bucket |
+| Failure signals and spend are tracked | [CloudWatch alarms](docs/evidence/aws-cloudwatch-alarms.webp) on 5xx responses, unhealthy hosts and database free storage; a [$20 monthly budget](docs/evidence/aws-budget.webp) on the account |
+| The whole flow works on AWS | An admin built a layout, route, van and trip; a student booked seat A1 and sent a slip; the admin [approved it](docs/evidence/app-payment-approved.webp) and the [seat plan](docs/evidence/app-operations-seat-plan.webp) shows A1 booked. The LINE Flex cards that followed reached the phone; they are not pictured |
+| The deploy workflow ships `main` to the live EC2 host | Deploy runs [37192159826](https://github.com/NoelPOS/au-van-platform/actions/runs/37192159826) and [37193086476](https://github.com/NoelPOS/au-van-platform/actions/runs/37193086476), both started by hand on `main`, the second after the move to `auvan.duckdns.org`: in each, the SSH deploy and the health check through the public host succeeded |
+
+## Screenshots
+
+| Admin overview | Seat layout builder |
+|---|---|
+| ![Admin overview: next departures, slips waiting for review, notifications given up on](docs/evidence/app-admin-overview.webp) | ![Seat layout builder with a 13-seat Toyota Commuter layout](docs/evidence/app-seat-layout-builder.webp) |
+| **Operations seat plan** | **Payment review** |
+| ![Operations page: a departure's seat plan with A1 booked, and bookings by status](docs/evidence/app-operations-seat-plan.webp) | ![Payment review after approving booking AUV-261004-6HA6XGGN](docs/evidence/app-payment-approved.webp) |
+
+## Engineering highlights
+
+- **No overselling.** Holds and bookings share one `seat_claims` table whose
+  unique key on the seat decides every race; holds expire lazily, so correctness
+  never waits on a scheduler.
+  [ADR-006](docs/adr/006-seat-claims-single-table-and-lazy-hold-expiry.md)
+- **Exactly-once booking.** Confirmation locks the hold's rows first, and a
+  retried request with the same idempotency key gets the stored response back
+  byte for byte; the same key with a different body is refused.
+  [ADR-008](docs/adr/008-exactly-once-booking-creation.md)
+- **Reliable LINE delivery.** Every notification is an outbox row written in the
+  same transaction as the booking change. A dispatcher claims rows with one
+  conditional `UPDATE`, retries with backoff, and sends each row id as LINE's
+  `X-Line-Retry-Key`, so a retry is at most one message on the phone.
+  [ADR-010](docs/adr/010-transactional-outbox-and-booking-deadline.md),
+  [ADR-011](docs/adr/011-waitlist-promotion-by-sweep.md) for the waitlist
+- **Payment slips stay private.** The API brokers every read and write to the
+  bucket; no URL or credential reaches a browser.
+  [ADR-009](docs/adr/009-payment-proof-storage-and-review-gate.md)
+- **Identity is checked server-side.** The API verifies each LINE ID token
+  with LINE and issues its own short-lived JWT.
+  [ADR-005](docs/adr/005-line-identity-exchange-and-short-lived-jwt.md)
+- **Tests at three levels.** Features carry success- and failure-path tests. A
+  Testcontainers suite on real PostgreSQL 17 re-proves the seat-hold race, the
+  booking row lock and the outbox claim, and Playwright drives both critical
+  journeys against the full container stack without a LINE channel.
+  [ADR-013](docs/adr/013-end-to-end-sign-in-without-a-line-channel.md),
+  [running the suites](#run-the-end-to-end-suite)
+- **CI/CD.** Every pull request runs nine checks: web, API, commit messages,
+  database concurrency, infrastructure (`terraform fmt`, `validate` and `test`),
+  deploy script, container, end-to-end, and GitGuardian. Web, API and commit
+  checks are required on `main`. Deploys run in a `production` environment
+  limited to `main`, through an SSH key that can only run `deploy/deploy.sh`.
+  [ADR-014](docs/adr/014-free-always-on-host-with-ssh-deploys.md)
+- **Secrets never touch Terraform.** The database password is generated and
+  stored by RDS, and application secrets are SSM SecureString parameters that
+  ECS injects when the task starts.
+  [ADR-012](docs/adr/012-deployed-secret-delivery.md),
+  [ADR-007](docs/adr/007-terraform-for-aws-target-infrastructure.md)
+
+Every decision record is in [`docs/adr`](docs/adr), and
+[`docs/architecture.md`](docs/architecture.md) describes the modules.
 
 ## Status
 
-The planning foundation, local development environment, authentication boundary, initial administrator bootstrap, and transport-inventory API are complete. The transport-inventory administration UI is in progress; see [project status](docs/project-status.md).
+Every feature in scope is built and tested.
+[Project status](docs/project-status.md) tracks the current milestone.
 
-## Planned structure
+## Repository layout
 
 ```text
-web/        React application: admin and student LIFF route groups
+web/        React application: admin portal and student LIFF pages
 api/        Spring Boot modular monolith
-infra/      Terraform for the AWS target topology
+infra/      Terraform for the AWS target topology and the account budget
+deploy/     Live host: Caddyfile, deploy, bootstrap and backup scripts
 tests/e2e/  Playwright end-to-end coverage
-docs/       product, architecture, decisions, and migration inventory
+docs/       product, architecture, decisions, evidence, and migration inventory
 ```
 
 ## Local development
@@ -168,7 +320,8 @@ recorded and attempted and land as dead letters; set `LINE_MESSAGING_ENABLED` to
 
 The two `Dockerfile`s build the API and the production web bundle, and
 `compose.yaml` runs them next to PostgreSQL, Redis, and an S3-compatible object
-store. Nothing here is deployed anywhere and no registry is involved.
+store. No registry is involved: the live host builds the same images in place,
+with the `compose.prod.yaml` overlay.
 
 ```sh
 docker compose up -d --wait
