@@ -112,7 +112,7 @@ resource "aws_vpc_security_group_ingress_rule" "load_balancer_from_cloudfront" {
   count = var.load_balancer_allow_cloudfront_prefix_list ? 1 : 0
 
   security_group_id = aws_security_group.load_balancer.id
-  description       = "HTTP from CloudFront's origin-facing ranges"
+  description       = "HTTP from CloudFront origin-facing ranges"
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id
   ip_protocol       = "tcp"
   from_port         = 80
