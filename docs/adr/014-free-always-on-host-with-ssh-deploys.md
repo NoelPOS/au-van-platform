@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-015](015-live-demo-on-an-ec2-host.md) for the choice of host. The rest of this decision still applies.
 
 ## Context
 
