@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to the free host
+    name: Deploy to the live host
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.conclusion == 'success' &&
