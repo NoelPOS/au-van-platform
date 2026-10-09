@@ -8,7 +8,7 @@ import type {
   Notice,
   SeatHold,
 } from "../types/booking";
-import { messageOf } from "../utils/errors";
+import { bookingFailure, holdFailure, type BookingFailure } from "../utils/bookingFailures";
 import {
   useCreateBooking,
   useHoldSeats,
@@ -53,7 +53,7 @@ export function useBookingFlow(
       .filter((seat) => seat.state === "AVAILABLE" || seat.state === "HELD_BY_YOU")
       .map((seat) => seat.id),
   );
-  const effective = seatMap.data
+  const selectedSeatIds = seatMap.data
     ? selected.filter((seatId) => takeable.has(seatId))
     : selected;
   const lostSeatLabels = seats
@@ -63,23 +63,36 @@ export function useBookingFlow(
   const tripIsGone = seatMap.error instanceof ApiError && seatMap.error.status === 404;
   useEffect(() => {
     if (tripIsGone)
-      backToTrips("That trip is no longer available. Choose another.");
-    // Only on the edge into the 404: backToTrips is redeclared every render.
+      leaveFlow("That trip is no longer available. Choose another.");
+    // Only on the edge into the 404: leaveFlow is redeclared every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripIsGone]);
 
-  function backToTrips(message: string) {
+  function leaveFlow(message: string, to?: string) {
     keyRef.current = null;
-    leave(message);
+    leave(message, to);
   }
 
-  function backToSeats(message: string) {
+  function startOver() {
     setStep("seats");
     setSelected([]);
     setHold(null);
     keyRef.current = null;
-    setNotice({ tone: "error", message });
+  }
+
+  function backToSeats(notice: Notice) {
+    startOver();
+    setNotice(notice);
     void seatMap.refetch();
+  }
+
+  function recover(failure: BookingFailure) {
+    if (failure.action === "leave") return leaveFlow(failure.message, failure.to);
+    if (failure.action === "chooseSeats")
+      return backToSeats({ tone: "error", message: failure.message });
+    // Keep the hold and, unless refused, the key: a same-key retry cannot book twice.
+    if (failure.newKey) keyRef.current = null;
+    setNotice({ tone: "error", message: failure.message });
   }
 
   function releaseCurrentHold() {
@@ -88,12 +101,12 @@ export function useBookingFlow(
   }
 
   function toggleSeat(seatId: string) {
-    if (effective.includes(seatId)) {
+    if (selectedSeatIds.includes(seatId)) {
       setNotice(null);
-      setSelected(effective.filter((id) => id !== seatId));
+      setSelected(selectedSeatIds.filter((id) => id !== seatId));
       return;
     }
-    if (effective.length === maxSeatsPerHold) {
+    if (selectedSeatIds.length === maxSeatsPerHold) {
       setNotice({
         tone: "status",
         message: `You can hold at most ${maxSeatsPerHold} seats at a time.`,
@@ -101,75 +114,37 @@ export function useBookingFlow(
       return;
     }
     setNotice(null);
-    setSelected([...effective, seatId]);
+    setSelected([...selectedSeatIds, seatId]);
   }
 
   async function holdSelectedSeats() {
-    if (!trip || effective.length === 0) return;
+    if (!trip || selectedSeatIds.length === 0) return;
     setNotice(null);
     try {
       const created = await holdSeats.mutateAsync({
         tripId: trip.id,
-        seatIds: effective,
+        seatIds: selectedSeatIds,
       });
       setHold(created);
       setSelected(created.seats.map((seat) => seat.seatId));
       keyRef.current = null;
       setStep("details");
     } catch (error) {
-      onHoldFailure(error);
+      recover(holdFailure(error));
     }
   }
 
-  // The fair-booking refusals: the student cannot book this trip right now,
-  // so send them where they can act on the reason.
-  function refusedByRules(error: unknown): boolean {
-    if (!(error instanceof ApiError)) return false;
-    const destinations: Record<string, string> = {
-      booking_closed: "/",
-      booking_cooldown: "/",
-      already_booked_on_trip: "/tickets",
-      unpaid_booking_exists: error.bookingId ? `/tickets/${error.bookingId}` : "/tickets",
-    };
-    const destination = destinations[error.code ?? ""];
-    if (!destination) return false;
-    keyRef.current = null;
-    leave(error.message, destination);
-    return true;
-  }
-
-  function onHoldFailure(error: unknown) {
-    if (refusedByRules(error)) return;
-    const code = error instanceof ApiError ? error.code : null;
-    const status = error instanceof ApiError ? error.status : 0;
-    if (code === "trip_not_available")
-      return backToTrips("That trip is no longer available. Choose another.");
-    if (code === "trip_departed")
-      return backToTrips("That trip has already departed. Choose another.");
-    if (status === 404)
-      return backToTrips("That trip is no longer available. Choose another.");
-    setNotice({ tone: "error", message: messageOf(error) });
-  }
-
   function expireHold() {
-    setHold(null);
-    setSelected([]);
-    keyRef.current = null;
-    setStep("seats");
-    setNotice({
+    backToSeats({
       tone: "status",
       message: "Your seat hold expired. Choose your seats again.",
     });
-    void seatMap.refetch();
   }
 
   function changeSeats() {
     releaseCurrentHold();
-    setHold(null);
-    setSelected([]);
-    keyRef.current = null;
+    startOver();
     setNotice(null);
-    setStep("seats");
   }
 
   function resetIdempotencyKey() {
@@ -196,48 +171,8 @@ export function useBookingFlow(
       keyRef.current = null;
       booked(booking);
     } catch (error) {
-      onBookingFailure(error);
+      recover(bookingFailure(error));
     }
-  }
-
-  function onBookingFailure(error: unknown) {
-    if (refusedByRules(error)) return;
-    const code = error instanceof ApiError ? error.code : null;
-    const status = error instanceof ApiError ? error.status : 0;
-    if (code === "hold_expired")
-      return backToSeats(
-        "Your seat hold expired before the booking was confirmed. Choose your seats again.",
-      );
-    if (code === "hold_already_used") {
-      // A lost 201 can hide this booking, so land on the list that shows it.
-      keyRef.current = null;
-      return leave(
-        "Those seats are already booked. If that was you, the booking is below.",
-        "/tickets",
-      );
-    }
-    if (code === "hold_not_found")
-      return backToSeats(
-        "That seat hold is no longer available. Choose your seats again.",
-      );
-    if (code === "trip_not_available")
-      return backToTrips("That trip is no longer available. Choose another.");
-    if (code === "trip_departed")
-      return backToTrips("That trip has already departed. Choose another.");
-    if (code === "idempotency_key_reused") {
-      keyRef.current = null;
-      return setNotice({
-        tone: "error",
-        message: "That booking attempt could not be completed. Try again.",
-      });
-    }
-    if (status === 400)
-      return setNotice({
-        tone: "error",
-        message: "Check the passenger name and phone number, then try again.",
-      });
-    // Keep the hold and the key: retrying with the same key cannot book twice.
-    setNotice({ tone: "error", message: messageOf(error) });
   }
 
   return {
@@ -247,7 +182,7 @@ export function useBookingFlow(
     holdSeats,
     createBooking,
     seats,
-    effective,
+    selectedSeatIds,
     lostSeatLabels,
     toggleSeat,
     holdSelectedSeats,

@@ -73,7 +73,7 @@ export function StudentBookTripPage() {
 
   const latest = bookings.data?.[0];
   const selectedLabels = flow.seats
-    .filter((seat) => flow.effective.includes(seat.id))
+    .filter((seat) => flow.selectedSeatIds.includes(seat.id))
     .map((seat) => seat.label);
 
   return (
@@ -131,7 +131,7 @@ export function StudentBookTripPage() {
               disabled={flow.holdSeats.isPending}
               onToggle={flow.toggleSeat}
               seats={flow.seats}
-              selected={flow.effective}
+              selected={flow.selectedSeatIds}
             />
           )}
           <StickyActionBar>
@@ -146,7 +146,7 @@ export function StudentBookTripPage() {
               </p>
             </div>
             <Button
-              disabled={flow.effective.length === 0 || flow.holdSeats.isPending}
+              disabled={flow.selectedSeatIds.length === 0 || flow.holdSeats.isPending}
               onClick={() => void flow.holdSelectedSeats()}
               type="button"
             >
