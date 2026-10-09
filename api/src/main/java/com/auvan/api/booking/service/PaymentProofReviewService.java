@@ -78,11 +78,12 @@ public class PaymentProofReviewService {
         UnderReview reviewed = lockedForDecision(proofId);
 
         reviewed.proof().reject(adminId, reviewNote, now);
-        reviewed.booking().recordEvent(BookingEventType.PAYMENT_REJECTED, reviewNote, adminId, now);
-        reviewed.booking().markPaymentRejected(
-                properties.paymentDeadlineFor(reviewed.booking().getTrip().getDepartureAt(), now), now);
-        recordForStudent(OutboxEventType.PAYMENT_REJECTED, reviewed.booking(), reviewNote, now);
-        return BookingResponse.from(reviewed.booking());
+        Booking booking = reviewed.booking();
+        booking.recordEvent(BookingEventType.PAYMENT_REJECTED, reviewNote, adminId, now);
+        booking.markPaymentRejected(
+                properties.resubmitDeadlineFor(booking.getTrip().getDepartureAt(), booking.getCreatedAt(), now), now);
+        recordForStudent(OutboxEventType.PAYMENT_REJECTED, booking, reviewNote, now);
+        return BookingResponse.from(booking);
     }
 
     private void recordForStudent(OutboxEventType type, Booking booking, String detail, OffsetDateTime now) {
