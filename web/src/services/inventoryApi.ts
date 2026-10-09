@@ -104,13 +104,14 @@ export const inventoryApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  updateTrip: (
-    session: AuthSession,
-    id: string,
-    input: Pick<Trip, "departureAt" | "status">,
-  ) =>
+  updateTrip: (session: AuthSession, id: string, departureAt: string) =>
     adminRequest<Trip>(session, `/trips/${id}`, {
       method: "PUT",
-      body: JSON.stringify(input),
+      body: JSON.stringify({ departureAt }),
+    }),
+  cancelTrip: (session: AuthSession, id: string, reason: string) =>
+    adminRequest<Trip>(session, `/trips/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
     }),
 };

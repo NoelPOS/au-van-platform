@@ -4,13 +4,7 @@ import { useNow } from "../hooks/useNow";
 import { useScheduleTrips } from "../hooks/useScheduleTrips";
 import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
-import type {
-  SeatLayout,
-  Trip,
-  TripStatus,
-  VanRoute,
-  Vehicle,
-} from "../types/inventory";
+import type { SeatLayout, Trip, VanRoute, Vehicle } from "../types/inventory";
 import { fromBangkokInputs, parseClock, toBangkokInputs } from "../utils/dates";
 import { passedToday, pastClockError } from "../utils/schedule";
 import {
@@ -24,15 +18,10 @@ import { DayPicker } from "./DayPicker";
 import { ErrorMessage, FormActions } from "./FormCard";
 import { ScheduleOutcome } from "./ScheduleOutcome";
 import { TimeField } from "./TimeField";
+import { TripImpact } from "./TripImpact";
 import { EmptyState } from "./ui/EmptyState";
-import { SegmentedControl } from "./ui/SegmentedControl";
 import { Select } from "./ui/Select";
 import { TextLink } from "./ui/TextLink";
-import { statusLabel } from "../utils/statusLabels";
-
-const statuses = (["ACTIVE", "CANCELLED"] satisfies TripStatus[]).map(
-  (value) => ({ value, label: statusLabel(value) }),
-);
 
 export function TripForm({
   session,
@@ -43,6 +32,7 @@ export function TripForm({
   trips,
   startDay,
   onDone,
+  onCancelTrip,
 }: {
   session: AuthSession;
   trip: Trip | null;
@@ -52,6 +42,7 @@ export function TripForm({
   layouts: SeatLayout[];
   trips: Trip[];
   onDone: () => void;
+  onCancelTrip: (trip: Trip) => void;
 }) {
   const updateTrip = useUpdateTrip(session);
   const { schedule, saving, report } = useScheduleTrips(session);
@@ -63,7 +54,6 @@ export function TripForm({
     initial ? [initial.date] : startDay ? [startDay] : [],
   );
   const [time, setTime] = useState(initial?.time ?? "");
-  const [status, setStatus] = useState<TripStatus>(trip?.status ?? "ACTIVE");
   const [submitted, setSubmitted] = useState(false);
   const now = useNow();
 
@@ -88,6 +78,11 @@ export function TripForm({
       ? "Enter a 24-hour time, like 07:30."
       : pastClockError(clock, passedUntil);
   const route = routes.find((entry) => entry.id === routeId);
+  const moved =
+    trip !== null &&
+    clock !== null &&
+    days.length === 1 &&
+    fromBangkokInputs(days[0], clock) !== new Date(trip.departureAt).toISOString();
   const summary = tripSummary({
     clock,
     durationMinutes: trip?.durationMinutes ?? route?.durationMinutes,
@@ -108,7 +103,7 @@ export function TripForm({
     if (trip) {
       const departureAt = fromBangkokInputs(days[0], clock);
       updateTrip.mutate(
-        { id: trip.id, input: { departureAt, status } },
+        { id: trip.id, departureAt },
         {
           onSuccess: () => {
             notify("Trip updated");
@@ -170,13 +165,8 @@ export function TripForm({
           value={time}
         />
       </fieldset>
-      {trip && (
-        <SegmentedControl
-          label="Status"
-          onChange={setStatus}
-          options={statuses}
-          value={status}
-        />
+      {moved && (
+        <TripImpact change="move" session={session} tripId={trip.id} />
       )}
       <p
         aria-live="polite"
@@ -188,11 +178,6 @@ export function TripForm({
       <ErrorMessage error={updateTrip.error} />
       <FormActions
         busy={saving || updateTrip.isPending}
-        confirm={
-          trip?.status === "ACTIVE" && status === "CANCELLED"
-            ? "Mark this trip as cancelled? You can set it back to active later."
-            : undefined
-        }
         onCancel={onDone}
         submitLabel={
           trip
@@ -202,6 +187,15 @@ export function TripForm({
               : "Schedule trip"
         }
       />
+      {trip && Date.parse(trip.departureAt) > now && (
+        <button
+          className="min-h-11 justify-self-start text-sm font-semibold text-danger underline decoration-1 underline-offset-4 hover:decoration-2"
+          onClick={() => onCancelTrip(trip)}
+          type="button"
+        >
+          Cancel this trip…
+        </button>
+      )}
     </form>
   );
 }
