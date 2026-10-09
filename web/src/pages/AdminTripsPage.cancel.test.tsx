@@ -73,6 +73,7 @@ describe("AdminTripsPage cancelling a trip", () => {
     await openCancel();
     giveReason("   ");
     fireEvent.click(drawer().getByRole("button", { name: "Cancel trip" }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(drawer().getByText("Say why, so passengers are not left guessing.")).toBeInTheDocument();
     expect(drawer().getByLabelText("Reason passengers will read")).toHaveAttribute("aria-invalid", "true");

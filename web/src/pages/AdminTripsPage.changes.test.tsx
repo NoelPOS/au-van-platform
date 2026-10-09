@@ -40,7 +40,6 @@ async function editAndMove() {
   renderAdminPage(<AdminTripsPage session={adminSession} />);
   await showList();
   fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Mon 5 Jan · 16:00" }));
-  expect(drawer().queryByText(/get a LINE message with the new time/)).toBeNull();
   fireEvent.change(drawer().getByLabelText("Time"), { target: { value: "17:30" } });
 }
 
@@ -61,6 +60,9 @@ describe("AdminTripsPage moving and cancelled trips", () => {
     expect(
       await drawer().findByText("3 booked passengers get a LINE message with the new time."),
     ).toBeInTheDocument();
+    fireEvent.change(drawer().getByLabelText("Time"), { target: { value: "16:00" } });
+    expect(drawer().queryByText(/get a LINE message with the new time/)).toBeNull();
+    fireEvent.change(drawer().getByLabelText("Time"), { target: { value: "17:30" } });
     fireEvent.click(drawer().getByRole("button", { name: "Save trip" }));
     await vi.waitFor(() =>
       expect(sentTo(fetcher, "PUT /trips/trip-1")).toEqual([
