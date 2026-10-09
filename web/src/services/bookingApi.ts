@@ -71,6 +71,10 @@ export const bookingApi = {
     request<void>(session, `/seat-holds/${holdId}/release`, { method: "POST" }),
   listBookings: (session: AuthSession) =>
     request<Booking[]>(session, "/bookings"),
+  cancelBooking: (session: AuthSession, bookingId: string) =>
+    request<Booking>(session, `/bookings/${bookingId}/cancel`, {
+      method: "POST",
+    }),
   listWaitlist: (session: AuthSession) =>
     request<WaitlistEntry[]>(session, "/waitlist"),
   joinWaitlist: (

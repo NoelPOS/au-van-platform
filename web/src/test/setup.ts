@@ -12,3 +12,7 @@ HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
 // jsdom has no layout: no media query matches and scrolling does nothing.
 window.matchMedia ??= (query: string) => ({ matches: false, media: query }) as MediaQueryList;
 Element.prototype.scrollIntoView ??= function () {};
+
+// jsdom has no object URLs.
+URL.createObjectURL ??= () => "blob:preview";
+URL.revokeObjectURL ??= () => {};

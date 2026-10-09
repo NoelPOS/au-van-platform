@@ -7,9 +7,9 @@ import {
   selectSeatA1,
   holdFailsWith,
   reachPassengerDetails,
-} from "../test/renderStudentBookingPage";
+} from "../test/renderStudentApp";
 
-describe("StudentBookingPage", () => {
+describe("Student app", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -22,10 +22,10 @@ describe("StudentBookingPage", () => {
       409,
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "That trip is no longer available. Choose another.",
-    );
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(
+      await screen.findByText("That trip is no longer available. Choose another."),
+    ).toHaveAttribute("role", "alert");
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("drops the withdrawn trip from the list the student lands back on", async () => {
@@ -47,7 +47,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
     await selectSeatA1();
-    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
 
     expect(
       await screen.findByText(
@@ -73,7 +73,7 @@ describe("StudentBookingPage", () => {
     expect(
       await screen.findByText("That trip has already departed. Choose another."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("returns to the trip list when the hold finds no such trip", async () => {
@@ -84,7 +84,7 @@ describe("StudentBookingPage", () => {
         "That trip is no longer available. Choose another.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("returns to the trip list when the seat map says the trip is gone", async () => {
@@ -98,7 +98,7 @@ describe("StudentBookingPage", () => {
         "That trip is no longer available. Choose another.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
     expect(
       screen.queryByRole("group", { name: "Seat map" }),
     ).not.toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("StudentBookingPage", () => {
         "That trip is no longer available. Choose another.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("sends the student back to the trip list when the trip has departed", async () => {
@@ -146,6 +146,6 @@ describe("StudentBookingPage", () => {
         "That trip has already departed. Choose another.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 });

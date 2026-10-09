@@ -5,9 +5,9 @@ import {
   stubApi,
   renderPage,
   reachPassengerDetails,
-} from "../test/renderStudentBookingPage";
+} from "../test/renderStudentApp";
 
-describe("StudentBookingPage", () => {
+describe("Student app", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -98,7 +98,7 @@ describe("StudentBookingPage", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Seat A1, available" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
     await screen.findByRole("button", { name: "Confirm booking" });
     fireEvent.change(screen.getByLabelText("Full name"), {
       target: { value: "Somchai P." },
@@ -113,7 +113,7 @@ describe("StudentBookingPage", () => {
     expect(keys[1]).not.toBe(keys[0]);
   });
 
-  it("points an already-used hold at my bookings rather than the seat map", async () => {
+  it("points an already-used hold at the tickets rather than the seat map", async () => {
     let bookingsRequested = 0;
     stubApi({
       bookings: () => {
@@ -133,12 +133,12 @@ describe("StudentBookingPage", () => {
 
     expect(
       await screen.findByText(
-        "Those seats are already booked. If that was you, the booking is in My bookings below.",
+        "Those seats are already booked. If that was you, the booking is below.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("My bookings")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your trips" })).toBeInTheDocument();
     expect(
-      await screen.findByText("AUV-260921-7KQ2M4XR"),
+      await screen.findByRole("link", { name: /AUV-260921-7KQ2M4XR/ }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("group", { name: "Seat map" }),

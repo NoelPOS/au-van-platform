@@ -6,6 +6,7 @@ import { renderApp } from "./test/renderApp";
 vi.mock("./services/liffService", () => ({
   createLiffSession: vi.fn(),
   resumeLiffSession: vi.fn().mockResolvedValue(null),
+  isOfficialAccountFriend: vi.fn().mockResolvedValue(null),
 }));
 
 describe("App", () => {
@@ -56,8 +57,7 @@ describe("App", () => {
       await screen.findByRole("button", { name: "Sign in with LINE" }),
     );
 
-    expect(await screen.findByText("Book a seat")).toBeInTheDocument();
-    expect(screen.getByText("Upcoming trips")).toBeInTheDocument();
+    expect(await screen.findByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("lets a signed-in administrator reach the payment review screen", async () => {

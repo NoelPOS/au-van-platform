@@ -95,6 +95,6 @@ export type Booking = {
   createdAt: string;
 };
 
-export type BookingStep = "trips" | "seats" | "details" | "confirmed";
+export type BookingStep = "seats" | "details";
 
 export type Notice = { tone: "error" | "status"; message: string };

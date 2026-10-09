@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
-  variant?: "primary" | "secondary" | "text";
+  variant?: "primary" | "secondary" | "danger" | "text";
 };
 
 const variants = {
@@ -10,6 +10,8 @@ const variants = {
     "rounded-full bg-brand-600 px-5 text-white hover:bg-brand-700 active:bg-brand-900",
   secondary:
     "rounded-full border border-line bg-card px-5 text-ink hover:border-ink/30",
+  danger:
+    "rounded-full bg-danger px-5 text-white hover:bg-danger/90 active:bg-danger",
   text: "px-1 text-brand-500 underline decoration-1 underline-offset-4 hover:text-brand-700 hover:decoration-2",
 };
 

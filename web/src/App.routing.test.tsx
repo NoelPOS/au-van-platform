@@ -14,6 +14,7 @@ import type { ApplicationRole } from "./types/auth";
 vi.mock("./services/liffService", () => ({
   createLiffSession: vi.fn(),
   resumeLiffSession: vi.fn(),
+  isOfficialAccountFriend: vi.fn().mockResolvedValue(null),
 }));
 
 function openSignedIn(path: string, role: ApplicationRole) {
@@ -160,20 +161,20 @@ describe("App routing", () => {
     expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
   });
 
-  it("sends a student who opens /admin/payments to the booking page", async () => {
+  it("sends a student who opens /admin/payments to the departures", async () => {
     const router = openSignedIn("/admin/payments", "STUDENT");
 
-    expect(await screen.findByText("Book a seat")).toBeInTheDocument();
+    expect(await screen.findByText("Catch the next van")).toBeInTheDocument();
     await expectLocation(router, "/");
     expect(
       screen.queryByRole("navigation", { name: "Administration" }),
     ).toBeNull();
   });
 
-  it("sends a student who opens /admin to the booking page", async () => {
+  it("sends a student who opens /admin to the departures", async () => {
     const router = openSignedIn("/admin", "STUDENT");
 
-    expect(await screen.findByText("Book a seat")).toBeInTheDocument();
+    expect(await screen.findByText("Catch the next van")).toBeInTheDocument();
     await expectLocation(router, "/");
   });
 
@@ -193,6 +194,15 @@ describe("App routing", () => {
     expect(locationOf(router)).toBe("/admin/payments");
   });
 
+  it("keeps a signed-out student on a ticket link while they sign in", async () => {
+    const router = renderApp("/tickets/booking-1");
+
+    expect(
+      await screen.findByRole("button", { name: "Sign in with LINE" }),
+    ).toBeInTheDocument();
+    expect(locationOf(router)).toBe("/tickets/booking-1");
+  });
+
   it("redirects a signed-out visitor on an unknown path to /", async () => {
     const router = renderApp("/nowhere");
 
@@ -210,10 +220,10 @@ describe("App routing", () => {
     cleanup();
 
     const student = openSignedIn("/", "STUDENT");
-    await screen.findByText("Book a seat");
+    await screen.findByText("Catch the next van");
     await act(() => student.navigate("/nowhere"));
     await expectLocation(student, "/");
-    expect(screen.getByText("Book a seat")).toBeInTheDocument();
+    expect(screen.getByText("Catch the next van")).toBeInTheDocument();
   });
 
   it("keeps the query string when it redirects an unknown path", async () => {

@@ -6,15 +6,13 @@ import {
   useJoinWaitlist,
   useLeaveWaitlist,
   useMyWaitlist,
-  useSubmitPaymentProof,
 } from "./useBookingQueries";
 
-export function useWaitlistAndProof(
+export function useWaitlist(
   session: AuthSession,
   setNotice: (notice: Notice | null) => void,
 ) {
   const waitlist = useMyWaitlist(session);
-  const submitProof = useSubmitPaymentProof(session);
   const joinWaitlist = useJoinWaitlist(session);
   const leaveWaitlist = useLeaveWaitlist(session);
 
@@ -57,26 +55,10 @@ export function useWaitlistAndProof(
     }
   }
 
-  async function submitPaymentProof(bookingId: string, file: File) {
-    setNotice(null);
-    try {
-      await submitProof.mutateAsync({ bookingId, file });
-      setNotice({
-        tone: "status",
-        message:
-          "Payment proof received. Staff confirm the booking once they have checked it.",
-      });
-    } catch (error) {
-      setNotice({ tone: "error", message: messageOf(error) });
-    }
-  }
-
   return {
     waitlist,
-    submitProof,
     waitlistPending: joinWaitlist.isPending || leaveWaitlist.isPending,
     joinTheWaitlist,
     leaveTheWaitlist,
-    submitPaymentProof,
   };
 }
