@@ -38,7 +38,7 @@ export function CancelBooking({ booking }: { booking: Booking }) {
   const until = booking.cancellableUntil;
   const paid = booking.status === "CONFIRMED";
 
-  if (!until || booking.status === "CANCELLED" || Date.parse(booking.trip.departureAt) <= now) return null;
+  if (!until || Date.parse(booking.trip.departureAt) <= now) return null;
   const closedByServer = cancel.error instanceof ApiError && cancel.error.code === "cancellation_closed";
   if (closedByServer || now >= Date.parse(until)) return <Closed booking={booking} until={until} />;
   if (booking.status === "PAYMENT_UNDER_REVIEW")
