@@ -24,6 +24,11 @@ export type CalendarProps = {
   onToggle: (days: string[]) => void;
 };
 
+function tripTone(trip: Trip, past: boolean) {
+  if (trip.status === "CANCELLED") return "text-muted line-through";
+  return past ? "text-muted" : "text-ink";
+}
+
 function cellTone(day: string, today: string, chosen: boolean) {
   if (chosen) return "bg-brand-50 ring-2 ring-brand-600 ring-inset";
   if (day < today) return "bg-card text-muted hover:bg-brand-50/60";
@@ -117,7 +122,7 @@ export function MonthGrid({
               <span className="hidden w-full flex-col gap-0.5 sm:flex">
                 {shown.map((trip) => (
                   <span
-                    className={`flex min-w-0 gap-1.5 font-mono text-[11.5px] leading-tight ${trip.status === "CANCELLED" ? "text-muted line-through" : day < today ? "text-muted" : "text-ink"}`}
+                    className={`flex min-w-0 gap-1.5 font-mono text-[11.5px] leading-tight ${tripTone(trip, day < today)}`}
                     key={trip.id}
                     title={trip.cancellationReason ?? undefined}
                   >

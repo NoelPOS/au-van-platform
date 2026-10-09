@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import type { Vehicle } from "../types/inventory";
+import type { Trip, VanRoute, Vehicle } from "../types/inventory";
 import { addDays, longDay } from "../utils/calendar";
 import { bangkokTime } from "../utils/dates";
 import { plural } from "../utils/schedule";
@@ -10,6 +10,48 @@ const weekday = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
   weekday: "short",
 });
+
+function dayTone(chosen: boolean, past: boolean) {
+  if (chosen) return "bg-brand-50";
+  return past ? "bg-paper/70" : "bg-card";
+}
+
+function WeekTrip({
+  trip,
+  route,
+  van,
+}: {
+  trip: Trip;
+  route: VanRoute | undefined;
+  van: Vehicle | undefined;
+}) {
+  const cancelled = trip.status === "CANCELLED";
+  return (
+    <li className="px-3 py-2">
+      <span
+        className={`flex items-baseline justify-between gap-2 ${cancelled ? "line-through" : ""}`}
+      >
+        <span
+          className={`font-mono text-[15px] font-medium tabular-nums ${cancelled ? "text-muted" : "text-ink"}`}
+        >
+          {bangkokTime(trip.departureAt)}
+        </span>
+        <span className="font-mono text-[11px] text-muted">{van?.code}</span>
+      </span>
+      <span
+        className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted ${cancelled ? "line-through" : ""}`}
+      >
+        <RouteRule className="w-2.5" />
+        <span className="truncate">{route?.destination}</span>
+      </span>
+      {cancelled && trip.cancellationReason && (
+        <span className="mt-1 block text-[12px] leading-snug text-danger italic">
+          {trip.cancellationReason}
+        </span>
+      )}
+    </li>
+  );
+}
 
 export function WeekGrid({
   start,
@@ -33,7 +75,7 @@ export function WeekGrid({
         return (
           <section
             aria-label={longDay(day)}
-            className={`flex flex-col max-lg:flex-row max-lg:items-start ${chosen ? "bg-brand-50" : past ? "bg-paper/70" : "bg-card"}`}
+            className={`flex flex-col max-lg:flex-row max-lg:items-start ${dayTone(chosen, past)}`}
             key={day}
           >
             <button
@@ -68,39 +110,14 @@ export function WeekGrid({
               </p>
             ) : (
               <ol className="flex min-w-0 flex-1 flex-col divide-y divide-dashed divide-line">
-                {trips.map((trip) => {
-                  const route = routes.find(
-                    (entry) => entry.id === trip.routeId,
-                  );
-                  const cancelled = trip.status === "CANCELLED";
-                  return (
-                    <li className="px-3 py-2" key={trip.id}>
-                      <span
-                        className={`flex items-baseline justify-between gap-2 ${cancelled ? "line-through" : ""}`}
-                      >
-                        <span
-                          className={`font-mono text-[15px] font-medium tabular-nums ${cancelled ? "text-muted" : "text-ink"}`}
-                        >
-                          {bangkokTime(trip.departureAt)}
-                        </span>
-                        <span className="font-mono text-[11px] text-muted">
-                          {vans.find((van) => van.id === trip.vehicleId)?.code}
-                        </span>
-                      </span>
-                      <span
-                        className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted ${cancelled ? "line-through" : ""}`}
-                      >
-                        <RouteRule className="w-2.5" />
-                        <span className="truncate">{route?.destination}</span>
-                      </span>
-                      {cancelled && trip.cancellationReason && (
-                        <span className="mt-1 block text-[12px] leading-snug text-danger italic">
-                          {trip.cancellationReason}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
+                {trips.map((trip) => (
+                  <WeekTrip
+                    key={trip.id}
+                    route={routes.find((route) => route.id === trip.routeId)}
+                    trip={trip}
+                    van={vans.find((van) => van.id === trip.vehicleId)}
+                  />
+                ))}
               </ol>
             )}
           </section>
