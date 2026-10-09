@@ -41,6 +41,11 @@ RUN test ! -e .env && test ! -e .env.local && test ! -e .env.production
 ARG VITE_LIFF_ID=""
 ENV VITE_LIFF_ID=$VITE_LIFF_ID
 
+# The Official Account's public basic ID (such as @123abcde), for the student
+# app's "Add AU-Van on LINE" prompt. Public, like the LIFF ID; blank hides it.
+ARG VITE_LINE_OA_ID=""
+ENV VITE_LINE_OA_ID=$VITE_LINE_OA_ID
+
 # The Playwright suite's sign-in control, and the only build argument here that
 # must never be set for a real image (ADR-013). compose.e2e.yaml sets it to
 # "true"; nothing else does. The default is an empty string rather than absent
