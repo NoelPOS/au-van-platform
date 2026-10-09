@@ -1,5 +1,10 @@
 export type PaymentProofStatus = "SUBMITTED" | "APPROVED" | "REJECTED";
 
+export type SameSlipBooking = {
+  bookingId: string;
+  bookingReference: string;
+};
+
 export type PaymentProof = {
   id: string;
   bookingId: string;
@@ -18,4 +23,5 @@ export type PaymentProof = {
   sizeBytes: number;
   status: PaymentProofStatus;
   submittedAt: string;
+  sameSlipBookings: SameSlipBooking[];
 };

@@ -1,9 +1,9 @@
 import { ArrowLeft } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { useApproveProof, useRejectProof } from "../hooks/usePaymentQueries";
 import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
-import type { PaymentProof } from "../types/payments";
+import type { PaymentProof, SameSlipBooking } from "../types/payments";
 import { formatFare } from "../utils/format";
 import { bangkokDateTime } from "../utils/dates";
 import { ProofImage } from "./ProofImage";
@@ -86,6 +86,9 @@ export function SlipReview({
             }
           />
         </dl>
+        {proof.sameSlipBookings.length > 0 && (
+          <ReusedSlipNotice bookings={proof.sameSlipBookings} />
+        )}
       </header>
       <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <ProofImage proofId={proof.id} reference={proof.bookingReference} session={session} />
@@ -143,6 +146,24 @@ function Fact({
       <dt className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{label}</dt>
       <dd className="mt-0.5 truncate font-medium text-ink tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+function ReusedSlipNotice({ bookings }: { bookings: SameSlipBooking[] }) {
+  return (
+    <p
+      className="mt-4 rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning"
+      role="note"
+    >
+      <span className="font-semibold">Possible reused slip</span> — also sent for{" "}
+      {bookings.map((booking, index) => (
+        <Fragment key={booking.bookingId}>
+          {index > 0 && ", "}
+          <span className="font-mono font-medium">{booking.bookingReference}</span>
+        </Fragment>
+      ))}
+      . Check the transfer before you approve.
+    </p>
   );
 }
 
