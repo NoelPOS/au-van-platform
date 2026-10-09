@@ -13,6 +13,7 @@ import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
+import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,17 +34,19 @@ public class BookingWriter {
     private final IdempotencyService idempotency;
     private final OutboxRecorder outbox;
     private final AppUserRepository users;
+    private final TripRepository trips;
     private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
 
     public BookingWriter(BookingRepository bookings, SeatClaimRepository claims, IdempotencyService idempotency,
-                         OutboxRecorder outbox, AppUserRepository users, BookingEligibilityService eligibility,
-                         BookingProperties properties) {
+                         OutboxRecorder outbox, AppUserRepository users, TripRepository trips,
+                         BookingEligibilityService eligibility, BookingProperties properties) {
         this.bookings = bookings;
         this.claims = claims;
         this.idempotency = idempotency;
         this.outbox = outbox;
         this.users = users;
+        this.trips = trips;
         this.eligibility = eligibility;
         this.properties = properties;
     }
@@ -55,7 +58,8 @@ public class BookingWriter {
         List<SeatClaim> held = claims.lockByHoldId(request.holdId());
         assertConfirmable(held, userId, now);
 
-        Trip trip = held.getFirst().getTripSeat().getTrip();
+        // Shared with trip cancellation and rescheduling, so no booking joins a trip mid-change.
+        Trip trip = trips.lockById(held.getFirst().getTripSeat().getTrip().getId()).orElseThrow();
         assertBookable(trip, now);
         // Serialises one student's bookings, so two holds cannot both pass the one-unpaid-booking rule.
         users.lockById(userId);

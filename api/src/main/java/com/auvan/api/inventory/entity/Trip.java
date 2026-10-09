@@ -51,6 +51,9 @@ public class Trip {
     @Column(nullable = false, length = 32)
     private TripStatus status;
 
+    @Column(name = "cancellation_reason", length = 300)
+    private String cancellationReason;
+
     @OneToMany(mappedBy = "trip", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("rowNumber ASC, columnNumber ASC")
     private List<TripSeat> seats = new ArrayList<>();
@@ -75,10 +78,24 @@ public class Trip {
     public BigDecimal getFare() { return fare; }
     public int getDurationMinutes() { return durationMinutes; }
     public TripStatus getStatus() { return status; }
+    public String getCancellationReason() { return cancellationReason; }
     public List<TripSeat> getSeats() { return List.copyOf(seats); }
 
     public void update(OffsetDateTime departureAt, TripStatus status) {
         this.departureAt = departureAt;
         this.status = status;
+    }
+
+    public boolean isCancelled() {
+        return status == TripStatus.CANCELLED;
+    }
+
+    public boolean hasDepartedAt(OffsetDateTime moment) {
+        return !departureAt.isAfter(moment);
+    }
+
+    public void cancel(String reason) {
+        this.status = TripStatus.CANCELLED;
+        this.cancellationReason = reason;
     }
 }

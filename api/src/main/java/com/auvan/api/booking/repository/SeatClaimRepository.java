@@ -52,4 +52,13 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
     @Modifying(clearAutomatically = true)
     @Query("delete from SeatClaim claim where claim.bookingId = :bookingId")
     void deleteByBookingId(@Param("bookingId") UUID bookingId);
+
+    // Booked claims only: an unbooked hold may be locked by a BookingWriter waiting on this trip's
+    // lock, and deleting it would deadlock. clearAutomatically: flush before calling this.
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            delete from SeatClaim claim
+            where claim.bookingId in (select booking.id from Booking booking where booking.trip.id = :tripId)
+            """)
+    void deleteBookedOnTrip(@Param("tripId") UUID tripId);
 }

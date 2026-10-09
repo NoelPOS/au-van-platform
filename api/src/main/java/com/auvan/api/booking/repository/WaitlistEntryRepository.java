@@ -46,6 +46,15 @@ public interface WaitlistEntryRepository extends JpaRepository<WaitlistEntry, UU
 
     // Ids, not entities, here and below: an entity loaded before lockById is handed back stale.
     @Query("""
+            select entry.id from WaitlistEntry entry
+            where entry.trip.id = :tripId
+              and entry.status in (com.auvan.api.booking.entity.WaitlistStatus.WAITING,
+                                   com.auvan.api.booking.entity.WaitlistStatus.PROMOTED)
+            order by entry.joinedAt asc, entry.id asc
+            """)
+    List<UUID> findQueuedIdsByTripId(@Param("tripId") UUID tripId);
+
+    @Query("""
             select distinct entry.trip.id from WaitlistEntry entry
             where entry.status = com.auvan.api.booking.entity.WaitlistStatus.WAITING
               and entry.trip.status = com.auvan.api.inventory.entity.TripStatus.ACTIVE

@@ -17,12 +17,12 @@ public record TripResponse(
         BigDecimal fare,
         int durationMinutes,
         TripStatus status,
+        String cancellationReason,
         List<SeatResponse> seats) {
     public static TripResponse from(Trip trip) {
         return new TripResponse(trip.getId(), trip.getRoute().getId(), trip.getVehicle().getId(), trip.getDepartureAt(),
-                trip.getFare(), trip.getDurationMinutes(), trip.getStatus(), trip.getSeats().stream()
-                        .map(SeatResponse::from)
-                        .toList());
+                trip.getFare(), trip.getDurationMinutes(), trip.getStatus(), trip.getCancellationReason(),
+                trip.getSeats().stream().map(SeatResponse::from).toList());
     }
 
     public record SeatResponse(String label, int rowNumber, int columnNumber) {

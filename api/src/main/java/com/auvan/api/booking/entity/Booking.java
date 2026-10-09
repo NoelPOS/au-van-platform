@@ -167,6 +167,13 @@ public class Booking {
         close(now);
     }
 
+    public void cancelWithTrip(OffsetDateTime now) {
+        if (status == BookingStatus.CONFIRMED || status == BookingStatus.PAYMENT_UNDER_REVIEW) {
+            this.refundStatus = RefundStatus.DUE;
+        }
+        close(now);
+    }
+
     public void expire(OffsetDateTime now) {
         close(now);
     }
