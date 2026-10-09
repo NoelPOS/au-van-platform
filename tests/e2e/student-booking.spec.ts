@@ -70,6 +70,7 @@ test.describe("the student journey", () => {
     const pass = boardingPass(page, reference);
     await expect(pass).toContainText("Awaiting payment");
     await expect(pass).toContainText("A1");
+    await goToPaymentReview(admin);
 
     await submitProof(page, slip);
     await expect(
@@ -78,14 +79,15 @@ test.describe("the student journey", () => {
     await expect(pass).toContainText("In review");
     await expect(page.getByRole("heading", { name: "Slip received" })).toBeVisible();
 
-    await goToPaymentReview(admin);
+    // No reload: the queue was already open, and the live stream tells it about the slip.
+    await expect(admin.getByRole("button", { name: reference })).toBeVisible({ timeout: 5_000 });
     await openProof(admin, reference);
     await admin.getByLabel("Note to the student").fill("Slip checked, amount matches.");
     await admin.getByRole("button", { name: "Approve payment" }).click();
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
-    // No reload and no sign-in: a ticket waiting on a decision polls for it.
-    await expect(pass).toContainText("Confirmed", { timeout: 30_000 });
+    // No reload and no sign-in: the live stream reaches the open ticket well inside its 15-second poll.
+    await expect(pass).toContainText("Confirmed", { timeout: 5_000 });
 
     await admin.context().close();
   });
