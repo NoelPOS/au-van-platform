@@ -9,7 +9,7 @@ import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.notification.dto.WaitlistNotification;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
-import com.auvan.api.outbox.service.PermanentFailureException;
+import com.auvan.api.outbox.exception.PermanentFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

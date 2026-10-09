@@ -3,6 +3,7 @@ package com.auvan.api.booking.service;
 import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.entity.SeatClaim;
 import com.auvan.api.booking.entity.WaitlistEntry;
+import com.auvan.api.booking.exception.PromotionRaceLostException;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.entity.Trip;

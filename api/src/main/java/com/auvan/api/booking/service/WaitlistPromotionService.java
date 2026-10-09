@@ -1,6 +1,7 @@
 package com.auvan.api.booking.service;
 
 import com.auvan.api.booking.config.BookingProperties;
+import com.auvan.api.booking.exception.PromotionRaceLostException;
 import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

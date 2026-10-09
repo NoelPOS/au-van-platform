@@ -1,7 +1,7 @@
 package com.auvan.api.notification.client;
 
 import com.auvan.api.notification.config.LineMessagingProperties;
-import com.auvan.api.outbox.service.PermanentFailureException;
+import com.auvan.api.outbox.exception.PermanentFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

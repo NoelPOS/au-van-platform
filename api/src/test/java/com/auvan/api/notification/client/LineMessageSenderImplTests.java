@@ -1,7 +1,7 @@
 package com.auvan.api.notification.client;
 
 import com.auvan.api.notification.config.LineMessagingProperties;
-import com.auvan.api.outbox.service.PermanentFailureException;
+import com.auvan.api.outbox.exception.PermanentFailureException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
