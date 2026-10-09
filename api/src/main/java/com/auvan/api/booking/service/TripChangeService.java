@@ -33,20 +33,20 @@ public class TripChangeService {
     private final TripRepository trips;
     private final BookingRepository bookings;
     private final SeatClaimRepository claims;
-    private final WaitlistEntryRepository entries;
+    private final WaitlistEntryRepository waitlist;
     private final OutboxRecorder outbox;
     private final DepartureReminderService reminders;
     private final BookingProperties properties;
     private final LiveSignalPublisher live;
 
     public TripChangeService(TripRepository trips, BookingRepository bookings, SeatClaimRepository claims,
-                             WaitlistEntryRepository entries, OutboxRecorder outbox,
+                             WaitlistEntryRepository waitlist, OutboxRecorder outbox,
                              DepartureReminderService reminders, BookingProperties properties,
                              LiveSignalPublisher live) {
         this.trips = trips;
         this.bookings = bookings;
         this.claims = claims;
-        this.entries = entries;
+        this.waitlist = waitlist;
         this.outbox = outbox;
         this.reminders = reminders;
         this.properties = properties;
@@ -66,14 +66,7 @@ public class TripChangeService {
         if (departureAt.isEqual(previous)) {
             return TripResponse.from(trip);
         }
-        if (!now.isBefore(properties.bookingClosesAt(departureAt))) {
-            throw Problems.badRequest("departure_too_soon", "A trip can only be moved to a time at least "
-                    + properties.closesBeforeDeparture().toMinutes() + " minutes from now.");
-        }
-        if (trips.existsByVehicleIdAndDepartureAtAndIdNot(trip.getVehicle().getId(), departureAt, tripId)) {
-            throw Problems.conflict("vehicle_already_scheduled",
-                    "This vehicle already has a trip at that departure time.");
-        }
+        assertCanMoveTo(trip, departureAt, now);
         trip.reschedule(departureAt);
         String detail = "Departure moved from " + BookingNotifications.moment(previous) + " to "
                 + BookingNotifications.moment(departureAt) + ".";
@@ -86,11 +79,13 @@ public class TripChangeService {
     public TripResponse cancel(UUID adminId, UUID tripId, String reason) {
         OffsetDateTime now = OffsetDateTime.now();
         Trip trip = lockChangeable(tripId, now);
-        String why = reason.trim();
-        trip.cancel(why);
+        String trimmedReason = reason.trim();
+        trip.cancel(trimmedReason);
 
-        bookings.findActiveIdsByTripId(tripId).forEach(bookingId -> cancelBooking(bookingId, adminId, why, now));
-        entries.findQueuedIdsByTripId(tripId).forEach(entryId -> closeEntry(entryId, trip, why, now));
+        bookings.findActiveIdsByTripId(tripId)
+                .forEach(bookingId -> cancelBooking(bookingId, adminId, trimmedReason, now));
+        waitlist.findQueuedIdsByTripId(tripId)
+                .forEach(entryId -> cancelWaitlistEntry(entryId, trip, trimmedReason, now));
 
         TripResponse response = TripResponse.from(trip);
         // Flush before deleteBookedOnTrip: it clears the context and would silently discard the cascade.
@@ -98,6 +93,17 @@ public class TripChangeService {
         claims.deleteBookedOnTrip(tripId);
         live.publish(LiveSignal.trip(tripId));
         return response;
+    }
+
+    private void assertCanMoveTo(Trip trip, OffsetDateTime departureAt, OffsetDateTime now) {
+        if (!now.isBefore(properties.bookingClosesAt(departureAt))) {
+            throw Problems.badRequest("departure_too_soon", "A trip can only be moved to a time at least "
+                    + properties.closesBeforeDeparture().toMinutes() + " minutes from now.");
+        }
+        if (trips.existsByVehicleIdAndDepartureAtAndIdNot(trip.getVehicle().getId(), departureAt, trip.getId())) {
+            throw Problems.conflict("vehicle_already_scheduled",
+                    "This vehicle already has a trip at that departure time.");
+        }
     }
 
     // Locked before any booking is read: BookingWriter takes the same lock, so none joins mid-change.
@@ -140,8 +146,8 @@ public class TripChangeService {
         }
     }
 
-    private void closeEntry(UUID entryId, Trip trip, String reason, OffsetDateTime now) {
-        WaitlistEntry entry = entries.lockById(entryId).orElseThrow();
+    private void cancelWaitlistEntry(UUID entryId, Trip trip, String reason, OffsetDateTime now) {
+        WaitlistEntry entry = waitlist.lockById(entryId).orElseThrow();
         if (!entry.isQueued()) {
             return;
         }

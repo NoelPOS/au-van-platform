@@ -78,11 +78,13 @@ public class BookingEligibilityService {
         OffsetDateTime horizon = now.minus(cooldown.lookback()).minus(cooldown.duration());
         OffsetDateTime since = clears.findLatestClearedAt(userId).filter(horizon::isBefore).orElse(horizon);
         List<OffsetDateTime> expiries = bookings.findExpiryTimesSince(userId, since);
+        int needed = cooldown.expiries();
         // Newest first, so the first run of expiries inside the lookback is the one that ends last.
-        for (int latest = 0; latest + cooldown.expiries() <= expiries.size(); latest++) {
-            OffsetDateTime earliest = expiries.get(latest + cooldown.expiries() - 1);
-            if (!expiries.get(latest).isAfter(earliest.plus(cooldown.lookback()))) {
-                OffsetDateTime endsAt = expiries.get(latest).plus(cooldown.duration());
+        for (int first = 0; first + needed <= expiries.size(); first++) {
+            OffsetDateTime newest = expiries.get(first);
+            OffsetDateTime oldest = expiries.get(first + needed - 1);
+            if (!newest.isAfter(oldest.plus(cooldown.lookback()))) {
+                OffsetDateTime endsAt = newest.plus(cooldown.duration());
                 return endsAt.isAfter(now) ? endsAt : null;
             }
         }
