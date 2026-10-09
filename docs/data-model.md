@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed. `V10` clears the deadline of bookings already under payment review, `V11` adds `booking_cooldown_clears`, the record of an administrator lifting a student's booking pause. `V12` adds the refund columns on `bookings`, and `V13` adds `trips.cancellation_reason`.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed. `V10` clears the deadline of bookings already under payment review, `V11` adds `booking_cooldown_clears`, the record of an administrator lifting a student's booking pause. `V12` adds the refund columns on `bookings`, `V13` adds `trips.cancellation_reason`, and `V14` adds `day_templates` and `day_template_departures`, the administrator's reusable day plans, and an index on `trips (departure_at)`.
 
 ## Schema ownership
 
@@ -32,6 +32,8 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `reminder_jobs` | dropped | Scheduled reminders; ADR-010 made one a future-dated `outbox_events` row |
 | `waitlist_entries` | `V9` | One student's place in the queue for a trip whose seats are all claimed |
 | `booking_cooldown_clears` | `V11` | Who lifted a student's booking pause, and when |
+| `day_templates` | `V13` | A named, reusable plan for one service day, such as "Weekday" or "Exam week" |
+| `day_template_departures` | `V13` | One line of a day template: a Bangkok wall-clock time, a route, and a van |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
 
 ## Seat claims
@@ -157,6 +159,17 @@ A reminder is not a second mechanism. It is an `outbox_events` row whose `next_a
 - `dedupe_key` is `"<bookingId>:<type>"`, the legacy's `unique (bookingId, type)` written as one column. The unique constraint is what makes scheduling idempotent.
 - Cancelling a booking marks its unsent (`PENDING`) reminders `DEAD` whatever their due time — a reminder that has come due but that no worker has claimed yet is exactly the one that must not go out; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on. A trip cancellation withdraws reminders the same way.
 - Moving a trip's departure **deletes** a confirmed booking's unsent reminders and schedules them again for the new time. It deletes rather than marks them `DEAD`, so their `dedupe_key` can be written again. A reminder already sent is kept, and so is its key, so that offset is not sent a second time.
+
+## Day templates and batch scheduling
+
+An administrator plans many departures at once: a day template's lines, or one day's existing departures, applied to a set of dates. ADR-019 records the decision.
+
+- `day_templates.name` is unique (`day_templates_name_unique`); the service also refuses a name that differs only in case.
+- `day_template_departures.departure_time` is a `TIME` in Asia/Bangkok wall-clock time. A trip is created at that time on each chosen date in Bangkok, so a template means the same thing whatever the server's zone.
+- A template line has foreign keys to `routes` and `vehicles` but no link to the trips made from it. Applying a template copies its lines; editing or deleting the template never changes a trip.
+- A planned departure is skipped, and reported with its reason, when it has passed, when its route or van is inactive, or when its van is already out on another run: an active trip whose departure-to-arrival window overlaps, a cancelled trip at the exact same time (it still holds `trips_vehicle_departure_unique`), or an earlier line in the same plan.
+- Applying commits every remaining departure in one transaction, only when the plan still matches its preview's `planHash`, and stores its response under the request's `Idempotency-Key` in `idempotency_keys`. `trips_vehicle_departure_unique` is what stops two concurrent applies from both creating the same departure.
+- Clearing a day deletes only that day's departures still ahead that have no `bookings`, `seat_claims`, or `waitlist_entries` row. A departure anyone has touched is kept, and its foreign keys stop a hold that lands mid-clear.
 
 ## Critical constraints to design
 
