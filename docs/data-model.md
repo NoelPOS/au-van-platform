@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed. `V10` clears the deadline of bookings already under payment review, and `V11` adds `booking_cooldown_clears`, the record of an administrator lifting a student's booking pause.
 
 ## Schema ownership
 
@@ -31,6 +31,7 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `notifications` | dropped | Delivery intent and result; ADR-010 folded both into `outbox_events` |
 | `reminder_jobs` | dropped | Scheduled reminders; ADR-010 made one a future-dated `outbox_events` row |
 | `waitlist_entries` | `V9` | One student's place in the queue for a trip whose seats are all claimed |
+| `booking_cooldown_clears` | `V11` | Who lifted a student's booking pause, and when |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
 
 ## Seat claims
@@ -73,14 +74,25 @@ A booking is created `PENDING_PAYMENT` and only an approved payment proof reache
 
 Every booking carries its own deadline and a sweep releases the seats of the ones that pass it. ADR-010 records the decision.
 
-- `bookings.payment_deadline_at` is nullable, and `NULL` means "never expires" — the right answer for every `CONFIRMED` or `CANCELLED` row. Only the transitions that own it write it: creation and rejection set `min(now + booking.payment-window, departureAt - booking.departure-cutoff)`, a submitted proof moves it to the departure bound alone, and confirming, cancelling, or expiring clears it.
+- `bookings.payment_deadline_at` is nullable, and `NULL` means "never expires" — the right answer for every `CONFIRMED` or `CANCELLED` row. Only the transitions that own it write it: creation sets `min(now + booking.payment-window, departureAt - booking.departure-cutoff)`; rejection sets the later of that original deadline and `now + booking.resubmit-window`, still capped at the departure bound; and submitting a proof, confirming, cancelling, or expiring clears it.
 - The window is measured from an explicit column rather than from `updated_at`, so no future write can silently reset a student's payment clock. It is a **new product rule**, not one ported from the legacy application, which never expires an unpaid booking at all. The defaults are two hours and one hour before departure.
-- A booking under review is bounded by departure rather than by a timer, so a slow reviewer never costs a student their booking while the seat is still worth recycling.
-- The sweep's predicate is `status IN ('PENDING_PAYMENT','PAYMENT_UNDER_REVIEW','PAYMENT_REJECTED') AND payment_deadline_at <= now`, with no join, and `bookings_payment_deadline_idx` is exactly that predicate.
+- A booking under review never expires, so a slow reviewer never costs a student who has paid their booking (ADR-016). `V10` cleared the deadline of rows that were already under review.
+- The sweep's predicate is `status IN ('PENDING_PAYMENT','PAYMENT_REJECTED') AND payment_deadline_at <= now`, with no join, and `bookings_payment_deadline_idx` covers it.
 - It selects **ids only**, then locks each booking with `BookingRepository.lockById` and decides from what the lock returned. A candidate read is a hint: loading the entities would put them in the persistence context and every later read would hand the pre-lock instance back, so a booking confirmed in between would still look expirable and its paid seat would be freed.
 - Expiry produces `CANCELLED`, not a new status, plus a `booking_events` row of type `EXPIRED` with a null `actor_user_id` — the column is nullable for exactly this kind of system-driven transition. The seats are released with `deleteByBookingId`, which is the only delete that will free a claim carrying a `booking_id`.
 - An expired booking's payment proof stays `SUBMITTED`, because `payment_proofs_review_recorded` requires a reviewer on anything else and the sweep has none. The review queue excludes proofs whose booking is `CANCELLED` instead, so an administrator is never left with a row they cannot clear.
 - The same sweep prunes `idempotency_keys` past `booking.idempotency-key-retention`, which ADR-008 named as this work's to do. The window has to stay longer than any client's retry horizon: a key dropped early stops replaying and the retry writes a second booking.
+
+## Fair booking rules
+
+One student cannot keep seats they never pay for. ADR-016 records the decision.
+
+- A student with a booking in `PENDING_PAYMENT` or `PAYMENT_REJECTED` cannot hold seats or create a booking (`unpaid_booking_exists`). `PAYMENT_UNDER_REVIEW` does not count.
+- `booking.cooldown.expiries` (two) `EXPIRED` events on a student's bookings within `booking.cooldown.lookback` pause holding and booking until `booking.cooldown.duration` after the later one (`booking_cooldown`, with `retryAt`). The pause is derived from `booking_events` on every read and never stored; a student's own cancellation is a `CANCELLED` event, so it never counts.
+- `booking_cooldown_clears` is append-only. Each row names the student (`user_id`), the administrator (`cleared_by_user_id`), and `cleared_at`; only expiries after a student's latest `cleared_at` count. Both user columns reference `app_users`.
+- A student with a non-cancelled booking on a trip cannot hold seats on it or join its waitlist (`already_booked_on_trip`).
+- Holds, waitlist joins, and waitlist promotions stop `booking.closes-before-departure` before departure (`booking_closed`). A booking made from a hold taken before that is still accepted.
+- These checks run at seat hold and again at booking creation, where the student's `app_users` row is locked `PESSIMISTIC_WRITE` after the hold's claims, so two holds on different trips cannot both become unpaid bookings.
 
 ## The waitlist
 
@@ -91,7 +103,7 @@ A student who cannot book a full trip joins its queue instead, sees where they s
 - **Position is derived, never stored.** The ordering is `ORDER BY joined_at, id` over the queued entries alone, so a student who leaves stops occupying a place for everyone behind them with nothing to update. A maintained `position` integer would have to rewrite every row behind a leaver, and one that had drifted from reality would be invisible — the same reasoning that leaves `seat_claims` without a status column.
 - Joining is idempotent. A repeated join returns the entry that already exists, with the place it already had; tapping the button twice must not cost a student their place.
 - Leaving and re-joining **reuses the same row with a fresh `joined_at`**, so it costs the student their place. That is the only behaviour one row per student per trip permits, and ADR-011 accepts it as the price of refusing a partial index.
-- Joining is refused for a trip that still has a free seat (`waitlist_not_needed`), for a trip that is not `ACTIVE` or has departed, and for more seats than `booking.max-seats-per-hold`. "Free" is `SeatAvailabilityService.freeSeatsOf`, the one derivation the seat map draws itself from and the promotion sweep promotes onto, so a lapsed hold makes a trip bookable and therefore not queueable.
+- Joining is refused for a trip that still has a free seat (`waitlist_not_needed`), for a trip that is not `ACTIVE` or has departed, once booking has closed (`booking_closed`), for a student who already has a booking on the trip (`already_booked_on_trip`), and for more seats than `booking.max-seats-per-hold`. "Free" is `SeatAvailabilityService.freeSeatsOf`, the one derivation the seat map draws itself from and the promotion sweep promotes onto, so a lapsed hold makes a trip bookable and therefore not queueable.
 - Student reads and writes are **scoped by owner in the query**, never filtered after loading, so someone else's entry answers exactly as one that does not exist — `BookingRepository.findByIdAndUserId`'s rule, and `SeatHoldService.release`'s `hold_not_found` idiom.
 - Leaving is `POST /api/v1/waitlist/{id}/leave`. It is not a `DELETE` because `SecurityConfiguration`'s CORS `allowedMethods` has none, and a `DELETE` would pass every test here and fail only in a real browser.
 - `trip_id` has a foreign key to `trips`; `user_id` is a plain UUID on the mapping with the same `app_users` foreign key `bookings.user_id` carries.

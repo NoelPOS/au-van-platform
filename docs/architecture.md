@@ -43,7 +43,7 @@ Booking and payment changes may generate notifications, reminders, expiry proces
 
 Booking expiry and seat release, the other half of ADR-010, are implemented too.
 
-- Every booking carries `payment_deadline_at`, written only by the transitions that own it: `min(now + booking.payment-window, departureAt - booking.departure-cutoff)` at creation and on rejection, the departure bound alone while a proof is under review, and cleared once the booking is terminal. The two windows are **new product rules** with no equivalent in the legacy application.
+- Every booking carries `payment_deadline_at`, written only by the transitions that own it: `min(now + booking.payment-window, departureAt - booking.departure-cutoff)` at creation, the later of that and `now + booking.resubmit-window` (still capped at the departure bound) on rejection, and cleared while a proof is under review and once the booking is terminal. The two windows are **new product rules** with no equivalent in the legacy application.
 - A scheduled sweep, gated on `booking.expiry.enabled` exactly as the dispatcher is, reads candidate **ids**, locks each booking, and decides only from what the lock returned. An expiry cancels the booking, appends an `EXPIRED` history entry with no actor, deletes its `seat_claims`, and records one outbox row — all in one transaction per booking, so a booking that loses its race neither rolls back nor blocks the batch.
 - The same sweep prunes `idempotency_keys` past their retention window, which ADR-008 left owing.
 
@@ -75,3 +75,4 @@ A student who cannot book a full trip can now queue for it, and a seat that come
 - [ADR-009: Payment-Proof Object Storage and the Payment-Review Gate on Booking Confirmation](adr/009-payment-proof-storage-and-review-gate.md)
 - [ADR-010: Deliver Asynchronous Work from a Transactional Outbox in PostgreSQL, and Give Every Unpaid Booking a Deadline](adr/010-transactional-outbox-and-booking-deadline.md)
 - [ADR-011: Promote a Waitlisted Student by Sweep, into a Time-Bounded Seat Hold](adr/011-waitlist-promotion-by-sweep.md) (proposed)
+- [ADR-016: Enforce Fair Booking Rules at Hold and at Booking, Serialised on the Student](adr/016-fair-booking-rules.md)
