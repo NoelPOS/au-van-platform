@@ -41,6 +41,8 @@ services:
       args:
         VITE_LIFF_ID: ${VITE_LIFF_ID:-}
         VITE_LINE_OA_ID: ${VITE_LINE_OA_ID:-}
+        VITE_PROMPTPAY_ID: ${VITE_PROMPTPAY_ID:-}
+        VITE_PROMPTPAY_NAME: ${VITE_PROMPTPAY_NAME:-}
     ports: !reset []
     mem_limit: 128m
 
