@@ -60,9 +60,9 @@ public class ScheduleService {
         if (!end.isAfter(now)) {
             throw Problems.badRequest("day_passed", "That day has already passed.");
         }
-        OffsetDateTime after = start.isAfter(now) ? start : now;
-        long ahead = trips.countByDepartureAtGreaterThanAndDepartureAtLessThan(after, end);
-        List<Trip> unclaimed = trips.findUnclaimedBetween(after, end);
+        OffsetDateTime from = start.isAfter(now) ? start : now;
+        long upcoming = trips.countByDepartureAtGreaterThanAndDepartureAtLessThan(from, end);
+        List<Trip> unclaimed = trips.findUnclaimedBetween(from, end);
         try {
             trips.deleteAll(unclaimed);
             trips.flush();
@@ -71,6 +71,6 @@ public class ScheduleService {
                     "A student started booking on this day while it was being cleared. Nothing was removed; try again.",
                     claimedMeanwhile);
         }
-        return new ClearDayResponse(unclaimed.size(), (int) ahead - unclaimed.size());
+        return new ClearDayResponse(unclaimed.size(), (int) upcoming - unclaimed.size());
     }
 }
