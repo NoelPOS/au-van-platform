@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "react-router";
 import { BoardingPass } from "../components/BoardingPass";
 import { CancelBooking } from "../components/CancelBooking";
 import { SlipUpload } from "../components/SlipUpload";
+import { TicketRefund } from "../components/TicketRefund";
 import { TicketTimeline } from "../components/TicketTimeline";
 import { HowToPay } from "../components/HowToPay";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -12,7 +13,19 @@ import { useStudent } from "../hooks/useStudent";
 import type { Booking } from "../types/booking";
 import { deadlinePhrase } from "../utils/days";
 import { messageOf } from "../utils/errors";
-import { lastDetail, needsPayment, wasExpired } from "../utils/tickets";
+import {
+  cancelledByStaff,
+  lastDetail,
+  needsPayment,
+  staffCancellationReason,
+  wasExpired,
+} from "../utils/tickets";
+
+const afterCancelling = {
+  NONE: "The seats went back on sale.",
+  DUE: "The seats went back on sale. Staff will refund your fare.",
+  REFUNDED: "The seats went back on sale and your fare was refunded.",
+};
 
 function headline(booking: Booking, justBooked: boolean): [string, string] {
   switch (booking.status) {
@@ -35,9 +48,12 @@ function headline(booking: Booking, justBooked: boolean): [string, string] {
     case "CONFIRMED":
       return ["You’re all set", "Show this pass when you board."];
     case "CANCELLED":
-      return wasExpired(booking)
-        ? ["This booking expired", "No slip arrived in time, so the seats went back on sale."]
-        : ["This booking was cancelled", "The seats went back on sale."];
+      if (wasExpired(booking))
+        return ["This booking expired", "No slip arrived in time, so the seats went back on sale."];
+      return [
+        cancelledByStaff(booking) ? "Staff cancelled this trip" : "This booking was cancelled",
+        afterCancelling[booking.refundStatus],
+      ];
   }
 }
 
@@ -62,7 +78,10 @@ export function StudentTicketPage() {
     );
 
   const [title, detail] = headline(booking, carried?.id === booking.id);
-  const rejection = booking.status === "PAYMENT_REJECTED" ? lastDetail(booking, "PAYMENT_REJECTED") : null;
+  const staffNote =
+    booking.status === "PAYMENT_REJECTED"
+      ? lastDetail(booking, "PAYMENT_REJECTED")
+      : staffCancellationReason(booking);
 
   async function send(file: File) {
     if (!booking) return;
@@ -86,12 +105,13 @@ export function StudentTicketPage() {
         <p className="mt-1.5 text-[15px] text-muted">{detail}</p>
       </header>
       <BoardingPass booking={booking} />
-      {rejection && (
+      {staffNote && (
         <blockquote className="rounded-2xl border border-danger/20 bg-danger-soft px-4 py-3.5">
           <p className="font-mono text-[10px] tracking-[0.16em] text-danger uppercase">Note from staff</p>
-          <p className="mt-1 text-sm text-ink">{rejection}</p>
+          <p className="mt-1 text-sm text-ink">{staffNote}</p>
         </blockquote>
       )}
+      <TicketRefund booking={booking} />
       {needsPayment(booking) && (
         <HowToPay amount={booking.totalFare} reference={booking.reference} />
       )}
@@ -104,7 +124,7 @@ export function StudentTicketPage() {
         />
       )}
       <TicketTimeline booking={booking} />
-      {needsPayment(booking) && <CancelBooking booking={booking} />}
+      <CancelBooking booking={booking} />
     </>
   );
 }

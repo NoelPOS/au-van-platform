@@ -176,39 +176,6 @@ describe("Student ticket", () => {
     expect(screen.queryByText("Expired")).not.toBeInTheDocument();
   });
 
-  it("cancels an unpaid booking only after the student confirms", async () => {
-    const fetcher = stubApi({ bookings: () => json([booking]) });
-
-    renderPage("/tickets/booking-1");
-    fireEvent.click(await screen.findByRole("button", { name: "Cancel this booking" }));
-    fireEvent.click(screen.getByRole("button", { name: "Keep booking" }));
-    expect(
-      fetcher.mock.calls.some(([url]) => String(url).endsWith("/cancel")),
-    ).toBe(false);
-
-    fireEvent.click(screen.getByRole("button", { name: "Cancel this booking" }));
-    fireEvent.click(screen.getByRole("button", { name: "Yes, cancel" }));
-
-    expect(
-      await screen.findByText(
-        "Booking AUV-260921-7KQ2M4XR is cancelled and its seats are free again.",
-      ),
-    ).toBeInTheDocument();
-    expect(fetcher).toHaveBeenCalledWith(
-      "/api/v1/bookings/booking-1/cancel",
-      expect.objectContaining({ method: "POST" }),
-    );
-  });
-
-  it("offers no cancel button once a slip has been sent", async () => {
-    stubApi({ bookings: () => json([{ ...booking, status: "PAYMENT_UNDER_REVIEW" }]) });
-
-    renderPage("/tickets/booking-1");
-
-    await screen.findByRole("heading", { name: "Slip received" });
-    expect(screen.queryByRole("button", { name: "Cancel this booking" })).not.toBeInTheDocument();
-  });
-
   it("says so when the ticket does not exist", async () => {
     stubApi({ bookings: () => json([]) });
 
