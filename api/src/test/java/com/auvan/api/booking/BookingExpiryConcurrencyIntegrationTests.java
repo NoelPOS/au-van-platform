@@ -38,6 +38,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -57,7 +58,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mockingDetails;
 
 // Not @Transactional: a test transaction puts every thread on one connection and hides the race.
@@ -156,6 +159,7 @@ class BookingExpiryConcurrencyIntegrationTests extends AuthenticationTestSupport
     void aSweepRacingAnApprovalLeavesTheBookingConfirmedWithItsSeats() throws Exception {
         UUID proofId = submittedProofId();
         overdue(bookingId);
+        doReturn(List.of(bookingId)).when(bookings).findExpirable(any(OffsetDateTime.class), any(Pageable.class));
         AtomicReference<Future<Integer>> sweep = new AtomicReference<>();
         CountDownLatch sweepAtTheLock = new CountDownLatch(1);
         AtomicBoolean firstLock = new AtomicBoolean(true);
@@ -218,7 +222,7 @@ class BookingExpiryConcurrencyIntegrationTests extends AuthenticationTestSupport
 
         assertThat(bookings.findById(bookingId).orElseThrow()).satisfies(booking -> {
             assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
-            assertThat(booking.getPaymentDeadlineAt()).isAfter(OffsetDateTime.now());
+            assertThat(booking.getPaymentDeadlineAt()).isNull();
         });
         assertThat(claims.findByBookingId(bookingId)).hasSize(1);
         assertThat(bookingEventsOfType(BookingEventType.EXPIRED)).isEmpty();

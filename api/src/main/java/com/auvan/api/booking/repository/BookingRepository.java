@@ -35,7 +35,6 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query("""
             select booking.id from Booking booking
             where booking.status in (com.auvan.api.booking.entity.BookingStatus.PENDING_PAYMENT,
-                                     com.auvan.api.booking.entity.BookingStatus.PAYMENT_UNDER_REVIEW,
                                      com.auvan.api.booking.entity.BookingStatus.PAYMENT_REJECTED)
               and booking.paymentDeadlineAt <= :now
             order by booking.paymentDeadlineAt asc
