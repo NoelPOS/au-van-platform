@@ -14,13 +14,11 @@ function problemWith(file: File): string | null {
 }
 
 export function SlipUpload({
-  amount,
   sending,
   error,
   onChoose,
   onSend,
 }: {
-  amount: string;
   sending: boolean;
   error: string | null;
   onChoose: () => void;
@@ -83,7 +81,7 @@ export function SlipUpload({
           <ImageUp aria-hidden className="size-7 text-brand-600" strokeWidth={1.5} />
           <span className="font-semibold text-ink">Upload your payment slip</span>
           <span className="max-w-64 text-sm text-muted">
-            {`Transfer ${amount}, then add a screenshot or photo of the slip. JPG, PNG or WebP, up to 5 MB.`}
+            A screenshot or photo of your transfer slip. JPG, PNG or WebP, up to 5 MB.
           </span>
         </label>
       )}

@@ -4,6 +4,7 @@ import { BoardingPass } from "../components/BoardingPass";
 import { CancelBooking } from "../components/CancelBooking";
 import { SlipUpload } from "../components/SlipUpload";
 import { TicketTimeline } from "../components/TicketTimeline";
+import { HowToPay } from "../components/HowToPay";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
 import { useMyBookings, useSubmitPaymentProof } from "../hooks/useBookingQueries";
@@ -11,7 +12,6 @@ import { useStudent } from "../hooks/useStudent";
 import type { Booking } from "../types/booking";
 import { deadlinePhrase } from "../utils/days";
 import { messageOf } from "../utils/errors";
-import { formatBaht } from "../utils/format";
 import { lastDetail, needsPayment, wasExpired } from "../utils/tickets";
 
 function headline(booking: Booking, justBooked: boolean): [string, string] {
@@ -93,8 +93,10 @@ export function StudentTicketPage() {
         </blockquote>
       )}
       {needsPayment(booking) && (
+        <HowToPay amount={booking.totalFare} reference={booking.reference} />
+      )}
+      {needsPayment(booking) && (
         <SlipUpload
-          amount={formatBaht(booking.totalFare)}
           error={submit.error ? messageOf(submit.error) : null}
           onChoose={submit.reset}
           onSend={(file) => void send(file)}
