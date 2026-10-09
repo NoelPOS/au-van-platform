@@ -16,12 +16,11 @@ import {
 } from "../utils/tripDetails";
 import { DayPicker } from "./DayPicker";
 import { ErrorMessage, FormActions } from "./FormCard";
+import { NotReadyToSchedule } from "./NotReadyToSchedule";
 import { ScheduleOutcome } from "./ScheduleOutcome";
 import { TimeField } from "./TimeField";
 import { TripImpact } from "./TripImpact";
-import { EmptyState } from "./ui/EmptyState";
 import { Select } from "./ui/Select";
-import { TextLink } from "./ui/TextLink";
 
 export function TripForm({
   session,
@@ -57,19 +56,8 @@ export function TripForm({
   const [submitted, setSubmitted] = useState(false);
   const now = useNow();
 
-  if (!trip && (routes.length === 0 || vans.length === 0)) {
-    return (
-      <EmptyState
-        action={
-          <TextLink to={routes.length ? "/admin/vans" : "/admin/routes"}>
-            {routes.length ? "Add a van" : "Create a route"}
-          </TextLink>
-        }
-        detail="A trip needs a route to run and a van to run it."
-        title="Not quite ready to schedule"
-      />
-    );
-  }
+  if (!trip && (routes.length === 0 || vans.length === 0))
+    return <NotReadyToSchedule hasRoutes={routes.length > 0} />;
 
   const clock = parseClock(time);
   const passedUntil = passedToday(days, now);
@@ -179,13 +167,7 @@ export function TripForm({
       <FormActions
         busy={saving || updateTrip.isPending}
         onCancel={onDone}
-        submitLabel={
-          trip
-            ? "Save trip"
-            : days.length > 1
-              ? `Schedule ${days.length} trips`
-              : "Schedule trip"
-        }
+        submitLabel={submitLabel(trip !== null, days.length)}
       />
       {trip && Date.parse(trip.departureAt) > now && (
         <button
@@ -198,4 +180,9 @@ export function TripForm({
       )}
     </form>
   );
+}
+
+function submitLabel(editing: boolean, dayCount: number): string {
+  if (editing) return "Save trip";
+  return dayCount > 1 ? `Schedule ${dayCount} trips` : "Schedule trip";
 }
