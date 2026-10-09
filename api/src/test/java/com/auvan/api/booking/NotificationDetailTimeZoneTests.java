@@ -13,6 +13,7 @@ import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.entity.Vehicle;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.notification.dto.WaitlistNotification;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
@@ -69,7 +70,7 @@ class NotificationDetailTimeZoneTests {
         ArgumentCaptor<Object> payload = ArgumentCaptor.forClass(Object.class);
 
         new WaitlistPromotionWriter(entries, claims, mock(SeatAvailabilityService.class), outbox,
-                mock(BookingProperties.class)).resolve(UUID.randomUUID(), OffsetDateTime.parse("2026-10-01T19:00:00Z"));
+                mock(BookingProperties.class), mock(LiveSignalPublisher.class)).resolve(UUID.randomUUID(), OffsetDateTime.parse("2026-10-01T19:00:00Z"));
 
         verify(outbox).record(any(), any(), any(), payload.capture(), any());
         WaitlistNotification notification = (WaitlistNotification) payload.getValue();

@@ -6,6 +6,8 @@ import com.auvan.api.booking.entity.BookingSeat;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.TripSeat;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
@@ -21,13 +23,15 @@ public class BookingExpiryWriter {
     private final SeatClaimRepository claims;
     private final OutboxRecorder outbox;
     private final DepartureReminderService reminders;
+    private final LiveSignalPublisher live;
 
     public BookingExpiryWriter(BookingRepository bookings, SeatClaimRepository claims, OutboxRecorder outbox,
-                               DepartureReminderService reminders) {
+                               DepartureReminderService reminders, LiveSignalPublisher live) {
         this.bookings = bookings;
         this.claims = claims;
         this.outbox = outbox;
         this.reminders = reminders;
+        this.live = live;
     }
 
     @Transactional
@@ -45,6 +49,7 @@ public class BookingExpiryWriter {
         outbox.record(OutboxEventType.BOOKING_EXPIRED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, detail), now);
         bookings.flush();
+        live.publish(LiveSignal.trip(booking.getTrip().getId()));
         claims.deleteByBookingId(booking.getId());
         reminders.cancel(booking.getId(), now);
         return true;

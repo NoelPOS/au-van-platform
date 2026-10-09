@@ -8,6 +8,8 @@ import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.notification.dto.WaitlistNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
@@ -27,15 +29,17 @@ public class WaitlistPromotionWriter {
     private final SeatAvailabilityService availability;
     private final OutboxRecorder outbox;
     private final BookingProperties properties;
+    private final LiveSignalPublisher live;
 
     public WaitlistPromotionWriter(WaitlistEntryRepository entries, SeatClaimRepository claims,
                                    SeatAvailabilityService availability, OutboxRecorder outbox,
-                                   BookingProperties properties) {
+                                   BookingProperties properties, LiveSignalPublisher live) {
         this.entries = entries;
         this.claims = claims;
         this.availability = availability;
         this.outbox = outbox;
         this.properties = properties;
+        this.live = live;
     }
 
     @Transactional
@@ -69,6 +73,7 @@ public class WaitlistPromotionWriter {
         entries.flush();
         reclaim(taking, now);
         insert(taking, userId, holdId, expiresAt);
+        live.publish(LiveSignal.trip(trip.getId()));
         return true;
     }
 

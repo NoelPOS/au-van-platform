@@ -10,6 +10,8 @@ import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.inventory.entity.TripSeat;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
@@ -32,10 +34,11 @@ public class BookingService {
     private final OutboxRecorder outbox;
     private final DepartureReminderService reminders;
     private final BookingProperties properties;
+    private final LiveSignalPublisher live;
 
     public BookingService(BookingWriter writer, IdempotencyService idempotency, BookingRepository bookings,
                           SeatClaimRepository claims, OutboxRecorder outbox, DepartureReminderService reminders,
-                          BookingProperties properties) {
+                          BookingProperties properties, LiveSignalPublisher live) {
         this.writer = writer;
         this.idempotency = idempotency;
         this.bookings = bookings;
@@ -43,6 +46,7 @@ public class BookingService {
         this.outbox = outbox;
         this.reminders = reminders;
         this.properties = properties;
+        this.live = live;
     }
 
     // Not @Transactional: a failed write is rollback-only, so the replay needs its own transaction.
@@ -95,6 +99,7 @@ public class BookingService {
                 BookingNotifications.of(booking, detail), now);
         bookings.flush();
         BookingResponse response = BookingResponse.from(booking, properties);
+        live.publish(LiveSignal.trip(booking.getTrip().getId()));
         claims.deleteByBookingId(booking.getId());
         reminders.cancel(bookingId, now);
         return response;
