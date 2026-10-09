@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { AdminPaymentReviewPage } from "../pages/AdminPaymentReviewPage";
+import type { SameSlipBooking } from "../types/payments";
 import { adminSession, json, renderAdminPage } from "./renderAdminPage";
 
 export function slip(id: string, bookingReference: string) {
@@ -22,6 +23,7 @@ export function slip(id: string, bookingReference: string) {
     sizeBytes: 12,
     status: "SUBMITTED",
     submittedAt: "2026-09-21T10:01:12Z",
+    sameSlipBookings: [] as SameSlipBooking[],
   };
 }
 

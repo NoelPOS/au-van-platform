@@ -1,6 +1,7 @@
 import type { PaymentProof } from "../types/payments";
 import { bangkokDateTime } from "../utils/dates";
 import { formatAgo } from "../utils/format";
+import { Chip } from "./ui/Chip";
 import { EmptyState } from "./ui/EmptyState";
 import { RouteLine } from "./ui/RouteLine";
 import { TicketStub } from "./ui/TicketStub";
@@ -43,14 +44,17 @@ export function PaymentQueue({
                 </>
               }
             >
-              <button
-                aria-current={selected ? "true" : undefined}
-                className="font-mono text-[13px] font-medium text-brand-700 after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-brand-500"
-                onClick={() => onSelect(proof.id)}
-                type="button"
-              >
-                {proof.bookingReference}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  aria-current={selected ? "true" : undefined}
+                  className="font-mono text-[13px] font-medium text-brand-700 after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-brand-500"
+                  onClick={() => onSelect(proof.id)}
+                  type="button"
+                >
+                  {proof.bookingReference}
+                </button>
+                {proof.sameSlipBookings.length > 0 && <Chip tone="warning">Possible reuse</Chip>}
+              </div>
               <p className="mt-1.5 truncate font-medium text-ink">{proof.passengerName}</p>
               <p className="mt-1 text-sm text-muted">
                 <RouteLine destination={proof.trip.destination} origin={proof.trip.origin} />
