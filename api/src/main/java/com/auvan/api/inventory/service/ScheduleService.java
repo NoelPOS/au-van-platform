@@ -39,8 +39,7 @@ public class ScheduleService {
         return new SchedulePreviewResponse(plan.hash(), plan.departures());
     }
 
-    // Not @Transactional: a replay fails its write (every departure now clashes), so the stored answer
-    // is read back in a transaction of its own.
+    // Not @Transactional: a replay's write fails, so the stored answer needs its own transaction.
     public IdempotencyService.StoredResponse apply(UUID userId, String key, SchedulePlanRequest request) {
         if (request.planHash() == null || request.planHash().isBlank()) {
             throw Problems.badRequest("preview_required", "Preview the schedule before applying it.");

@@ -24,8 +24,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-// SECURITY CONTROL: a ticket carries its own audience, so it never passes as an access token and
-// an access token never passes as a ticket; only the short-lived ticket ever sits in a URL.
+// SECURITY CONTROL: a ticket's own audience keeps tickets and access tokens apart.
 @Service
 public class StreamTicketService {
     private final JwtEncoder encoder;

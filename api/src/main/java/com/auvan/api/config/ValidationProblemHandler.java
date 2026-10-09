@@ -9,7 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// Ahead of Boot's problem-details handler, which would otherwise answer every violation with "Invalid request content."
+// Runs ahead of Boot's handler, which answers every violation with "Invalid request content."
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 class ValidationProblemHandler {

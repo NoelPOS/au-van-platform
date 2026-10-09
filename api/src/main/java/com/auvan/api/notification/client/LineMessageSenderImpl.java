@@ -65,8 +65,7 @@ class LineMessageSenderImpl implements LineMessageSender {
         }
     }
 
-    // 409 means LINE already accepted this retry key, so the student has it. 429 and 5xx are
-    // transient; every other 4xx is permanent.
+    // 409: LINE already has this retry key. 429 and 5xx are transient; other 4xx are permanent.
     private static void classify(RestClientResponseException answered, LinePushMessage message) {
         int status = answered.getStatusCode().value();
         if (status == ALREADY_ACCEPTED) {

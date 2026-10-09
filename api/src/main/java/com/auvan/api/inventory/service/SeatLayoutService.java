@@ -49,8 +49,7 @@ public class SeatLayoutService {
         List<SeatLayoutSeat> replacements = toSeats(request.seats());
         seatLayout.rename(name);
         seatLayout.removeSeats();
-        // Flush the removal first: Hibernate orders inserts before deletes, so a reused label
-        // would collide with the row it replaces.
+        // Flush the removal first: Hibernate inserts before deleting, so a reused label collides.
         seatLayouts.flush();
         seatLayout.addSeats(replacements);
         return SeatLayoutResponse.from(seatLayout);

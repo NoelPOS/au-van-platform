@@ -11,8 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-// Not @Transactional: joins the caller's, so the event commits with its state change. Callers
-// must flush before a clearAutomatically delete, which silently discards an unflushed row.
+// Joins the caller's transaction; flush before any clearAutomatically delete or the row is lost.
 @Service
 public class OutboxRecorder {
     private final OutboxEventRepository events;
