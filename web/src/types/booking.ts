@@ -12,7 +12,12 @@ export type BookingEventType =
   | "PAYMENT_APPROVED"
   | "PAYMENT_REJECTED"
   | "CANCELLED"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "TRIP_CANCELLED"
+  | "TRIP_RESCHEDULED"
+  | "REFUNDED";
+
+export type RefundStatus = "NONE" | "DUE" | "REFUNDED";
 
 export type BookingEvent = {
   type: BookingEventType;
@@ -26,7 +31,8 @@ export type WaitlistStatus =
   | "PROMOTED"
   | "FULFILLED"
   | "WITHDRAWN"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "CANCELLED";
 
 export type WaitlistEntry = {
   id: string;
@@ -102,6 +108,10 @@ export type Booking = {
   seats: HeldSeat[];
   events: BookingEvent[];
   paymentDeadlineAt: string | null;
+  cancellableUntil: string | null;
+  refundStatus: RefundStatus;
+  refundedAt: string | null;
+  refundNote: string | null;
   createdAt: string;
 };
 

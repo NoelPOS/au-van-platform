@@ -39,5 +39,6 @@ export type Trip = {
   fare: number;
   durationMinutes: number;
   status: TripStatus;
+  cancellationReason: string | null;
   seats: Seat[];
 };
