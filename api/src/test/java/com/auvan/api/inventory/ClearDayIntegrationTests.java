@@ -64,7 +64,7 @@ class ClearDayIntegrationTests extends ScheduleTestSupport {
 
     @Test
     void departuresThatHaveAlreadyLeftTodayAreLeftAlone() throws Exception {
-        Trip departed = tripAt(today(), "00:00");
+        Trip departed = trips.save(new Trip(route, van, OffsetDateTime.now().minusMinutes(1)));
 
         postJson(CLEAR_DAY, "{\"date\":\"" + today() + "\"}")
                 .andExpect(status().isOk())
