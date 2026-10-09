@@ -39,6 +39,9 @@ public class PaymentProof {
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 
+    @Column(name = "content_sha256", length = 64)
+    private String contentSha256;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private PaymentProofStatus status;
@@ -58,12 +61,13 @@ public class PaymentProof {
     protected PaymentProof() { }
 
     public PaymentProof(Booking booking, UUID submittedByUserId, String objectKey, String contentType,
-                        long sizeBytes, OffsetDateTime now) {
+                        long sizeBytes, String contentSha256, OffsetDateTime now) {
         this.booking = booking;
         this.submittedByUserId = submittedByUserId;
         this.objectKey = objectKey;
         this.contentType = contentType;
         this.sizeBytes = sizeBytes;
+        this.contentSha256 = contentSha256;
         this.status = PaymentProofStatus.SUBMITTED;
         this.createdAt = now;
     }
@@ -74,6 +78,7 @@ public class PaymentProof {
     public String getObjectKey() { return objectKey; }
     public String getContentType() { return contentType; }
     public long getSizeBytes() { return sizeBytes; }
+    public String getContentSha256() { return contentSha256; }
     public PaymentProofStatus getStatus() { return status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public UUID getReviewedByUserId() { return reviewedByUserId; }
