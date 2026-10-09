@@ -24,6 +24,7 @@ import com.auvan.api.inventory.repository.VehicleRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.invocation.InvocationOnMock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
@@ -36,16 +37,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockingDetails;
 
 @SpringBootTest
 class BookingConcurrencyPostgresTests extends PostgresTestSupport {
@@ -60,7 +67,7 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
     @MockitoSpyBean
     private SeatClaimRepository claims;
 
-    @Autowired
+    @MockitoSpyBean
     private BookingRepository bookings;
 
     @Autowired
@@ -88,7 +95,7 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
     @BeforeEach
     void setUp() {
         clearData();
-        trip = createTrip();
+        trip = createTrip("VAN-PGBOOK");
         seats = trip.getSeats();
         student = users.save(new AppUser("Upg-booking", "Student")).getId();
     }
@@ -173,6 +180,48 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         assertThat(claims.count()).isEqualTo(2);
     }
 
+    @Test
+    void twoHoldsOnDifferentTripsBookedAtOnceLeaveOnlyOneUnpaidBooking() throws Exception {
+        UUID firstHold = holdOn(trip);
+        UUID secondHold = holdOn(createTrip("VAN-PGBOOK-2"));
+        CyclicBarrier bothChecking = new CyclicBarrier(2);
+        doAnswer(invocation -> {
+            try {
+                bothChecking.await(3, TimeUnit.SECONDS);
+            } catch (BrokenBarrierException | TimeoutException serialisedByTheLock) {
+                // The lock keeps the second booking out of the check, so the barrier never fills.
+            }
+            return real(invocation);
+        }).when(bookings).findFirstByUserIdAndStatusInOrderByCreatedAtAsc(eq(student), any());
+        Queue<Exception> refusals = new ConcurrentLinkedQueue<>();
+
+        try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+            for (UUID holdId : List.of(firstHold, secondHold)) {
+                pool.execute(() -> {
+                    try {
+                        bookingService.create(student, "pg-unpaid-" + holdId, request(holdId));
+                    } catch (Exception expectedForTheLoser) {
+                        refusals.add(expectedForTheLoser);
+                    }
+                });
+            }
+        }
+
+        assertThat(bookings.findByUserIdOrderByCreatedAtDesc(student)).hasSize(1);
+        assertThat(refusals).singleElement().isInstanceOfSatisfying(ResponseStatusException.class,
+                refusal -> assertThat(refusal.getBody().getProperties().get("code"))
+                        .isEqualTo("unpaid_booking_exists"));
+    }
+
+    private UUID holdOn(Trip target) {
+        return seatHoldService.hold(student,
+                new CreateSeatHoldRequest(target.getId(), List.of(target.getSeats().getFirst().getId()))).holdId();
+    }
+
+    private static Object real(InvocationOnMock invocation) throws Throwable {
+        return mockingDetails(invocation.getMock()).getMockCreationSettings().getDefaultAnswer().answer(invocation);
+    }
+
     private static CreateBookingRequest request(UUID holdId) {
         return new CreateBookingRequest(holdId, "Somchai P.", "0812345678");
     }
@@ -185,14 +234,14 @@ class BookingConcurrencyPostgresTests extends PostgresTestSupport {
         return bookings.findAll().getFirst().getId();
     }
 
-    private Trip createTrip() {
+    private Trip createTrip(String vehicleCode) {
         VanRoute route = routes.save(new VanRoute("AU", "Asok", new BigDecimal("35.00"), 45));
         List<SeatLayoutSeat> layoutSeats = new ArrayList<>();
         for (int column = 1; column <= 4; column++) {
             layoutSeats.add(new SeatLayoutSeat("A" + column, 1, column));
         }
-        SeatLayout layout = seatLayouts.save(new SeatLayout("Contended layout", layoutSeats));
-        Vehicle vehicle = vehicles.save(new Vehicle("VAN-PGBOOK", "Toyota Commuter", layout));
+        SeatLayout layout = seatLayouts.save(new SeatLayout("Layout " + vehicleCode, layoutSeats));
+        Vehicle vehicle = vehicles.save(new Vehicle(vehicleCode, "Toyota Commuter", layout));
         return trips.save(new Trip(route, vehicle, OffsetDateTime.now().plusDays(1)));
     }
 }
