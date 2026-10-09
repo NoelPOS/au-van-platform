@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/api/v1/auth/line/exchange").permitAll()
+                        // SECURITY CONTROL: the stream checks its own short-lived ticket (ADR-018).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
                         // The only ADMIN check: there is no method security, so every
                         // admin mapping must sit under /api/v1/admin/**.
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
@@ -53,8 +55,8 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(AuthProperties properties) {
-        var decoder = NimbusJwtDecoder.withSecretKey(signingKey(properties)).macAlgorithm(MacAlgorithm.HS256).build();
+    JwtDecoder jwtDecoder(AuthProperties properties, SecretKey jwtSigningKey) {
+        var decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey).macAlgorithm(MacAlgorithm.HS256).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.jwt().issuer()),
                 audienceValidator(properties.jwt().audience())));
@@ -62,8 +64,8 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    JwtEncoder jwtEncoder(AuthProperties properties) {
-        return new NimbusJwtEncoder(new ImmutableSecret<SecurityContext>(signingKey(properties)));
+    JwtEncoder jwtEncoder(SecretKey jwtSigningKey) {
+        return new NimbusJwtEncoder(new ImmutableSecret<SecurityContext>(jwtSigningKey));
     }
 
     @Bean
@@ -96,7 +98,8 @@ public class SecurityConfiguration {
                 : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "JWT audience is not accepted.", null));
     }
 
-    private SecretKey signingKey(AuthProperties properties) {
+    @Bean
+    SecretKey jwtSigningKey(AuthProperties properties) {
         String encodedSecret = properties.jwt().secret();
         if (encodedSecret == null || encodedSecret.isBlank()) {
             throw new IllegalStateException("JWT_SECRET must be configured with a base64-encoded 32-byte value.");

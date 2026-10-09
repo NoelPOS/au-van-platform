@@ -1,5 +1,7 @@
 package com.auvan.api.outbox.service;
 
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.outbox.entity.OutboxEvent;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
@@ -15,14 +17,17 @@ import java.util.UUID;
 public class OutboxRecorder {
     private final OutboxEventRepository events;
     private final ObjectMapper json;
+    private final LiveSignalPublisher live;
 
-    public OutboxRecorder(OutboxEventRepository events, ObjectMapper json) {
+    public OutboxRecorder(OutboxEventRepository events, ObjectMapper json, LiveSignalPublisher live) {
         this.events = events;
         this.json = json;
+        this.live = live;
     }
 
     public OutboxEvent record(OutboxEventType type, UUID aggregateId, UUID recipientUserId, Object payload,
                               OffsetDateTime now) {
+        live.publish(LiveSignal.booking(aggregateId, recipientUserId));
         return events.save(new OutboxEvent(type, aggregateId, recipientUserId,
                 json.writeValueAsString(payload), now));
     }

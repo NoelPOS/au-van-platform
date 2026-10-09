@@ -82,6 +82,13 @@ outbox:
     enabled: true
     poll-interval: PT5S
 
+live-updates:
+  # PostgreSQL LISTEN/NOTIFY carries each signal to every API instance (ADR-018).
+  postgres-notify: true
+  ticket-ttl: PT1M
+  # Under the web image's 30s proxy_read_timeout, so an idle stream is never cut.
+  heartbeat-interval: PT25S
+
 notification:
   line:
     enabled: ${LINE_MESSAGING_ENABLED:true}

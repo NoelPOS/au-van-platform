@@ -35,7 +35,8 @@ dependencies {
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation platform('software.amazon.awssdk:bom:2.46.7')
 	implementation 'software.amazon.awssdk:s3'
-	runtimeOnly 'org.postgresql:postgresql'
+	// Compiled against for LISTEN/NOTIFY, which JDBC itself has no API for.
+	implementation 'org.postgresql:postgresql'
 	testRuntimeOnly 'com.h2database:h2'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
