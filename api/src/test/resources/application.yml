@@ -73,6 +73,12 @@ outbox:
     enabled: false
     poll-interval: PT5S
 
+live-updates:
+  # H2 has no LISTEN/NOTIFY, so tests deliver in process after commit.
+  postgres-notify: false
+  ticket-ttl: PT1M
+  heartbeat-interval: PT25S
+
 notification:
   line:
     enabled: false
