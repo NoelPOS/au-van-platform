@@ -3,6 +3,7 @@ import {
   Armchair,
   CalendarClock,
   Ellipsis,
+  HandCoins,
   LayoutDashboard,
   ReceiptText,
   Signpost,
@@ -12,6 +13,7 @@ import {
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useLiveUpdates } from "../hooks/useLiveUpdates";
+import { useRefundsDue } from "../hooks/useRefundQueries";
 import type { AuthSession } from "../types/auth";
 import { Drawer } from "./ui/Drawer";
 import { ToastProvider } from "./ui/Toast";
@@ -35,6 +37,7 @@ const destinations: Destination[] = [
     tucked: true,
   },
   { path: "/admin/payments", label: "Payments", icon: ReceiptText },
+  { path: "/admin/refunds", label: "Refunds", icon: HandCoins, tucked: true },
   { path: "/admin/operations", label: "Operations", icon: Activity },
 ];
 
@@ -45,6 +48,16 @@ const itemClass =
 
 function linkClass({ isActive }: { isActive: boolean }) {
   return `${itemClass} ${isActive ? "bg-paper text-brand-900" : "text-brand-100 hover:bg-white/8 hover:text-white"}`;
+}
+
+function RefundsBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] leading-none font-semibold text-brand-900 tabular-nums lg:ml-auto">
+      <span aria-hidden>{count}</span>
+      <span className="sr-only">{`, ${count} refunds due`}</span>
+    </span>
+  );
 }
 
 function Wordmark() {
@@ -65,6 +78,7 @@ export function AdminLayout({ session }: { session: AuthSession }) {
   const { pathname } = useLocation();
   const name = session.user.displayName ?? "Administrator";
   const inTucked = tucked.some((entry) => pathname.startsWith(entry.path));
+  const refundsDue = useRefundsDue(session).data?.length ?? 0;
   useLiveUpdates(session);
 
   return (
@@ -96,16 +110,20 @@ export function AdminLayout({ session }: { session: AuthSession }) {
                 strokeWidth={1.75}
               />
               {label}
+              {path === "/admin/refunds" && <RefundsBadge count={refundsDue} />}
             </NavLink>
           ))}
           <button
-            className={`${itemClass} lg:hidden ${inTucked ? "bg-paper text-brand-900" : "text-brand-100"}`}
+            className={`${itemClass} relative lg:hidden ${inTucked ? "bg-paper text-brand-900" : "text-brand-100"}`}
             aria-haspopup="dialog"
             onClick={() => setMoreOpen(true)}
             type="button"
           >
             <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
             More
+            <span className="absolute top-1 left-1/2 ml-1.5">
+              <RefundsBadge count={refundsDue} />
+            </span>
           </button>
         </nav>
         <div className="mt-auto hidden border-t border-white/10 px-3 pt-5 lg:block">
@@ -132,6 +150,11 @@ export function AdminLayout({ session }: { session: AuthSession }) {
                   strokeWidth={1.75}
                 />
                 {label}
+                {path === "/admin/refunds" && (
+                  <span className="ml-auto">
+                    <RefundsBadge count={refundsDue} />
+                  </span>
+                )}
               </NavLink>
             </li>
           ))}
