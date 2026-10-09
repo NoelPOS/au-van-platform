@@ -8,6 +8,9 @@ const titles: Record<BookingEventType, string> = {
   PAYMENT_REJECTED: "Slip sent back",
   CANCELLED: "Cancelled",
   EXPIRED: "Expired unpaid",
+  TRIP_CANCELLED: "Trip cancelled by staff",
+  TRIP_RESCHEDULED: "Departure moved",
+  REFUNDED: "Refunded",
 };
 
 export function TicketTimeline({ booking }: { booking: Booking }) {
