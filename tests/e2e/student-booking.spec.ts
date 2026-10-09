@@ -22,18 +22,12 @@ const slip = join(
   "payment-slip.png",
 );
 
-/**
- * An administrator page in its own context, because half of these tests need
- * one acting while a student is mid-journey and a session lives in React state
- * rather than in storage.
- */
 async function administrator(browser: Browser): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await signInAsAdmin(page);
   return page;
 }
 
-/** Sends a slip from the open ticket page. */
 async function submitProof(
   page: Page,
   file: Parameters<ReturnType<Page["getByLabel"]>["setInputFiles"]>[0],
@@ -44,15 +38,6 @@ async function submitProof(
 }
 
 test.describe("the student journey", () => {
-  /**
-   * The spine: browse, hold, confirm, pay, and be told what happened — the same
-   * four screens the legacy application's own LIFF route set named as the ones
-   * that mattered (`routes`, `book`, `payment`, `mybookings`).
-   *
-   * <p>Every assertion is about what the student sees. The one exception is the
-   * booking reference, which is read off the creation response because the
-   * administrator's queue is keyed on it.
-   */
   test("books a seat, sends a payment slip, and sees the booking confirmed once an administrator approves it", async ({
     page,
     browser,
@@ -79,23 +64,19 @@ test.describe("the student journey", () => {
     await expect(pass).toContainText("In review");
     await expect(page.getByRole("heading", { name: "Slip received" })).toBeVisible();
 
-    // No reload: the queue was already open, and the live stream tells it about the slip.
+    // No reload: only the live stream can bring the slip into the open queue.
     await expect(admin.getByRole("button", { name: reference })).toBeVisible({ timeout: 5_000 });
     await openProof(admin, reference);
     await admin.getByLabel("Note to the student").fill("Slip checked, amount matches.");
     await admin.getByRole("button", { name: "Approve payment" }).click();
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
-    // No reload and no sign-in: the live stream reaches the open ticket well inside its 15-second poll.
+    // No reload: the live stream must beat the ticket's 15-second poll.
     await expect(pass).toContainText("Confirmed", { timeout: 5_000 });
 
     await admin.context().close();
   });
 
-  /**
-   * The rejection half, which is the one a student actually has to act on: the
-   * reason has to reach them, and the booking has to be payable again.
-   */
   test("shows a student why a payment slip was rejected, and lets them send another", async ({
     page,
     browser,
@@ -111,8 +92,6 @@ test.describe("the student journey", () => {
 
     await goToPaymentReview(admin);
     await openProof(admin, reference);
-    // Refused before anything goes out: the student is being asked to send a
-    // better slip and cannot without being told why.
     await admin.getByRole("button", { name: "Send back to student" }).click();
     await expect(admin.getByRole("alert")).toContainText(
       "Say why you are sending it back, so the student can fix it.",
@@ -124,6 +103,7 @@ test.describe("the student journey", () => {
     await admin.getByRole("button", { name: "Send back to student" }).click();
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
+    // Sessions live only in memory, so this page load shows the rejected ticket afresh.
     await signInAsStudent(page, subject);
     await openTicket(page, reference);
     await expect(boardingPass(page, reference)).toContainText("Sent back");
@@ -135,12 +115,6 @@ test.describe("the student journey", () => {
     await admin.context().close();
   });
 
-  /**
-   * A slip the API will not take. Both refusals are the documented ones —
-   * `payment_proof_type_not_supported` and `payment_proof_too_large` — and the
-   * booking survives both, which is the part worth proving: the upload keeps
-   * the student where they are, and a third, valid slip still works.
-   */
   test("refuses a payment slip that is not an image or is over the ceiling, and keeps the booking payable", async ({
     page,
     browser,
@@ -162,8 +136,6 @@ test.describe("the student journey", () => {
     );
     await expect(boardingPass(page, reference)).toContainText("Awaiting payment");
 
-    // Over payment-proof.max-file-size (5MB): the page refuses it before any
-    // upload, with the API's own wording, and the API refuses it again if not.
     await submitProof(page, {
       name: "huge.png",
       mimeType: "image/png",
@@ -178,15 +150,6 @@ test.describe("the student journey", () => {
     await expect(boardingPass(page, reference)).toContainText("In review");
   });
 
-  /**
-   * Two students for one seat. `useBookingFlow` derives availability from
-   * the latest seat-map poll on every render, so there are two honest outcomes
-   * depending on whether the poll or the click lands first: the seat is pruned
-   * out of the selection, or the hold itself is refused. Both are the same
-   * product promise, and the assertion is the promise rather than the timing —
-   * the second student does not get the seat and does not reach the passenger
-   * form.
-   */
   test("refuses a second student the seat another student is already holding", async ({
     page,
     browser,
@@ -206,6 +169,7 @@ test.describe("the student journey", () => {
     await page.getByRole("button", { name: "Hold seats" }).click();
     await expect(page.getByRole("heading", { name: "Passenger details" })).toBeVisible();
 
+    // A seat-map poll may already have dropped the seat, which disables the button.
     const hold = second.getByRole("button", { name: "Hold seats" });
     if (await hold.isEnabled()) await hold.click();
 
@@ -215,8 +179,6 @@ test.describe("the student journey", () => {
     await expect(
       second.getByRole("heading", { name: "Passenger details" }),
     ).toHaveCount(0);
-    // The seat beside it is still free, so the refusal is about the seat rather
-    // than about the trip.
     await expect(
       second.getByRole("button", { name: "Seat A2, available" }),
     ).toBeEnabled();
@@ -224,11 +186,6 @@ test.describe("the student journey", () => {
     await second.context().close();
   });
 
-  /**
-   * A hold that lapses. `booking.hold-ttl` is forty seconds in the overlay
-   * rather than the five minutes a real student gets, so this waits out a real
-   * expiry instead of asserting about a timer.
-   */
   test("sends a student back to the seat map when their hold runs out", async ({
     page,
     browser,
@@ -245,15 +202,12 @@ test.describe("the student journey", () => {
     await page.getByLabel("Full name").fill("Somchai P.");
     await page.getByLabel("Phone number").fill("0812345678");
 
-    // Scoped by its text: `SeatSelectionSection` keeps a second, empty
-    // `role="status"` region mounted for the seats it loses to the poll.
+    // The e2e overlay sets booking.hold-ttl to 40 seconds.
     await expect(
       page.getByText("Your seat hold expired. Choose your seats again."),
     ).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Passenger details" })).toHaveCount(0);
 
-    // And the seat is free again, because a lapsed hold stops blocking it with
-    // no code running at that moment (ADR-006's lazy expiry).
     await expect(
       page.getByRole("button", { name: "Seat A1, available" }),
     ).toBeEnabled();
