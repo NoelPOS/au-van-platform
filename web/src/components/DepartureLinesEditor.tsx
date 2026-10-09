@@ -21,7 +21,7 @@ export function DepartureLinesEditor({
 }) {
   const routeOptions = routes.map((route) => ({
     value: route.id,
-    label: `${route.origin} → ${route.destination}`,
+    label: `${route.destination} from ${route.origin}`,
   }));
   const vanOptions = vans.map((van) => ({
     value: van.id,
