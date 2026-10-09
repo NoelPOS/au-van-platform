@@ -76,3 +76,4 @@ A student who cannot book a full trip can now queue for it, and a seat that come
 - [ADR-010: Deliver Asynchronous Work from a Transactional Outbox in PostgreSQL, and Give Every Unpaid Booking a Deadline](adr/010-transactional-outbox-and-booking-deadline.md)
 - [ADR-011: Promote a Waitlisted Student by Sweep, into a Time-Bounded Seat Hold](adr/011-waitlist-promotion-by-sweep.md) (proposed)
 - [ADR-016: Enforce Fair Booking Rules at Hold and at Booking, Serialised on the Student](adr/016-fair-booking-rules.md)
+- [ADR-017: Cancel and Reschedule Trips in One Locked Transaction, and Track Refunds on the Booking](adr/017-trip-cancellation-cascade-and-refund-tracking.md)
