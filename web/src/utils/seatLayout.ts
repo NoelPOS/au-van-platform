@@ -46,7 +46,7 @@ export function fromPreset(preset: Preset): Draft {
   };
 }
 
-export function rowLetter(rowNumber: number): string {
+function rowLetter(rowNumber: number): string {
   return String.fromCharCode(64 + rowNumber);
 }
 

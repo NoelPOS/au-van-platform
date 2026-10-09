@@ -78,7 +78,7 @@ export const operations = {
   ],
 };
 
-export const deadLetter = {
+const deadLetter = {
   id: "event-1",
   eventType: "BOOKING_CANCELLED",
   aggregateId: "booking-1",
