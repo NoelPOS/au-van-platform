@@ -109,7 +109,7 @@ export function MonthGrid({
               <span aria-hidden className="mt-auto flex gap-0.5 sm:hidden">
                 {trips.slice(0, 5).map((trip) => (
                   <span
-                    className="size-1.5 rounded-full bg-brand-500/60"
+                    className={`size-1.5 rounded-full ${trip.status === "CANCELLED" ? "border border-brand-500/60" : "bg-brand-500/60"}`}
                     key={trip.id}
                   />
                 ))}
