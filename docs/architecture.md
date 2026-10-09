@@ -77,3 +77,4 @@ A student who cannot book a full trip can now queue for it, and a seat that come
 - [ADR-011: Promote a Waitlisted Student by Sweep, into a Time-Bounded Seat Hold](adr/011-waitlist-promotion-by-sweep.md) (proposed)
 - [ADR-016: Enforce Fair Booking Rules at Hold and at Booking, Serialised on the Student](adr/016-fair-booking-rules.md)
 - [ADR-017: Cancel and Reschedule Trips in One Locked Transaction, and Track Refunds on the Booking](adr/017-trip-cancellation-cascade-and-refund-tracking.md)
+- [ADR-019: Plan Departures in Batches from Day Templates, Previewed and Applied Exactly Once](adr/019-day-templates-and-batch-scheduling.md)
