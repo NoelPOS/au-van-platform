@@ -6,6 +6,8 @@ import com.auvan.api.inventory.dto.DayTemplateResponse;
 import com.auvan.api.inventory.dto.DepartureLine;
 import com.auvan.api.inventory.entity.DayTemplate;
 import com.auvan.api.inventory.entity.DayTemplateDeparture;
+import com.auvan.api.inventory.entity.VanRoute;
+import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.repository.DayTemplateRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import com.auvan.api.inventory.repository.VehicleRepository;
@@ -87,11 +89,14 @@ public class DayTemplateService {
                         "A van can only leave once at " + line.time() + ". Change the time or the van.");
             }
         }
-        return lines.stream().sorted(Comparator.comparing(DepartureLine::time)).map(line -> new DayTemplateDeparture(line.time(),
-                routes.findById(line.routeId()).orElseThrow(
-                        () -> Problems.badRequest("schedule_reference_missing", "Route not found.")),
-                vehicles.findById(line.vehicleId()).orElseThrow(
-                        () -> Problems.badRequest("schedule_reference_missing", "Van not found."))))
-                .toList();
+        return lines.stream().sorted(Comparator.comparing(DepartureLine::time)).map(this::departureOf).toList();
+    }
+
+    private DayTemplateDeparture departureOf(DepartureLine line) {
+        VanRoute route = routes.findById(line.routeId())
+                .orElseThrow(() -> Problems.badRequest("schedule_reference_missing", "Route not found."));
+        Vehicle vehicle = vehicles.findById(line.vehicleId())
+                .orElseThrow(() -> Problems.badRequest("schedule_reference_missing", "Van not found."));
+        return new DayTemplateDeparture(line.time(), route, vehicle);
     }
 }

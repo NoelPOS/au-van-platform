@@ -67,10 +67,8 @@ public class SchedulePlanner {
     }
 
     public Plan plan(SchedulePlanRequest request, OffsetDateTime now) {
-        Map<UUID, VanRoute> routeById = load(request, DepartureLine::routeId, routes::findAllById,
-                VanRoute::getId, "Route not found.");
-        Map<UUID, Vehicle> vehicleById = load(request, DepartureLine::vehicleId, vehicles::findAllById,
-                Vehicle::getId, "Van not found.");
+        Map<UUID, VanRoute> routeById = routesOf(request);
+        Map<UUID, Vehicle> vehicleById = vehiclesOf(request);
         List<LocalDate> dates = request.dates().stream().distinct().sorted().toList();
         List<DepartureLine> lines = request.departures().stream()
                 .sorted(Comparator.comparing(DepartureLine::time)
@@ -134,14 +132,25 @@ public class SchedulePlanner {
         return CLOCK.format(departureAt) + " " + route.getOrigin() + " → " + route.getDestination();
     }
 
-    private static <T> Map<UUID, T> load(SchedulePlanRequest request, Function<DepartureLine, UUID> idOf,
-                                         Function<List<UUID>, List<T>> finder, Function<T, UUID> keyOf,
-                                         String missing) {
-        List<UUID> ids = request.departures().stream().map(idOf).distinct().toList();
-        Map<UUID, T> found = finder.apply(ids).stream().collect(Collectors.toMap(keyOf, Function.identity()));
+    private Map<UUID, VanRoute> routesOf(SchedulePlanRequest request) {
+        List<UUID> ids = request.departures().stream().map(DepartureLine::routeId).distinct().toList();
+        Map<UUID, VanRoute> found = routes.findAllById(ids).stream()
+                .collect(Collectors.toMap(VanRoute::getId, Function.identity()));
+        requireAll(ids, found, "Route not found.");
+        return found;
+    }
+
+    private Map<UUID, Vehicle> vehiclesOf(SchedulePlanRequest request) {
+        List<UUID> ids = request.departures().stream().map(DepartureLine::vehicleId).distinct().toList();
+        Map<UUID, Vehicle> found = vehicles.findAllById(ids).stream()
+                .collect(Collectors.toMap(Vehicle::getId, Function.identity()));
+        requireAll(ids, found, "Van not found.");
+        return found;
+    }
+
+    private static void requireAll(List<UUID> ids, Map<UUID, ?> found, String missing) {
         if (found.size() != ids.size()) {
             throw Problems.badRequest("schedule_reference_missing", missing);
         }
-        return found;
     }
 }
