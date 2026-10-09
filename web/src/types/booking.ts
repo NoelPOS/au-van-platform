@@ -47,6 +47,16 @@ export type AvailableTrip = {
   durationMinutes: number;
   totalSeats: number;
   availableSeats: number;
+  bookingClosesAt: string;
+};
+
+export type BookingEligibility = {
+  canBook: boolean;
+  reason: "unpaid_booking_exists" | "booking_cooldown" | null;
+  message: string | null;
+  retryAt: string | null;
+  unpaidBookingId: string | null;
+  unpaidBookingReference: string | null;
 };
 
 export type TripSeat = {

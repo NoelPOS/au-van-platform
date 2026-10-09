@@ -9,6 +9,7 @@ import { StudentTicketsPage } from "../pages/StudentTicketsPage";
 import { StudentTripsPage } from "../pages/StudentTripsPage";
 import {
   booking,
+  eligible,
   hold,
   json,
   seatMap,
@@ -26,6 +27,7 @@ type Routes = {
   createBooking?: (init: RequestInit) => Response;
   paymentProof?: (init: RequestInit) => Response;
   cancel?: () => Response;
+  eligibility?: () => Response;
   waitlist?: () => Response;
   joinWaitlist?: () => Response;
   leaveWaitlist?: () => Response;
@@ -45,6 +47,8 @@ export function stubApi(routes: Routes = {}) {
       return routes.release?.() ?? new Response(null, { status: 204 });
     if (url === "/api/v1/seat-holds")
       return routes.hold?.() ?? json(hold(), 201);
+    if (url === "/api/v1/me/booking-eligibility")
+      return routes.eligibility?.() ?? json(eligible);
     if (url.endsWith("/cancel"))
       return routes.cancel?.() ?? json({ ...booking, status: "CANCELLED" });
     if (url.endsWith("/payment-proof"))

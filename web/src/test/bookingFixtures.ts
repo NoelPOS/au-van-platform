@@ -17,6 +17,16 @@ export const trip = {
   durationMinutes: 45,
   totalSeats: 4,
   availableSeats: 3,
+  bookingClosesAt: "2030-09-30T23:30:00Z",
+};
+
+export const eligible = {
+  canBook: true,
+  reason: null,
+  message: null,
+  retryAt: null,
+  unpaidBookingId: null,
+  unpaidBookingReference: null,
 };
 
 export const otherTrip = {

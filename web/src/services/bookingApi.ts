@@ -4,6 +4,7 @@ import { authenticatedFetch } from "./authService";
 import type {
   AvailableTrip,
   Booking,
+  BookingEligibility,
   SeatHold,
   TripSeatMap,
   WaitlistEntry,
@@ -12,12 +13,19 @@ import type {
 export class ApiError extends Error {
   status: number;
   code: string | null;
+  bookingId: string | null;
 
-  constructor(message: string, status: number, code: string | null) {
+  constructor(
+    message: string,
+    status: number,
+    code: string | null,
+    bookingId: string | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.bookingId = bookingId;
   }
 }
 
@@ -29,11 +37,13 @@ async function failure(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => null)) as {
     detail?: string;
     code?: string;
+    bookingId?: string;
   } | null;
   return new ApiError(
     body?.detail ?? `Request failed (${response.status}).`,
     response.status,
     body?.code ?? null,
+    body?.bookingId ?? null,
   );
 }
 
@@ -55,6 +65,8 @@ async function request<T>(
 }
 
 export const bookingApi = {
+  getEligibility: (session: AuthSession) =>
+    request<BookingEligibility>(session, "/me/booking-eligibility"),
   listTrips: (session: AuthSession) =>
     request<AvailableTrip[]>(session, "/trips"),
   getSeatMap: (session: AuthSession, tripId: string) =>

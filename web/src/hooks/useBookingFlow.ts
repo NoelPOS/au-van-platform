@@ -28,7 +28,7 @@ export function useBookingFlow(
     booked,
   }: {
     setNotice: (notice: Notice | null) => void;
-    leave: (message: string, to?: "/" | "/tickets") => void;
+    leave: (message: string, to?: string) => void;
     booked: (booking: Booking) => void;
   },
 ) {
@@ -121,7 +121,25 @@ export function useBookingFlow(
     }
   }
 
+  // The fair-booking refusals: the student cannot book this trip right now,
+  // so send them where they can act on the reason.
+  function refusedByRules(error: unknown): boolean {
+    if (!(error instanceof ApiError)) return false;
+    const destinations: Record<string, string> = {
+      booking_closed: "/",
+      booking_cooldown: "/",
+      already_booked_on_trip: "/tickets",
+      unpaid_booking_exists: error.bookingId ? `/tickets/${error.bookingId}` : "/tickets",
+    };
+    const destination = destinations[error.code ?? ""];
+    if (!destination) return false;
+    keyRef.current = null;
+    leave(error.message, destination);
+    return true;
+  }
+
   function onHoldFailure(error: unknown) {
+    if (refusedByRules(error)) return;
     const code = error instanceof ApiError ? error.code : null;
     const status = error instanceof ApiError ? error.status : 0;
     if (code === "trip_not_available")
@@ -183,6 +201,7 @@ export function useBookingFlow(
   }
 
   function onBookingFailure(error: unknown) {
+    if (refusedByRules(error)) return;
     const code = error instanceof ApiError ? error.code : null;
     const status = error instanceof ApiError ? error.status : 0;
     if (code === "hold_expired")
