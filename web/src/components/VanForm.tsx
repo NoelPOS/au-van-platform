@@ -6,7 +6,8 @@ import {
 import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
 import type { SeatLayout, Vehicle, VehicleStatus } from "../types/inventory";
-import { ErrorMessage, FormActions } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
+import { FormActions } from "./FormActions";
 import { SeatLayoutPicker } from "./SeatLayoutPicker";
 import { EmptyState } from "./ui/EmptyState";
 import { Input } from "./ui/Input";

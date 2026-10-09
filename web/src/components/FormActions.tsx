@@ -1,24 +1,6 @@
 import { TriangleAlert } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Button } from "./ui/Button";
-import { Panel } from "./ui/Panel";
-
-export function FormCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <Panel className="p-6">
-      <h2 className="mb-5 font-display text-2xl font-light text-brand-900">
-        {title}
-      </h2>
-      {children}
-    </Panel>
-  );
-}
 
 export function FormActions({
   busy,
@@ -76,17 +58,5 @@ export function FormActions({
         {busy ? "Saving…" : submitLabel}
       </Button>
     </div>
-  );
-}
-
-export function ErrorMessage({ error }: { error: unknown }) {
-  if (!(error instanceof Error)) return null;
-  return (
-    <p
-      className="col-span-full rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger"
-      role="alert"
-    >
-      {error.message}
-    </p>
   );
 }

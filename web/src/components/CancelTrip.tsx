@@ -4,7 +4,7 @@ import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
 import type { Trip, VanRoute, Vehicle } from "../types/inventory";
 import { bangkokDay, bangkokTime } from "../utils/dates";
-import { ErrorMessage } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
 import { TripImpact } from "./TripImpact";
 import { Button } from "./ui/Button";
 import { RouteLine } from "./ui/RouteLine";

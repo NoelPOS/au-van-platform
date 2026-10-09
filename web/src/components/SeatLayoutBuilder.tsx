@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { ErrorMessage, FormActions } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
+import { FormActions } from "./FormActions";
 import { SeatPlanEditor } from "./SeatPlanEditor";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";

@@ -5,7 +5,7 @@ import type { AuthSession } from "../types/auth";
 import type { DayCleared } from "../types/schedule";
 import { shortDay } from "../utils/calendar";
 import { plural } from "../utils/schedule";
-import { ErrorMessage } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
 import { Button } from "./ui/Button";
 
 function outcome({ removed, kept }: DayCleared) {
