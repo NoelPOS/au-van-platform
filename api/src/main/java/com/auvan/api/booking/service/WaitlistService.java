@@ -62,8 +62,7 @@ public class WaitlistService {
     private WaitlistEntry insert(Trip trip, UUID userId, int seatsWanted, OffsetDateTime now) {
         try {
             WaitlistEntry inserted = entries.save(new WaitlistEntry(trip, userId, seatsWanted, now));
-            // Flush inside the try: @UuidGenerator defers the insert past this catch. Never
-            // re-read after a failed flush: the pending insert is re-issued and fails again.
+            // Flush inside the try, and never re-read after a failed flush: the insert would re-run.
             entries.flush();
             return inserted;
         } catch (DataIntegrityViolationException exception) {

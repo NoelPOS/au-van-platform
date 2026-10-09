@@ -106,8 +106,7 @@ public class PaymentProofReviewService {
     private record UnderReview(Booking booking, PaymentProof proof) { }
 
     private UnderReview lockedForDecision(UUID proofId) {
-        // Project the booking id, never load the proof, before the lock: a proof loaded here is
-        // handed back stale by the read behind the lock.
+        // Project the id only: a proof loaded before the lock is handed back stale after it.
         UUID bookingId = proofs.findBookingIdById(proofId).orElseThrow(PaymentProofReviewService::proofNotFound);
         Booking booking = bookings.lockById(bookingId).orElseThrow(PaymentProofReviewService::proofNotFound);
         PaymentProof proof = proofs.findById(proofId).orElseThrow(PaymentProofReviewService::proofNotFound);

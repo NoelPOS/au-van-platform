@@ -57,8 +57,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query("select booking from Booking booking where booking.id = :id")
     Optional<Booking> lockById(@Param("id") UUID id);
 
-    // Ids, not entities: a booking loaded here is handed back stale by the later lockById,
-    // so the lock would decide nothing.
+    // Ids, not entities: a booking loaded here is handed back stale by the later lockById.
     @Query("""
             select booking.id from Booking booking
             where booking.status in (com.auvan.api.booking.entity.BookingStatus.PENDING_PAYMENT,

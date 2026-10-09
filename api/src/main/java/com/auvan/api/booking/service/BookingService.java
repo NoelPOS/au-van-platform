@@ -93,8 +93,7 @@ public class BookingService {
         String detail = "Cancelled and released seats " + labelsOf(booking) + "."
                 + BookingNotifications.refundNote(booking);
         booking.recordEvent(BookingEventType.CANCELLED, detail, userId, now);
-        // Record, flush and build the response before deleteByBookingId: it clears the context,
-        // silently discarding unflushed changes and detaching the booking.
+        // Flush and build the response first: deleteByBookingId clears the context.
         outbox.record(OutboxEventType.BOOKING_CANCELLED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, detail), now);
         bookings.flush();
