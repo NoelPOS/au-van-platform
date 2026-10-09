@@ -4,12 +4,13 @@ import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.IdempotencyKeyRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.booking.repository.WaitlistEntryRepository;
+import com.auvan.api.booking.dto.UpdateTripRequest;
 import com.auvan.api.booking.service.BookingExpiryWriter;
+import com.auvan.api.booking.service.TripChangeService;
 import com.auvan.api.booking.service.WaitlistPromotionWriter;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
-import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.repository.SeatLayoutRepository;
@@ -44,6 +45,7 @@ class SeatSignalIntegrationTests extends LiveUpdatesTestSupport {
     @Autowired private WaitlistEntryRepository waitlist;
     @Autowired private BookingExpiryWriter expiry;
     @Autowired private WaitlistPromotionWriter promotions;
+    @Autowired private TripChangeService tripChanges;
 
     private SignedIn holder;
     private MockHttpServletResponse watcher;
@@ -87,6 +89,28 @@ class SeatSignalIntegrationTests extends LiveUpdatesTestSupport {
         int before = tripSignalsSeen();
 
         perform(holder, "/api/v1/bookings/" + bookingId + "/cancel", "").andExpect(status().isOk());
+
+        assertThat(tripSignalsSeen()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void cancellingATripTellsEveryoneWatching() throws Exception {
+        trip = createTrip(2);
+        book(holder, hold(holder));
+        int before = tripSignalsSeen();
+
+        tripChanges.cancel(admin("Useat-admin").id(), trip.getId(), "The van broke down.");
+
+        assertThat(tripSignalsSeen()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void reschedulingATripTellsEveryoneWatching() throws Exception {
+        trip = createTrip(2);
+        int before = tripSignalsSeen();
+
+        tripChanges.update(admin("Useat-admin").id(), trip.getId(),
+                new UpdateTripRequest(trip.getDepartureAt().plusHours(1), null));
 
         assertThat(tripSignalsSeen()).isEqualTo(before + 1);
     }
@@ -157,7 +181,6 @@ class SeatSignalIntegrationTests extends LiveUpdatesTestSupport {
         Vehicle vehicle = vehicles.save(new Vehicle("VAN-LIVE", "Toyota Commuter", layout));
         OffsetDateTime departureAt = OffsetDateTime.now().plusDays(1);
         Trip created = new Trip(route, vehicle, departureAt);
-        created.update(departureAt, TripStatus.ACTIVE);
         return trips.save(created);
     }
 }

@@ -1,6 +1,8 @@
 package com.auvan.api.booking.service;
 
 import com.auvan.api.booking.config.BookingProperties;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import com.auvan.api.booking.dto.UpdateTripRequest;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEventType;
@@ -35,10 +37,12 @@ public class TripChangeService {
     private final OutboxRecorder outbox;
     private final DepartureReminderService reminders;
     private final BookingProperties properties;
+    private final LiveSignalPublisher live;
 
     public TripChangeService(TripRepository trips, BookingRepository bookings, SeatClaimRepository claims,
                              WaitlistEntryRepository entries, OutboxRecorder outbox,
-                             DepartureReminderService reminders, BookingProperties properties) {
+                             DepartureReminderService reminders, BookingProperties properties,
+                             LiveSignalPublisher live) {
         this.trips = trips;
         this.bookings = bookings;
         this.claims = claims;
@@ -46,6 +50,7 @@ public class TripChangeService {
         this.outbox = outbox;
         this.reminders = reminders;
         this.properties = properties;
+        this.live = live;
     }
 
     @Transactional
@@ -73,6 +78,7 @@ public class TripChangeService {
         String detail = "Departure moved from " + BookingNotifications.moment(previous) + " to "
                 + BookingNotifications.moment(departureAt) + ".";
         bookings.findActiveIdsByTripId(tripId).forEach(bookingId -> retimeBooking(bookingId, adminId, detail, now));
+        live.publish(LiveSignal.trip(tripId));
         return TripResponse.from(trip);
     }
 
@@ -90,6 +96,7 @@ public class TripChangeService {
         // Flush before deleteBookedOnTrip: it clears the context and would silently discard the cascade.
         bookings.flush();
         claims.deleteBookedOnTrip(tripId);
+        live.publish(LiveSignal.trip(tripId));
         return response;
     }
 
