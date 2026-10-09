@@ -1,4 +1,4 @@
-package com.auvan.api.outbox.service;
+package com.auvan.api.outbox.exception;
 
 public class PermanentFailureException extends RuntimeException {
     public PermanentFailureException(String message) {

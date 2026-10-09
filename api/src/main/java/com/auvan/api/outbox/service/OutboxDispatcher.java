@@ -3,6 +3,7 @@ package com.auvan.api.outbox.service;
 import com.auvan.api.notification.service.BookingNotificationHandler;
 import com.auvan.api.outbox.config.OutboxProperties;
 import com.auvan.api.outbox.entity.OutboxEvent;
+import com.auvan.api.outbox.exception.PermanentFailureException;
 import com.auvan.api.outbox.repository.OutboxEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
