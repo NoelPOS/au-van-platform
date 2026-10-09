@@ -122,7 +122,7 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
     void setUp() throws Exception {
         clearData();
         storage.reset();
-        trip = createTrip(OffsetDateTime.now().plusDays(1));
+        trip = createTrip("VAN-01", OffsetDateTime.now().plusDays(1));
         seats = trip.getSeats();
         studentToken = tokenFor("student-token", "Ustudent", false);
         studentId = users.findByLineSubject("Ustudent").orElseThrow().getId();
@@ -147,7 +147,8 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
     @Test
     void theQueueListsSubmittedProofsOldestFirstWithTheBookingContextToDecideOn() throws Exception {
         submit(bookingId, jpeg("the-slip"));
-        String secondBooking = bookingIdFrom(confirm(holdOn(seats.get(1)), "key-2"));
+        Trip laterTrip = createTrip("VAN-02", OffsetDateTime.now().plusDays(2));
+        String secondBooking = bookingIdFrom(confirm(holdOn(laterTrip.getSeats().getFirst()), "key-2"));
         submit(secondBooking, jpeg("another-slip"));
 
         queue().andExpect(status().isOk())
@@ -476,14 +477,14 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
                 .andExpect(status().isOk());
     }
 
-    private Trip createTrip(OffsetDateTime departureAt) {
+    private Trip createTrip(String vehicleCode, OffsetDateTime departureAt) {
         VanRoute route = routes.save(new VanRoute("AU", "Asok", new BigDecimal("35.00"), 45));
         List<SeatLayoutSeat> layoutSeats = new ArrayList<>();
         for (int column = 1; column <= 4; column++) {
             layoutSeats.add(new SeatLayoutSeat("A" + column, 1, column));
         }
-        SeatLayout layout = seatLayouts.save(new SeatLayout("Layout VAN-01", layoutSeats));
-        Vehicle vehicle = vehicles.save(new Vehicle("VAN-01", "Toyota Commuter", layout));
+        SeatLayout layout = seatLayouts.save(new SeatLayout("Layout " + vehicleCode, layoutSeats));
+        Vehicle vehicle = vehicles.save(new Vehicle(vehicleCode, "Toyota Commuter", layout));
         Trip created = new Trip(route, vehicle, departureAt);
         created.update(departureAt, TripStatus.ACTIVE);
         return trips.save(created);
@@ -493,7 +494,7 @@ class PaymentProofReviewIntegrationTests extends AuthenticationTestSupport {
         String response = mockMvc.perform(post("/api/v1/seat-holds")
                         .header("Authorization", bearer(studentToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"tripId\":\"" + trip.getId() + "\",\"seatIds\":[\"" + seat.getId() + "\"]}"))
+                        .content("{\"tripId\":\"" + seat.getTrip().getId() + "\",\"seatIds\":[\"" + seat.getId() + "\"]}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(response, "$.holdId");

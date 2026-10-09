@@ -25,14 +25,17 @@ public class WaitlistService {
     private final TripRepository trips;
     private final SeatClaimRepository claims;
     private final SeatAvailabilityService availability;
+    private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
 
     public WaitlistService(WaitlistEntryRepository entries, TripRepository trips, SeatClaimRepository claims,
-                           SeatAvailabilityService availability, BookingProperties properties) {
+                           SeatAvailabilityService availability, BookingEligibilityService eligibility,
+                           BookingProperties properties) {
         this.entries = entries;
         this.trips = trips;
         this.claims = claims;
         this.availability = availability;
+        this.eligibility = eligibility;
         this.properties = properties;
     }
 
@@ -41,7 +44,7 @@ public class WaitlistService {
         OffsetDateTime now = OffsetDateTime.now();
         Trip trip = trips.findById(request.tripId())
                 .orElseThrow(() -> Problems.notFound("trip_not_found", "Trip not found."));
-        assertJoinable(trip, request.seatsWanted(), now);
+        assertJoinable(userId, trip, request.seatsWanted(), now);
 
         WaitlistEntry entry = entries.findByTripIdAndUserId(trip.getId(), userId).orElse(null);
         if (entry == null) {
@@ -91,7 +94,7 @@ public class WaitlistService {
         return entries.findQueuedByUserId(userId).stream().map(this::respond).toList();
     }
 
-    private void assertJoinable(Trip trip, int seatsWanted, OffsetDateTime now) {
+    private void assertJoinable(UUID userId, Trip trip, int seatsWanted, OffsetDateTime now) {
         if (trip.getStatus() != TripStatus.ACTIVE) {
             throw Problems.conflict("trip_not_available", "This trip is no longer available.");
         }
@@ -102,6 +105,7 @@ public class WaitlistService {
             throw Problems.conflict("booking_closed", "Booking for this trip has closed. Seats can be booked until "
                     + properties.closesBeforeDeparture().toMinutes() + " minutes before departure.");
         }
+        eligibility.assertNotBookedOn(userId, trip);
         if (seatsWanted > properties.maxSeatsPerHold()) {
             throw Problems.badRequest("too_many_seats",
                     "You can hold at most " + properties.maxSeatsPerHold() + " seats at a time.");

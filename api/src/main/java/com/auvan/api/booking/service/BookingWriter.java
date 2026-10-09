@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.auth.repository.AppUserRepository;
 import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.dto.CreateBookingRequest;
@@ -31,14 +32,19 @@ public class BookingWriter {
     private final SeatClaimRepository claims;
     private final IdempotencyService idempotency;
     private final OutboxRecorder outbox;
+    private final AppUserRepository users;
+    private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
 
     public BookingWriter(BookingRepository bookings, SeatClaimRepository claims, IdempotencyService idempotency,
-                         OutboxRecorder outbox, BookingProperties properties) {
+                         OutboxRecorder outbox, AppUserRepository users, BookingEligibilityService eligibility,
+                         BookingProperties properties) {
         this.bookings = bookings;
         this.claims = claims;
         this.idempotency = idempotency;
         this.outbox = outbox;
+        this.users = users;
+        this.eligibility = eligibility;
         this.properties = properties;
     }
 
@@ -51,6 +57,9 @@ public class BookingWriter {
 
         Trip trip = held.getFirst().getTripSeat().getTrip();
         assertBookable(trip, now);
+        // Serialises one student's bookings, so two holds cannot both pass the one-unpaid-booking rule.
+        users.lockById(userId);
+        eligibility.assertMayBookOn(userId, trip, now);
 
         Booking booking = new Booking(trip, userId, BookingReference.generate(now), request.passengerName(),
                 request.passengerPhone(), trip.getFare().multiply(BigDecimal.valueOf(held.size())),

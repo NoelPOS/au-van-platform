@@ -28,11 +28,14 @@ public class SeatHoldService {
 
     private final SeatClaimRepository claims;
     private final TripRepository trips;
+    private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
 
-    public SeatHoldService(SeatClaimRepository claims, TripRepository trips, BookingProperties properties) {
+    public SeatHoldService(SeatClaimRepository claims, TripRepository trips, BookingEligibilityService eligibility,
+                           BookingProperties properties) {
         this.claims = claims;
         this.trips = trips;
+        this.eligibility = eligibility;
         this.properties = properties;
     }
 
@@ -42,6 +45,7 @@ public class SeatHoldService {
         Trip trip = trips.findById(request.tripId())
                 .orElseThrow(() -> Problems.notFound("trip_not_found", "Trip not found."));
         assertBookable(trip, now);
+        eligibility.assertMayBookOn(userId, trip, now);
         List<TripSeat> seats = seatsOf(trip, request.seatIds());
 
         List<SeatClaim> onRequestedSeats = claims.findBySeatIdIn(request.seatIds());
