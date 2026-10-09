@@ -6,7 +6,10 @@ import type {
   SchedulePlan,
 } from "../types/schedule";
 import { longDay } from "../utils/calendar";
+import { bangkokDateTime } from "../utils/dates";
 import { linesOf, plural } from "../utils/schedule";
+import { CancelledTrip } from "./CancelledTrip";
+import { CancelTrip } from "./CancelTrip";
 import { DayDepartures } from "./DayDepartures";
 import { DayTemplateForm } from "./DayTemplateForm";
 import { DayTemplateList } from "./DayTemplateList";
@@ -17,6 +20,7 @@ import { Drawer } from "./ui/Drawer";
 export type Panel =
   | { kind: "day"; day: string }
   | { kind: "trip"; trip: Trip | null; day?: string }
+  | { kind: "cancel"; trip: Trip }
   | { kind: "templates" }
   | { kind: "template"; template: DayTemplate | null; lines: DepartureLine[] }
   | { kind: "preview"; title: string; plan: SchedulePlan };
@@ -81,9 +85,16 @@ export function TripPanels({
           vans={vans}
         />
       )}
-      {panel?.kind === "trip" && (
+      {panel?.kind === "trip" && panel.trip?.status === "CANCELLED" && (
+        <CancelledTrip
+          route={routes.find((route) => route.id === panel.trip?.routeId)}
+          trip={panel.trip}
+        />
+      )}
+      {panel?.kind === "trip" && panel.trip?.status !== "CANCELLED" && (
         <TripForm
           layouts={layouts}
+          onCancelTrip={(trip) => onPanel({ kind: "cancel", trip })}
           onDone={close}
           routes={routes}
           session={session}
@@ -91,6 +102,16 @@ export function TripPanels({
           trip={panel.trip}
           trips={trips}
           vans={vans}
+        />
+      )}
+      {panel?.kind === "cancel" && (
+        <CancelTrip
+          onBack={() => onPanel({ kind: "trip", trip: panel.trip })}
+          onDone={close}
+          route={routes.find((route) => route.id === panel.trip.routeId)}
+          session={session}
+          trip={panel.trip}
+          van={vans.find((van) => van.id === panel.trip.vehicleId)}
         />
       )}
       {panel?.kind === "templates" && (
@@ -144,7 +165,13 @@ function headingOf(panel: Panel | null, applyTo: number) {
         description: "Departures in Bangkok time",
       };
     case "trip":
+      if (panel.trip?.status === "CANCELLED") return { title: "Cancelled trip" };
       return { title: panel.trip ? "Edit trip" : "Schedule a trip" };
+    case "cancel":
+      return {
+        title: "Cancel this trip?",
+        description: `${bangkokDateTime(panel.trip.departureAt)} · Bangkok time`,
+      };
     case "templates":
       return {
         title: "Day templates",

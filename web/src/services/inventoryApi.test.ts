@@ -45,10 +45,8 @@ describe("inventory API client", () => {
       vehicleId: "vehicle-1",
       departureAt: "2026-10-01T01:00:00.000Z",
     });
-    await inventoryApi.updateTrip(session, "trip-1", {
-      departureAt: "2026-10-01T01:00:00.000Z",
-      status: "CANCELLED",
-    });
+    await inventoryApi.updateTrip(session, "trip-1", "2026-10-01T01:00:00.000Z");
+    await inventoryApi.cancelTrip(session, "trip-1", "Driver unwell");
 
     expect(
       fetcher.mock.calls.map(([url, options]) => [
@@ -62,6 +60,7 @@ describe("inventory API client", () => {
       ["/api/v1/admin/vehicles/vehicle-1", "PUT"],
       ["/api/v1/admin/trips", "POST"],
       ["/api/v1/admin/trips/trip-1", "PUT"],
+      ["/api/v1/admin/trips/trip-1/cancel", "POST"],
     ]);
     const firstRequest = fetcher.mock.calls[0][1] as RequestInit;
     expect(new Headers(firstRequest.headers).get("Authorization")).toBe(

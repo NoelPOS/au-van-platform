@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthSession } from "../types/auth";
 import { inventoryApi } from "../services/inventoryApi";
 import type { Seat, Trip, VanRoute, Vehicle } from "../types/inventory";
+import { refundKeys } from "./useRefundQueries";
 
 const inventoryKeys = {
   routes: ["inventory", "routes"] as const,
@@ -101,10 +102,26 @@ export function useCreateTrip(session: AuthSession) {
 }
 
 export function useUpdateTrip(session: AuthSession) {
-  return useInventoryMutation<{
-    id: string;
-    input: Pick<Trip, "departureAt" | "status">;
-  }>(inventoryKeys.trips, ({ id, input }) =>
-    inventoryApi.updateTrip(session, id, input),
+  return useTripChange((input: { id: string; departureAt: string }) =>
+    inventoryApi.updateTrip(session, input.id, input.departureAt),
   );
+}
+
+export function useCancelTrip(session: AuthSession) {
+  return useTripChange((input: { id: string; reason: string }) =>
+    inventoryApi.cancelTrip(session, input.id, input.reason),
+  );
+}
+
+function useTripChange<TVariables>(
+  mutationFn: (variables: TVariables) => Promise<Trip>,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSettled: () =>
+      [inventoryKeys.trips, ["operations"], refundKeys.due].forEach(
+        (queryKey) => void queryClient.invalidateQueries({ queryKey }),
+      ),
+  });
 }
