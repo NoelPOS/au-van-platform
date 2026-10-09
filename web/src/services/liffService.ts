@@ -15,8 +15,7 @@ export async function resumeLiffSession(): Promise<AuthSession | null> {
     throw new Error("VITE_LIFF_ID is not configured.");
   }
 
-  // No withLoginOnExternalBrowser: this runs on load and must not send a
-  // signed-out visitor to LINE before they ask.
+  // No withLoginOnExternalBrowser: on load, a signed-out visitor must not be sent to LINE.
   await liff.init({ liffId });
   return liff.isLoggedIn() ? exchangeCurrentToken() : null;
 }
@@ -45,8 +44,7 @@ async function exchangeCurrentToken(): Promise<AuthSession> {
   }
 }
 
-// LIFF keeps an expired ID token in localStorage and still reports a login, so
-// discard it and log in afresh, but only once per tab so a rejection cannot loop.
+// LIFF still reports a login with an expired token; log in afresh once per tab so it cannot loop.
 function startOver(): Promise<never> {
   liff.logout();
   if (sessionStorage.getItem(reloginMarker)) {
@@ -66,7 +64,6 @@ function redirectToLineLogin(): Promise<never> {
   return new Promise(() => {});
 }
 
-// Null when LINE cannot say, such as outside a signed-in LIFF session.
 export async function isOfficialAccountFriend(): Promise<boolean | null> {
   try {
     if (!liff.isLoggedIn()) return null;

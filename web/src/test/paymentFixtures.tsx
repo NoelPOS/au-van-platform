@@ -56,7 +56,6 @@ export function stubApi(routes: Routes = {}) {
   return fetcher;
 }
 
-// jsdom implements neither, and the slip is rendered from an object URL.
 export function stubObjectUrls() {
   vi.stubGlobal("URL", {
     ...URL,

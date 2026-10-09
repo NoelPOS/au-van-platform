@@ -105,8 +105,7 @@ export function SignInPage({
             <FailurePanel error={signInError} title="Sign-in did not finish" />
           )}
         </div>
-        {/* A build-time constant: any build without VITE_E2E_AUTH=true drops this
-            control, and Container checks greps the bundle to prove it. */}
+        {/* Dropped from any build without VITE_E2E_AUTH=true; CI greps the bundle for it. */}
         {e2eAuthEnabled && <E2eSignIn onSignedIn={onSignedIn} />}
       </div>
       <p

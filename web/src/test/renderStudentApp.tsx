@@ -89,8 +89,7 @@ export function renderPage(path = "/") {
   );
 }
 
-// RTL's waitFor and findBy* stall under Vitest's fake timers, so advance the
-// clock here; the trailing millisecond flushes React Query's batched notify.
+// findBy* stalls under fake timers; the extra millisecond flushes React Query's batched notify.
 export async function tick(milliseconds = 0) {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(milliseconds);

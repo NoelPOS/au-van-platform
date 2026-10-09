@@ -90,7 +90,7 @@ export function useBookingFlow(
     if (failure.action === "leave") return leaveFlow(failure.message, failure.to);
     if (failure.action === "chooseSeats")
       return backToSeats({ tone: "error", message: failure.message });
-    // Keep the hold and, unless refused, the key: a same-key retry cannot book twice.
+    // The hold and key survive unless the API refused the key.
     if (failure.newKey) keyRef.current = null;
     setNotice({ tone: "error", message: failure.message });
   }

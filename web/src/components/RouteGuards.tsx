@@ -24,7 +24,6 @@ export function RequireRole({
 
 export function RedirectHome() {
   const { search } = useLocation();
-  // LIFF returns with code, state and liff.state in the query, and
-  // liff.init() must still see them.
+  // Keep the query: liff.init() still needs the code and state LIFF returned with.
   return <Navigate replace to={{ pathname: "/", search }} />;
 }
