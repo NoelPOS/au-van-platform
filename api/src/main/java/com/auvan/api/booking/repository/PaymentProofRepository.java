@@ -30,5 +30,5 @@ public interface PaymentProofRepository extends JpaRepository<PaymentProof, UUID
             + "where waiting.status = com.auvan.api.booking.entity.PaymentProofStatus.SUBMITTED "
             + "and other.contentSha256 = waiting.contentSha256 and booking.id <> waiting.booking.id "
             + "order by other.createdAt asc")
-    List<SlipReuse> findSlipsReusedByWaitingProofs();
+    List<SlipReuse> findReusedSlips();
 }
