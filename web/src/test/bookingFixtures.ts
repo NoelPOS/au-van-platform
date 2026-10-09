@@ -75,6 +75,10 @@ export const booking = {
     },
   ],
   paymentDeadlineAt: "2026-09-21T12:01:12Z",
+  cancellableUntil: "2030-09-30T23:00:00Z",
+  refundStatus: "NONE",
+  refundedAt: null,
+  refundNote: null,
   createdAt: "2026-09-21T10:01:12Z",
 };
 
@@ -84,6 +88,7 @@ export const expiredBooking = {
   reference: "AUV-260921-EXPIRED1",
   status: "CANCELLED",
   paymentDeadlineAt: null,
+  cancellableUntil: null,
   events: [
     ...booking.events,
     {

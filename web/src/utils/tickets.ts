@@ -30,7 +30,18 @@ export function wasExpired(booking: Booking): boolean {
   );
 }
 
+export function cancelledByStaff(booking: Booking): boolean {
+  return booking.events.some((event) => event.type === "TRIP_CANCELLED");
+}
+
+export function staffCancellationReason(booking: Booking): string | null {
+  const detail = lastDetail(booking, "TRIP_CANCELLED");
+  return detail?.split("Reason: ")[1] ?? detail;
+}
+
 export function stampOf(booking: Booking): { label: string; tone: StampTone } {
+  if (booking.refundStatus === "DUE") return { label: "Refund due", tone: "warning" };
+  if (booking.refundStatus === "REFUNDED") return { label: "Refunded", tone: "success" };
   switch (booking.status) {
     case "CONFIRMED":
       return { label: "Confirmed", tone: "success" };
