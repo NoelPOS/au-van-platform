@@ -3,10 +3,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  backToTrips,
+  boardingPass,
   bookSeat,
-  bookingCard,
   chooseTrip,
+  findDeparture,
+  openTicket,
   createTrip,
   goToPaymentReview,
   openProof,
@@ -32,14 +33,14 @@ async function administrator(browser: Browser): Promise<Page> {
   return page;
 }
 
+/** Sends a slip from the open ticket page. */
 async function submitProof(
   page: Page,
-  reference: string,
   file: Parameters<ReturnType<Page["getByLabel"]>["setInputFiles"]>[0],
 ): Promise<void> {
-  const card = bookingCard(page, reference);
-  await card.getByLabel("Upload your payment slip").setInputFiles(file);
-  await card.getByRole("button", { name: "Send payment proof" }).click();
+  await page.getByLabel("Payment slip image").setInputFiles(file);
+  const send = page.getByRole("button", { name: "Send slip" });
+  if (await send.isVisible()) await send.click();
 }
 
 test.describe("the student journey", () => {
@@ -61,25 +62,21 @@ test.describe("the student journey", () => {
 
     const subject = studentSubject();
     await signInAsStudent(page, subject);
-    await expect(page.getByRole("button", { name: trip.routeLabel })).toContainText(
-      "4 of 4 seats free",
+    await expect(await findDeparture(page, trip)).toHaveAccessibleName(
+      /4 of 4 seats left/,
     );
 
     const reference = await bookSeat(page, trip, "A1");
-    await backToTrips(page);
+    const pass = boardingPass(page, reference);
+    await expect(pass).toContainText("Awaiting payment");
+    await expect(pass).toContainText("A1");
 
-    const card = bookingCard(page, reference);
-    await expect(card).toContainText("Awaiting payment");
-    await expect(card).toContainText("Seat A1");
-
-    await submitProof(page, reference, slip);
+    await submitProof(page, slip);
     await expect(
-      page.getByText("Payment proof received.", { exact: false }),
+      page.getByText("Payment slip received.", { exact: false }),
     ).toBeVisible();
-    await expect(card).toContainText("In review");
-    await expect(card).toContainText(
-      "Your payment proof is with an administrator.",
-    );
+    await expect(pass).toContainText("In review");
+    await expect(page.getByRole("heading", { name: "Slip received" })).toBeVisible();
 
     await goToPaymentReview(admin);
     await openProof(admin, reference);
@@ -87,10 +84,8 @@ test.describe("the student journey", () => {
     await admin.getByRole("button", { name: "Approve payment" }).click();
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
-    // Signing in again rather than reloading: a reload drops the session, and
-    // nothing on the student's page polls the booking list.
-    await signInAsStudent(page, subject);
-    await expect(bookingCard(page, reference)).toContainText("Confirmed");
+    // No reload and no sign-in: a ticket waiting on a decision polls for it.
+    await expect(pass).toContainText("Confirmed", { timeout: 30_000 });
 
     await admin.context().close();
   });
@@ -109,11 +104,8 @@ test.describe("the student journey", () => {
     const subject = studentSubject();
     await signInAsStudent(page, subject);
     const reference = await bookSeat(page, trip, "A1");
-    await backToTrips(page);
-    await submitProof(page, reference, slip);
-    await expect(bookingCard(page, reference)).toContainText(
-      "In review",
-    );
+    await submitProof(page, slip);
+    await expect(boardingPass(page, reference)).toContainText("In review");
 
     await goToPaymentReview(admin);
     await openProof(admin, reference);
@@ -131,14 +123,12 @@ test.describe("the student journey", () => {
     await expect(admin.getByRole("button", { name: reference })).toHaveCount(0);
 
     await signInAsStudent(page, subject);
-    const card = bookingCard(page, reference);
-    await expect(card).toContainText("Sent back");
-    await expect(card).toContainText(
-      "The slip shows 100 THB and the fare is 120 THB.",
-    );
+    await openTicket(page, reference);
+    await expect(boardingPass(page, reference)).toContainText("Sent back");
     await expect(
-      card.getByRole("button", { name: "Send payment proof" }),
+      page.getByText("The slip shows 100 THB and the fare is 120 THB."),
     ).toBeVisible();
+    await expect(page.getByLabel("Payment slip image")).toBeAttached();
 
     await admin.context().close();
   });
@@ -159,34 +149,31 @@ test.describe("the student journey", () => {
 
     await signInAsStudent(page, studentSubject());
     const reference = await bookSeat(page, trip, "A1");
-    await backToTrips(page);
 
-    await submitProof(page, reference, {
+    await submitProof(page, {
       name: "receipt.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("paid, honestly"),
     });
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("alert").filter({ hasText: "JPEG" })).toContainText(
       "A payment proof must be a JPEG, PNG, or WebP image.",
     );
-    await expect(bookingCard(page, reference)).toContainText("Awaiting payment");
+    await expect(boardingPass(page, reference)).toContainText("Awaiting payment");
 
-    // Over payment-proof.max-file-size (5MB) and under the multipart backstop
-    // (8MB), so the application's own validation is what refuses it.
-    await submitProof(page, reference, {
+    // Over payment-proof.max-file-size (5MB): the page refuses it before any
+    // upload, with the API's own wording, and the API refuses it again if not.
+    await submitProof(page, {
       name: "huge.png",
       mimeType: "image/png",
       buffer: Buffer.concat([readFileSync(slip), Buffer.alloc(6 * 1024 * 1024)]),
     });
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("alert").filter({ hasText: "5MB" })).toContainText(
       "A payment proof must be 5MB or smaller.",
     );
-    await expect(bookingCard(page, reference)).toContainText("Awaiting payment");
+    await expect(boardingPass(page, reference)).toContainText("Awaiting payment");
 
-    await submitProof(page, reference, slip);
-    await expect(bookingCard(page, reference)).toContainText(
-      "In review",
-    );
+    await submitProof(page, slip);
+    await expect(boardingPass(page, reference)).toContainText("In review");
   });
 
   /**
@@ -214,10 +201,10 @@ test.describe("the student journey", () => {
     await signInAsStudent(page, studentSubject());
     await chooseTrip(page, trip);
     await page.getByRole("button", { name: "Seat A1, available" }).click();
-    await page.getByRole("button", { name: "Hold these seats" }).click();
+    await page.getByRole("button", { name: "Hold seats" }).click();
     await expect(page.getByRole("heading", { name: "Passenger details" })).toBeVisible();
 
-    const hold = second.getByRole("button", { name: "Hold these seats" });
+    const hold = second.getByRole("button", { name: "Hold seats" });
     if (await hold.isEnabled()) await hold.click();
 
     await expect(
@@ -251,7 +238,7 @@ test.describe("the student journey", () => {
     await signInAsStudent(page, studentSubject());
     await chooseTrip(page, trip);
     await page.getByRole("button", { name: "Seat A1, available" }).click();
-    await page.getByRole("button", { name: "Hold these seats" }).click();
+    await page.getByRole("button", { name: "Hold seats" }).click();
     await expect(page.getByRole("timer")).toContainText("Seats held for 0:");
     await page.getByLabel("Full name").fill("Somchai P.");
     await page.getByLabel("Phone number").fill("0812345678");
