@@ -6,9 +6,9 @@ import {
   waitlistEntry,
   json,
 } from "../test/bookingFixtures";
-import { stubApi, renderPage } from "../test/renderStudentBookingPage";
+import { stubApi, renderPage } from "../test/renderStudentApp";
 
-describe("StudentBookingPage waitlist", () => {
+describe("Student app waitlist", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -24,7 +24,7 @@ describe("StudentBookingPage waitlist", () => {
       await screen.findByRole("button", { name: "Join waitlist" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /3 of 4 seats free/ }),
+      screen.getByRole("button", { name: /3 of 4 seats left/ }),
     ).toBeEnabled();
     expect(screen.getAllByRole("button", { name: "Join waitlist" })).toHaveLength(
       1,

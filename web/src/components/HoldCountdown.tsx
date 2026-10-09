@@ -20,6 +20,7 @@ export function HoldCountdown({
   onExpire: () => void;
 }) {
   const [remaining, setRemaining] = useState(() => remainingMs(expiresAt));
+  const [total] = useState(() => Math.max(remaining, 1));
   const expire = useRef(onExpire);
 
   useEffect(() => {
@@ -39,12 +40,19 @@ export function HoldCountdown({
   }, [expiresAt]);
 
   return (
-    <p
-      aria-live="off"
-      className="rounded-lg bg-brand-soft px-3 py-2 text-sm font-semibold text-brand"
-      role="timer"
-    >
-      Seats held for {format(remaining)}
-    </p>
+    <div className="rounded-2xl border border-accent/40 bg-warning-soft px-4 py-3">
+      <p aria-live="off" className="text-sm text-ink" role="timer">
+        Seats held for{" "}
+        <span className="font-mono font-semibold tabular-nums">
+          {format(remaining)}
+        </span>
+      </p>
+      <div aria-hidden className="mt-2 h-1 overflow-hidden rounded-full bg-accent/20">
+        <div
+          className="h-full rounded-full bg-accent transition-[width] duration-1000 ease-linear"
+          style={{ width: `${(remaining / total) * 100}%` }}
+        />
+      </div>
+    </div>
   );
 }

@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import { StudentBookingPage } from "../pages/StudentBookingPage";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { StudentBookTripPage } from "../pages/StudentBookTripPage";
+import { StudentLayout } from "../pages/StudentLayout";
+import { StudentTicketPage } from "../pages/StudentTicketPage";
+import { StudentTicketsPage } from "../pages/StudentTicketsPage";
+import { StudentTripsPage } from "../pages/StudentTripsPage";
 import {
   booking,
   hold,
@@ -20,6 +25,7 @@ type Routes = {
   bookings?: () => Response;
   createBooking?: (init: RequestInit) => Response;
   paymentProof?: (init: RequestInit) => Response;
+  cancel?: () => Response;
   waitlist?: () => Response;
   joinWaitlist?: () => Response;
   leaveWaitlist?: () => Response;
@@ -39,6 +45,8 @@ export function stubApi(routes: Routes = {}) {
       return routes.release?.() ?? new Response(null, { status: 204 });
     if (url === "/api/v1/seat-holds")
       return routes.hold?.() ?? json(hold(), 201);
+    if (url.endsWith("/cancel"))
+      return routes.cancel?.() ?? json({ ...booking, status: "CANCELLED" });
     if (url.endsWith("/payment-proof"))
       return (
         routes.paymentProof?.(init ?? {}) ??
@@ -56,14 +64,23 @@ export function stubApi(routes: Routes = {}) {
   return fetcher;
 }
 
-export function renderPage() {
+export function renderPage(path = "/") {
   // The application's own defaults, so a seat map served from cache shows up here.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 30_000 } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <StudentBookingPage session={session} />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<StudentLayout session={session} />} path="/">
+            <Route element={<StudentTripsPage />} index />
+            <Route element={<StudentBookTripPage />} path="trips/:tripId" />
+            <Route element={<StudentTicketsPage />} path="tickets" />
+            <Route element={<StudentTicketPage />} path="tickets/:bookingId" />
+          </Route>
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -86,12 +103,12 @@ export async function holdFailsWith(body: unknown, status: number) {
   stubApi({ hold: () => json(body, status) });
   renderPage();
   await selectSeatA1();
-  fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
 }
 
 export async function reachPassengerDetails() {
   await selectSeatA1();
-  fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
   await screen.findByRole("button", { name: "Confirm booking" });
   fireEvent.change(screen.getByLabelText("Full name"), {
     target: { value: "Somchai P." },

@@ -3,6 +3,13 @@ export function configuredLiffId(): string | null {
   return liffId ? liffId : null;
 }
 
+export function officialAccountUrl(): string | null {
+  const basicId = import.meta.env.VITE_LINE_OA_ID?.trim();
+  return basicId
+    ? `https://line.me/R/ti/p/${encodeURIComponent(basicId)}`
+    : null;
+}
+
 // Must stay a module-level constant: only then does the bundler drop the E2E
 // sign-in from other builds. Only "true" enables it; the Dockerfile passes "".
 export const e2eAuthEnabled = import.meta.env.VITE_E2E_AUTH === "true";

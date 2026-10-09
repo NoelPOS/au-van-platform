@@ -6,10 +6,10 @@ import {
   renderPage,
   tick,
   selectSeatA1,
-} from "../test/renderStudentBookingPage";
+} from "../test/renderStudentApp";
 import type { SeatState } from "../types/booking";
 
-describe("StudentBookingPage", () => {
+describe("Student app", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -85,7 +85,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
     await selectSeatA1();
-    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
 
     expect(
       await screen.findByText("One or more seats are no longer available."),
@@ -93,9 +93,9 @@ describe("StudentBookingPage", () => {
     expect(
       await screen.findByRole("button", { name: "Seat A1, held by someone else" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
+    expect(screen.getByText("No seats yet")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Hold these seats" }),
+      screen.getByRole("button", { name: "Hold seats" }),
     ).toBeDisabled();
   });
 
@@ -111,7 +111,7 @@ describe("StudentBookingPage", () => {
       await screen.findByText("The seat map could not be loaded."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Back to trips" }),
+      screen.getByRole("button", { name: "Departures" }),
     ).toBeInTheDocument();
   });
 
@@ -139,7 +139,7 @@ describe("StudentBookingPage", () => {
     ).toContain(
       "Seat A1 was taken by another student and has been removed from your selection.",
     );
-    expect(screen.getByText("Choose at least one seat.")).toBeInTheDocument();
+    expect(screen.getByText("No seats yet")).toBeInTheDocument();
   });
 
   it("pluralises the message when the poll takes more than one selected seat", async () => {
@@ -186,7 +186,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
     await selectSeatA1();
-    fireEvent.click(screen.getByRole("button", { name: "Back to trips" }));
+    fireEvent.click(screen.getByRole("button", { name: "Departures" }));
     fireEvent.click(await screen.findByRole("button", { name: /Mega Bangna/ }));
 
     await vi.waitFor(() => expect(seatsRequested).toBe(2));
@@ -220,6 +220,6 @@ describe("StudentBookingPage", () => {
     expect(
       screen.getAllByRole("status").map((region) => region.textContent),
     ).toContain("You can hold at most 4 seats at a time.");
-    expect(screen.getByText("4 seats selected · 140.00 THB")).toBeInTheDocument();
+    expect(screen.getByText("4 seats · ฿140")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import liff from "@line/liff";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createLiffSession,
+  isOfficialAccountFriend,
   lineSignInExpired,
   resumeLiffSession,
 } from "./liffService";
@@ -14,6 +15,7 @@ vi.mock("@line/liff", () => ({
     getDecodedIDToken: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
+    getFriendship: vi.fn(),
   },
 }));
 
@@ -159,5 +161,29 @@ describe("LIFF sign-in", () => {
     expect(liff.login).toHaveBeenCalledWith({
       redirectUri: `${window.location.origin}/admin/trips`,
     });
+  });
+});
+
+describe("isOfficialAccountFriend", () => {
+  it("reports what LINE says about the friendship", async () => {
+    vi.mocked(liff.isLoggedIn).mockReturnValue(true);
+    vi.mocked(liff.getFriendship).mockResolvedValue({ friendFlag: false });
+
+    expect(await isOfficialAccountFriend()).toBe(false);
+  });
+
+  it("does not guess outside a signed-in LIFF session", async () => {
+    vi.mocked(liff.isLoggedIn).mockReturnValue(false);
+    vi.mocked(liff.getFriendship).mockClear();
+
+    expect(await isOfficialAccountFriend()).toBeNull();
+    expect(liff.getFriendship).not.toHaveBeenCalled();
+  });
+
+  it("does not guess when LINE refuses to answer", async () => {
+    vi.mocked(liff.isLoggedIn).mockReturnValue(true);
+    vi.mocked(liff.getFriendship).mockRejectedValue(new Error("no bot link"));
+
+    expect(await isOfficialAccountFriend()).toBeNull();
   });
 });

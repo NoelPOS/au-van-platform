@@ -21,3 +21,7 @@ export function formatAgo(value: string, now = Date.now()): string {
 export function seatCount(seats: number): string {
   return `${seats} ${seats === 1 ? "seat" : "seats"}`;
 }
+
+export function formatBaht(amount: number): string {
+  return `฿${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+}

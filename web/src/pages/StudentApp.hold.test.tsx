@@ -6,9 +6,9 @@ import {
   renderPage,
   tick,
   reachPassengerDetails,
-} from "../test/renderStudentBookingPage";
+} from "../test/renderStudentApp";
 
-describe("StudentBookingPage", () => {
+describe("Student app", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -31,7 +31,7 @@ describe("StudentBookingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mega Bangna/ }));
     await tick();
     fireEvent.click(screen.getByRole("button", { name: "Seat A1, available" }));
-    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
     await tick();
 
     expect(screen.getByRole("timer")).toHaveTextContent("Seats held for 1:00");
@@ -139,7 +139,7 @@ describe("StudentBookingPage", () => {
       screen.getByRole("button", { name: "Seat A1, selected", pressed: true }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Hold these seats" }),
+      screen.getByRole("button", { name: "Hold seats" }),
     ).toBeEnabled();
   });
 });

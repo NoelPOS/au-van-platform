@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AuthSession } from "../types/auth";
+import type { Booking } from "../types/booking";
 import { bookingApi } from "../services/bookingApi";
 
 const bookingKeys = {
@@ -13,6 +14,7 @@ export function useAvailableTrips(session: AuthSession) {
   return useQuery({
     queryKey: bookingKeys.trips,
     queryFn: () => bookingApi.listTrips(session),
+    refetchInterval: 30_000,
   });
 }
 
@@ -35,6 +37,29 @@ export function useMyBookings(session: AuthSession) {
   return useQuery({
     queryKey: bookingKeys.bookings,
     queryFn: () => bookingApi.listBookings(session),
+    staleTime: 5_000,
+    refetchInterval: (query) =>
+      query.state.data?.some(awaitsDecision) ? 15_000 : 60_000,
+  });
+}
+
+function awaitsDecision(booking: Booking): boolean {
+  return (
+    booking.status === "PENDING_PAYMENT" ||
+    booking.status === "PAYMENT_UNDER_REVIEW" ||
+    booking.status === "PAYMENT_REJECTED"
+  );
+}
+
+export function useCancelBooking(session: AuthSession) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bookingId: string) =>
+      bookingApi.cancelBooking(session, bookingId),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
+    },
   });
 }
 
@@ -42,6 +67,7 @@ export function useMyWaitlist(session: AuthSession) {
   return useQuery({
     queryKey: bookingKeys.waitlist,
     queryFn: () => bookingApi.listWaitlist(session),
+    refetchInterval: 30_000,
   });
 }
 
@@ -115,7 +141,9 @@ export function useCreateBooking(session: AuthSession) {
         variables.idempotencyKey,
         variables.input,
       ),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: bookingKeys.bookings }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
+    },
   });
 }

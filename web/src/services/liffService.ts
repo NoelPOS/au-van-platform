@@ -65,3 +65,13 @@ function redirectToLineLogin(): Promise<never> {
   // liff.login() navigates away; never settling keeps the page in its loading state.
   return new Promise(() => {});
 }
+
+// Null when LINE cannot say, such as outside a signed-in LIFF session.
+export async function isOfficialAccountFriend(): Promise<boolean | null> {
+  try {
+    if (!liff.isLoggedIn()) return null;
+    return (await liff.getFriendship()).friendFlag;
+  } catch {
+    return null;
+  }
+}

@@ -12,7 +12,7 @@ export const trip = {
   routeId: "route-1",
   origin: "AU",
   destination: "Mega Bangna",
-  departureAt: "2026-10-01T01:00:00Z",
+  departureAt: "2030-10-01T01:00:00Z",
   fare: 35,
   durationMinutes: 45,
   totalSeats: 4,
@@ -23,7 +23,7 @@ export const otherTrip = {
   ...trip,
   id: "trip-2",
   destination: "Siam Paragon",
-  departureAt: "2026-10-01T03:00:00Z",
+  departureAt: "2030-10-01T03:00:00Z",
 };
 
 export const fullTrip = {
@@ -50,7 +50,7 @@ export const booking = {
     id: "trip-1",
     origin: "AU",
     destination: "Mega Bangna",
-    departureAt: "2026-10-01T01:00:00Z",
+    departureAt: "2030-10-01T01:00:00Z",
   },
   passengerName: "Somchai P.",
   passengerPhone: "0812345678",

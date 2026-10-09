@@ -7,9 +7,9 @@ import {
   selectSeatA1,
   holdFailsWith,
   reachPassengerDetails,
-} from "../test/renderStudentBookingPage";
+} from "../test/renderStudentApp";
 
-describe("StudentBookingPage", () => {
+describe("Student app", () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -23,8 +23,10 @@ describe("StudentBookingPage", () => {
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
-    expect(screen.getByText("Seats reserved")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Seats reserved" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
     const created = fetcher.mock.calls.filter(
       ([url, init]) =>
         url === "/api/v1/bookings" &&
@@ -38,23 +40,19 @@ describe("StudentBookingPage", () => {
     });
   });
 
-  it("lists the new booking in my bookings on the confirmation step", async () => {
-    let bookingsRequested = 0;
-    stubApi({
-      bookings: () => {
-        bookingsRequested += 1;
-        return json(bookingsRequested === 1 ? [] : [booking]);
-      },
-    });
+  it("lands on the new ticket with its seats and fare", async () => {
+    stubApi();
 
     renderPage();
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    expect(await screen.findByText("Seats reserved")).toBeInTheDocument();
-    expect(
-      await screen.findByText("Seat A1 · 35.00 THB"),
-    ).toBeInTheDocument();
+    const pass = await screen.findByRole("article", {
+      name: "Boarding pass AUV-260921-7KQ2M4XR",
+    });
+    expect(pass).toHaveTextContent("A1");
+    expect(pass).toHaveTextContent("฿35");
+    expect(pass).toHaveTextContent("Awaiting payment");
   });
 
   it("trims the passenger name and phone before sending them", async () => {
@@ -62,7 +60,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
     await selectSeatA1();
-    fireEvent.click(screen.getByRole("button", { name: "Hold these seats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
     await screen.findByRole("button", { name: "Confirm booking" });
     fireEvent.change(screen.getByLabelText("Full name"), {
       target: { value: "  Somchai P.  " },
@@ -72,7 +70,9 @@ describe("StudentBookingPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
-    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Seats reserved" }),
+    ).toBeInTheDocument();
     const created = fetcher.mock.calls.filter(
       ([url, init]) =>
         url === "/api/v1/bookings" &&
@@ -85,15 +85,15 @@ describe("StudentBookingPage", () => {
     });
   });
 
-  it("leaves the confirmation when the student goes back to the trip list", async () => {
+  it("goes back to the departures from a new ticket", async () => {
     stubApi();
 
     renderPage();
     await reachPassengerDetails();
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
-    await screen.findByText("Seats reserved");
+    await screen.findByRole("heading", { name: "Seats reserved" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to trips" }));
+    fireEvent.click(screen.getByRole("link", { name: "Departures" }));
 
     expect(
       await screen.findByRole("button", { name: /Mega Bangna/ }),
@@ -109,8 +109,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    expect(screen.getByText("Loading trips…")).toBeInTheDocument();
-    expect(screen.getByText("Loading your bookings…")).toBeInTheDocument();
+    expect(screen.getByText("Loading departures…")).toBeInTheDocument();
   });
 
   it("shows an empty state when no trips are scheduled", async () => {
@@ -118,12 +117,7 @@ describe("StudentBookingPage", () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(
-        "No trips are scheduled right now. Check back later.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("You have no bookings yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing scheduled yet")).toBeInTheDocument();
   });
 
   it("asks the student to sign in again when the access token has expired", async () => {
@@ -134,7 +128,7 @@ describe("StudentBookingPage", () => {
     expect(await screen.findByText("Sign in again")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Your sign-in has expired. Close and reopen this page from LINE to continue booking.",
+        "Your sign-in has expired. Close and reopen AU-Van from LINE to carry on.",
       ),
     ).toBeInTheDocument();
   });
@@ -143,7 +137,7 @@ describe("StudentBookingPage", () => {
     await holdFailsWith(null, 401);
 
     expect(await screen.findByText("Sign in again")).toBeInTheDocument();
-    expect(screen.queryByText("Upcoming trips")).not.toBeInTheDocument();
+    expect(screen.queryByText("Catch the next van")).not.toBeInTheDocument();
   });
 
   it("offers a retry when the trip list cannot be loaded", async () => {
@@ -172,11 +166,13 @@ describe("StudentBookingPage", () => {
   it("lists existing bookings with the reference and the trip they belong to", async () => {
     stubApi({ bookings: () => json([booking]), trips: () => json([]) });
 
-    renderPage();
+    renderPage("/tickets");
 
-    expect(await screen.findByText("AUV-260921-7KQ2M4XR")).toBeInTheDocument();
+    const ticket = await screen.findByRole("link", {
+      name: /AUV-260921-7KQ2M4XR/,
+    });
+    expect(ticket).toHaveTextContent("Mega Bangna");
+    expect(ticket).toHaveTextContent("Seat A1 · AUV-260921-7KQ2M4XR");
     expect(screen.getByText("Awaiting payment")).toHaveClass("text-warning");
-    expect(screen.getByText(/^AU → Mega Bangna · /)).toBeInTheDocument();
-    expect(screen.getByText("Seat A1 · 35.00 THB")).toBeInTheDocument();
   });
 });

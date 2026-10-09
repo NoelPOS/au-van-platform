@@ -10,7 +10,11 @@ import { AdminSeatLayoutsPage } from "./pages/AdminSeatLayoutsPage";
 import { AdminTripsPage } from "./pages/AdminTripsPage";
 import { AdminVansPage } from "./pages/AdminVansPage";
 import { SignInPage } from "./pages/SignInPage";
-import { StudentBookingPage } from "./pages/StudentBookingPage";
+import { StudentBookTripPage } from "./pages/StudentBookTripPage";
+import { StudentLayout } from "./pages/StudentLayout";
+import { StudentTicketPage } from "./pages/StudentTicketPage";
+import { StudentTicketsPage } from "./pages/StudentTicketsPage";
+import { StudentTripsPage } from "./pages/StudentTripsPage";
 import type { AuthSession } from "./types/auth";
 
 function App() {
@@ -19,11 +23,13 @@ function App() {
   if (!session) {
     return (
       <Routes>
-        <Route path="/" element={<SignInPage onSignedIn={setSession} />} />
-        <Route
-          path="/admin/*"
-          element={<SignInPage onSignedIn={setSession} />}
-        />
+        {["/", "/trips/*", "/tickets/*", "/admin/*"].map((path) => (
+          <Route
+            element={<SignInPage onSignedIn={setSession} />}
+            key={path}
+            path={path}
+          />
+        ))}
         <Route path="*" element={<RedirectHome />} />
       </Routes>
     );
@@ -35,10 +41,15 @@ function App() {
         path="/"
         element={
           <RequireRole role="STUDENT" session={session}>
-            <StudentBookingPage session={session} />
+            <StudentLayout session={session} />
           </RequireRole>
         }
-      />
+      >
+        <Route index element={<StudentTripsPage />} />
+        <Route path="trips/:tripId" element={<StudentBookTripPage />} />
+        <Route path="tickets" element={<StudentTicketsPage />} />
+        <Route path="tickets/:bookingId" element={<StudentTicketPage />} />
+      </Route>
       <Route
         path="/admin"
         element={

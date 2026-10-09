@@ -10,10 +10,8 @@ import type {
 } from "../types/booking";
 import { messageOf } from "../utils/errors";
 import {
-  useAvailableTrips,
   useCreateBooking,
   useHoldSeats,
-  useMyBookings,
   useReleaseHold,
   useSeatMap,
 } from "./useBookingQueries";
@@ -21,18 +19,25 @@ import {
 // Mirrors the API's booking.max-seats-per-hold; its 400 is the backstop.
 export const maxSeatsPerHold = 4;
 
-export function useBookingFlow(session: AuthSession) {
-  const [step, setStep] = useState<BookingStep>("trips");
-  const [trip, setTrip] = useState<AvailableTrip | null>(null);
+export function useBookingFlow(
+  session: AuthSession,
+  trip: AvailableTrip | null,
+  {
+    setNotice,
+    leave,
+    booked,
+  }: {
+    setNotice: (notice: Notice | null) => void;
+    leave: (message: string, to?: "/" | "/tickets") => void;
+    booked: (booking: Booking) => void;
+  },
+) {
+  const [step, setStep] = useState<BookingStep>("seats");
   const [selected, setSelected] = useState<string[]>([]);
   const [hold, setHold] = useState<SeatHold | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [confirmed, setConfirmed] = useState<Booking | null>(null);
   // One key per booking attempt, kept across a failure so a retry cannot book twice.
   const keyRef = useRef<string | null>(null);
 
-  const trips = useAvailableTrips(session);
-  const bookings = useMyBookings(session);
   const seatMap = useSeatMap(
     session,
     trip?.id ?? null,
@@ -64,13 +69,8 @@ export function useBookingFlow(session: AuthSession) {
   }, [tripIsGone]);
 
   function backToTrips(message: string) {
-    setStep("trips");
-    setTrip(null);
-    setSelected([]);
-    setHold(null);
     keyRef.current = null;
-    setNotice({ tone: "error", message });
-    void trips.refetch();
+    leave(message);
   }
 
   function backToSeats(message: string) {
@@ -82,20 +82,9 @@ export function useBookingFlow(session: AuthSession) {
     void seatMap.refetch();
   }
 
-  function backFromSeats() {
-    setTrip(null);
-    setSelected([]);
-    setNotice(null);
-    setStep("trips");
-  }
-
-  function chooseTrip(next: AvailableTrip) {
-    setTrip(next);
-    setSelected([]);
-    setHold(null);
-    keyRef.current = null;
-    setNotice(null);
-    setStep("seats");
+  function releaseCurrentHold() {
+    if (hold && trip)
+      releaseHold.mutate({ holdId: hold.holdId, tripId: trip.id });
   }
 
   function toggleSeat(seatId: string) {
@@ -157,8 +146,7 @@ export function useBookingFlow(session: AuthSession) {
   }
 
   function changeSeats() {
-    if (hold && trip)
-      releaseHold.mutate({ holdId: hold.holdId, tripId: trip.id });
+    releaseCurrentHold();
     setHold(null);
     setSelected([]);
     keyRef.current = null;
@@ -186,11 +174,9 @@ export function useBookingFlow(session: AuthSession) {
           passengerPhone: String(form.get("passengerPhone")).trim(),
         },
       });
+      // No local reset: the page is leaving, and a reset would flash the seat map first.
       keyRef.current = null;
-      setHold(null);
-      setSelected([]);
-      setConfirmed(booking);
-      setStep("confirmed");
+      booked(booking);
     } catch (error) {
       onBookingFailure(error);
     }
@@ -205,9 +191,10 @@ export function useBookingFlow(session: AuthSession) {
       );
     if (code === "hold_already_used") {
       // A lost 201 can hide this booking, so land on the list that shows it.
-      void bookings.refetch();
-      return backToTrips(
-        "Those seats are already booked. If that was you, the booking is in My bookings below.",
+      keyRef.current = null;
+      return leave(
+        "Those seats are already booked. If that was you, the booking is below.",
+        "/tickets",
       );
     }
     if (code === "hold_not_found")
@@ -234,35 +221,21 @@ export function useBookingFlow(session: AuthSession) {
     setNotice({ tone: "error", message: messageOf(error) });
   }
 
-  function finishConfirmation() {
-    setConfirmed(null);
-    setTrip(null);
-    setStep("trips");
-  }
-
   return {
     step,
-    trip,
     hold,
-    confirmed,
-    notice,
-    setNotice,
-    trips,
-    bookings,
     seatMap,
     holdSeats,
     createBooking,
     seats,
     effective,
     lostSeatLabels,
-    backFromSeats,
-    chooseTrip,
     toggleSeat,
     holdSelectedSeats,
+    releaseCurrentHold,
     expireHold,
     changeSeats,
     resetIdempotencyKey,
     confirmBooking,
-    finishConfirmation,
   };
 }
