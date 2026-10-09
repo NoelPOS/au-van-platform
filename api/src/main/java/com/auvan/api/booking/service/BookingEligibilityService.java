@@ -1,8 +1,12 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.auth.repository.AppUserRepository;
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingEligibilityResponse;
+import com.auvan.api.booking.entity.BookingCooldownClear;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.exception.Problems;
+import com.auvan.api.booking.repository.BookingCooldownClearRepository;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.inventory.entity.Trip;
 import org.springframework.stereotype.Service;
@@ -20,17 +24,31 @@ public class BookingEligibilityService {
             BookingStatus.PAYMENT_REJECTED);
 
     private final BookingRepository bookings;
+    private final BookingCooldownClearRepository clears;
+    private final AppUserRepository users;
+    private final BookingProperties properties;
 
-    public BookingEligibilityService(BookingRepository bookings) {
+    public BookingEligibilityService(BookingRepository bookings, BookingCooldownClearRepository clears,
+                                     AppUserRepository users, BookingProperties properties) {
         this.bookings = bookings;
+        this.clears = clears;
+        this.users = users;
+        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
     public BookingEligibilityResponse eligibilityOf(UUID userId, OffsetDateTime now) {
-        return bookings.findFirstByUserIdAndStatusInOrderByCreatedAtAsc(userId, UNPAID)
-                .map(unpaid -> BookingEligibilityResponse.unpaid(unpaid, "You have an unpaid booking, "
-                        + unpaid.getReference() + ". Pay for it or cancel it before booking another seat."))
-                .orElseGet(BookingEligibilityResponse::eligible);
+        var unpaid = bookings.findFirstByUserIdAndStatusInOrderByCreatedAtAsc(userId, UNPAID);
+        if (unpaid.isPresent()) {
+            return BookingEligibilityResponse.unpaid(unpaid.get(), "You have an unpaid booking, "
+                    + unpaid.get().getReference() + ". Pay for it or cancel it before booking another seat.");
+        }
+        OffsetDateTime retryAt = cooldownEndOf(userId, now);
+        if (retryAt != null) {
+            return BookingEligibilityResponse.coolingDown(retryAt, "Your recent bookings expired without payment, "
+                    + "so you can book again from " + BookingNotifications.moment(retryAt) + ".");
+        }
+        return BookingEligibilityResponse.eligible();
     }
 
     public void assertMayBookOn(UUID userId, Trip trip, OffsetDateTime now) {
@@ -47,9 +65,35 @@ public class BookingEligibilityService {
         }
     }
 
+    @Transactional
+    public void clearCooldown(UUID adminId, UUID studentId) {
+        if (!users.existsById(studentId)) {
+            throw Problems.notFound("student_not_found", "Student not found.");
+        }
+        clears.save(new BookingCooldownClear(studentId, adminId, OffsetDateTime.now()));
+    }
+
+    private OffsetDateTime cooldownEndOf(UUID userId, OffsetDateTime now) {
+        BookingProperties.Cooldown cooldown = properties.cooldown();
+        OffsetDateTime horizon = now.minus(cooldown.lookback()).minus(cooldown.duration());
+        OffsetDateTime since = clears.findLatestClearedAt(userId).filter(horizon::isBefore).orElse(horizon);
+        List<OffsetDateTime> expiries = bookings.findExpiryTimesSince(userId, since);
+        // Newest first, so the first run of expiries inside the lookback is the one that ends last.
+        for (int latest = 0; latest + cooldown.expiries() <= expiries.size(); latest++) {
+            OffsetDateTime earliest = expiries.get(latest + cooldown.expiries() - 1);
+            if (!expiries.get(latest).isAfter(earliest.plus(cooldown.lookback()))) {
+                OffsetDateTime endsAt = expiries.get(latest).plus(cooldown.duration());
+                return endsAt.isAfter(now) ? endsAt : null;
+            }
+        }
+        return null;
+    }
+
     private static ResponseStatusException refusal(BookingEligibilityResponse eligibility) {
-        return Problems.conflict(eligibility.reason(), eligibility.message(), Map.of(
-                "bookingId", eligibility.unpaidBookingId(),
-                "bookingReference", eligibility.unpaidBookingReference()));
+        Map<String, Object> details = eligibility.retryAt() != null
+                ? Map.of("retryAt", eligibility.retryAt())
+                : Map.of("bookingId", eligibility.unpaidBookingId(),
+                        "bookingReference", eligibility.unpaidBookingReference());
+        return Problems.conflict(eligibility.reason(), eligibility.message(), details);
     }
 }

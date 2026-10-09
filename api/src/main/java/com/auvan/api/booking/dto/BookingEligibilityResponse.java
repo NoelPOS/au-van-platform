@@ -16,6 +16,10 @@ public record BookingEligibilityResponse(
         return new BookingEligibilityResponse(true, null, null, null, null, null);
     }
 
+    public static BookingEligibilityResponse coolingDown(OffsetDateTime retryAt, String message) {
+        return new BookingEligibilityResponse(false, "booking_cooldown", message, retryAt, null, null);
+    }
+
     public static BookingEligibilityResponse unpaid(Booking booking, String message) {
         return new BookingEligibilityResponse(false, "unpaid_booking_exists", message, null, booking.getId(),
                 booking.getReference());

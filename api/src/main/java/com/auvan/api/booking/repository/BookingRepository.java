@@ -26,6 +26,15 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     boolean existsByUserIdAndTripIdAndStatusNot(UUID userId, UUID tripId, BookingStatus status);
 
+    @Query("""
+            select event.createdAt from BookingEvent event
+            where event.booking.userId = :userId
+              and event.eventType = com.auvan.api.booking.entity.BookingEventType.EXPIRED
+              and event.createdAt > :since
+            order by event.createdAt desc
+            """)
+    List<OffsetDateTime> findExpiryTimesSince(@Param("userId") UUID userId, @Param("since") OffsetDateTime since);
+
     // No fetch join: PostgreSQL refuses FOR UPDATE on the nullable side of an outer join.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select booking from Booking booking where booking.id = :id and booking.userId = :userId")
