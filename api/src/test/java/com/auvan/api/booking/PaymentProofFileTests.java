@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -71,6 +72,12 @@ class PaymentProofFileTests {
 
         assertThat(first).startsWith("payment-proofs/" + bookingId + "/").endsWith(".jpg");
         assertThat(second).isNotEqualTo(first);
+    }
+
+    @Test
+    void theContentHashIsTheHexSha256OfTheBytes() {
+        assertThat(PaymentProofFile.sha256("abc".getBytes(StandardCharsets.UTF_8)))
+                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
 
     private static void assertProblem(Throwable thrown, HttpStatus status, String code) {

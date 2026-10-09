@@ -137,7 +137,7 @@ class BookingLifecycleTests {
 
     private static PaymentProof newProof() {
         PaymentProof proof = new PaymentProof(newBooking(), UUID.randomUUID(),
-                "payment-proofs/booking/slip.jpg", "image/jpeg", 12, NOW.plusMinutes(3));
+                "payment-proofs/booking/slip.jpg", "image/jpeg", 12, "a".repeat(64), NOW.plusMinutes(3));
         assertThat(proof.isSubmitted()).isTrue();
         return proof;
     }

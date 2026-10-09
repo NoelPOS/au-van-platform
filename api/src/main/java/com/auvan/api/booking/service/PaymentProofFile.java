@@ -2,7 +2,10 @@ package com.auvan.api.booking.service;
 
 import com.auvan.api.booking.exception.Problems;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -38,6 +41,14 @@ public final class PaymentProofFile {
     public static String objectKey(UUID bookingId, String extension, OffsetDateTime now) {
         return "payment-proofs/" + bookingId + "/" + now.toInstant().toEpochMilli() + "-"
                 + UUID.randomUUID() + extension;
+    }
+
+    public static String sha256(byte[] content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("Every JVM is required to provide SHA-256.", impossible);
+        }
     }
 
     private static String normalise(String contentType) {

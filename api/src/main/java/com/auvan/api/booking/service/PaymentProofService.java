@@ -54,9 +54,11 @@ public class PaymentProofService {
 
         String objectKey = PaymentProofFile.objectKey(bookingId, image.extension(), now);
         // Store the image before any row is written, so a storage failure leaves nothing behind.
-        store(objectKey, image.contentType(), read(file));
+        byte[] content = read(file);
+        store(objectKey, image.contentType(), content);
 
-        proofs.save(new PaymentProof(booking, userId, objectKey, image.contentType(), file.getSize(), now));
+        proofs.save(new PaymentProof(booking, userId, objectKey, image.contentType(), file.getSize(),
+                PaymentProofFile.sha256(content), now));
         String detail = "Payment proof submitted for review.";
         booking.recordEvent(BookingEventType.PAYMENT_PROOF_SUBMITTED, detail, userId, now);
         booking.markPaymentUnderReview(now);
