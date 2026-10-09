@@ -68,7 +68,7 @@ public class PaymentProofReviewService {
         reviewed.booking().confirm(now);
         recordForStudent(OutboxEventType.PAYMENT_APPROVED, reviewed.booking(), detail, now);
         reminders.schedule(reviewed.booking(), now);
-        return BookingResponse.from(reviewed.booking());
+        return BookingResponse.from(reviewed.booking(), properties);
     }
 
     @Transactional
@@ -83,7 +83,7 @@ public class PaymentProofReviewService {
         booking.markPaymentRejected(
                 properties.resubmitDeadlineFor(booking.getTrip().getDepartureAt(), booking.getCreatedAt(), now), now);
         recordForStudent(OutboxEventType.PAYMENT_REJECTED, booking, reviewNote, now);
-        return BookingResponse.from(booking);
+        return BookingResponse.from(booking, properties);
     }
 
     private void recordForStudent(OutboxEventType type, Booking booking, String detail, OffsetDateTime now) {

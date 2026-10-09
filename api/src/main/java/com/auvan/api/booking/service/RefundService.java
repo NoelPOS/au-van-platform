@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEventType;
@@ -16,15 +17,17 @@ import java.util.UUID;
 @Service
 public class RefundService {
     private final BookingRepository bookings;
+    private final BookingProperties properties;
 
-    public RefundService(BookingRepository bookings) {
+    public RefundService(BookingRepository bookings, BookingProperties properties) {
         this.bookings = bookings;
+        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponse> due() {
         return bookings.findByRefundStatusOrderByUpdatedAtAsc(RefundStatus.DUE).stream()
-                .map(BookingResponse::from)
+                .map(booking -> BookingResponse.from(booking, properties))
                 .toList();
     }
 
@@ -44,6 +47,6 @@ public class RefundService {
         String detail = "Refunded " + BookingNotifications.baht(booking.getTotalFare()) + "."
                 + (trimmed == null ? "" : " " + trimmed);
         booking.recordEvent(BookingEventType.REFUNDED, detail, adminId, now);
-        return BookingResponse.from(booking);
+        return BookingResponse.from(booking, properties);
     }
 }

@@ -83,7 +83,7 @@ public class BookingWriter {
                 BookingNotifications.of(booking, detail), now);
 
         return idempotency.record(userId, endpoint, key, requestHash, HttpStatus.CREATED.value(),
-                BookingResponse.from(booking), now);
+                BookingResponse.from(booking, properties), now);
     }
 
     private void assertConfirmable(List<SeatClaim> held, UUID userId, OffsetDateTime now) {

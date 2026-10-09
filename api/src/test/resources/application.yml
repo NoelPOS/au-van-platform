@@ -46,6 +46,7 @@ booking:
   payment-window: PT2H
   departure-cutoff: PT1H
   closes-before-departure: PT90M
+  cancellation-closes-before-departure: PT2H
   resubmit-window: PT30M
   idempotency-key-retention: PT24H
   expiry:

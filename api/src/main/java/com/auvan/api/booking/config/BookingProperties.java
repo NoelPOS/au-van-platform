@@ -7,7 +7,8 @@ import java.time.OffsetDateTime;
 
 @ConfigurationProperties(prefix = "booking")
 public record BookingProperties(Duration holdTtl, int maxSeatsPerHold, Duration paymentWindow,
-                                Duration departureCutoff, Duration closesBeforeDeparture, Duration resubmitWindow,
+                                Duration departureCutoff, Duration closesBeforeDeparture,
+                                Duration cancellationClosesBeforeDeparture, Duration resubmitWindow,
                                 Duration idempotencyKeyRetention, Expiry expiry, Waitlist waitlist,
                                 Cooldown cooldown) {
     public record Expiry(boolean enabled, Duration pollInterval, int batchSize) { }
@@ -33,6 +34,10 @@ public record BookingProperties(Duration holdTtl, int maxSeatsPerHold, Duration 
 
     public OffsetDateTime bookingClosesAt(OffsetDateTime departureAt) {
         return departureAt.minus(closesBeforeDeparture);
+    }
+
+    public OffsetDateTime cancellableUntil(OffsetDateTime departureAt) {
+        return departureAt.minus(cancellationClosesBeforeDeparture);
     }
 
     public OffsetDateTime promotionDeadlineFor(OffsetDateTime departureAt, OffsetDateTime now) {
