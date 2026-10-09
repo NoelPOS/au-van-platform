@@ -19,6 +19,11 @@ HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
 window.matchMedia ??= (query: string) => ({ matches: false, media: query }) as MediaQueryList;
 Element.prototype.scrollIntoView ??= function () {};
 
+// jsdom has no EventSource; this one never connects.
+globalThis.EventSource ??= class {
+  close() {}
+} as unknown as typeof EventSource;
+
 // jsdom has no object URLs.
 URL.createObjectURL ??= () => "blob:preview";
 URL.revokeObjectURL ??= () => {};
