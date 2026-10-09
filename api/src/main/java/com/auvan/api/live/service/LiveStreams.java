@@ -35,10 +35,10 @@ public class LiveStreams {
     }
 
     public void deliver(LiveSignal signal) {
-        Visible visible = new Visible(signal.kind(), signal.id());
+        PublicSignal payload = new PublicSignal(signal.kind(), signal.id());
         open.forEach((emitter, subscriber) -> {
             if (subscriber.receives(signal)) {
-                send(emitter, SseEmitter.event().data(visible));
+                send(emitter, SseEmitter.event().data(payload));
             }
         });
     }
@@ -48,7 +48,7 @@ public class LiveStreams {
         open.keySet().forEach(emitter -> send(emitter, SseEmitter.event().comment("heartbeat")));
     }
 
-    private record Visible(String kind, UUID id) { }
+    private record PublicSignal(String kind, UUID id) { }
 
     private void send(SseEmitter emitter, SseEmitter.SseEventBuilder event) {
         try {
