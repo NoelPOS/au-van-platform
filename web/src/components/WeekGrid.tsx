@@ -74,22 +74,30 @@ export function WeekGrid({
                   );
                   const cancelled = trip.status === "CANCELLED";
                   return (
-                    <li
-                      className={`px-3 py-2 ${cancelled ? "text-muted line-through" : ""}`}
-                      key={trip.id}
-                    >
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="font-mono text-[15px] font-medium text-ink tabular-nums">
+                    <li className="px-3 py-2" key={trip.id}>
+                      <span
+                        className={`flex items-baseline justify-between gap-2 ${cancelled ? "line-through" : ""}`}
+                      >
+                        <span
+                          className={`font-mono text-[15px] font-medium tabular-nums ${cancelled ? "text-muted" : "text-ink"}`}
+                        >
                           {bangkokTime(trip.departureAt)}
                         </span>
                         <span className="font-mono text-[11px] text-muted">
                           {vans.find((van) => van.id === trip.vehicleId)?.code}
                         </span>
                       </span>
-                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted">
+                      <span
+                        className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted ${cancelled ? "line-through" : ""}`}
+                      >
                         <RouteRule className="w-2.5" />
                         <span className="truncate">{route?.destination}</span>
                       </span>
+                      {cancelled && trip.cancellationReason && (
+                        <span className="mt-1 block text-[12px] leading-snug text-danger italic">
+                          {trip.cancellationReason}
+                        </span>
+                      )}
                     </li>
                   );
                 })}

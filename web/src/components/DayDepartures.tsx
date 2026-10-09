@@ -56,16 +56,17 @@ export function DayDepartures({
             {trips.map((trip) => {
               const route = routes.find((entry) => entry.id === trip.routeId);
               const van = vans.find((entry) => entry.id === trip.vehicleId);
+              const cancelled = trip.status === "CANCELLED";
               return (
                 <li key={trip.id}>
                   <button
-                    aria-label={`Edit the ${bangkokTime(trip.departureAt)} to ${route?.destination ?? "an unknown route"}`}
+                    aria-label={`${cancelled ? "See the cancelled" : "Edit the"} ${bangkokTime(trip.departureAt)} to ${route?.destination ?? "an unknown route"}`}
                     className={`${columns} w-full px-4 py-3.5 text-left transition-colors duration-150 hover:bg-paper/70`}
                     onClick={() => onEdit(trip)}
                     type="button"
                   >
                     <span
-                      className={`font-mono text-[22px] font-medium tracking-tight tabular-nums ${trip.status === "CANCELLED" || Date.parse(trip.departureAt) <= now ? "text-muted/70" : "text-ink"}`}
+                      className={`font-mono text-[22px] font-medium tracking-tight tabular-nums ${cancelled || Date.parse(trip.departureAt) <= now ? "text-muted/70" : "text-ink"}`}
                     >
                       {bangkokTime(trip.departureAt)}
                     </span>
@@ -77,14 +78,17 @@ export function DayDepartures({
                         <RouteRule className="w-3" />
                         <span className="truncate">from {route?.origin}</span>
                       </span>
+                      {cancelled && trip.cancellationReason && (
+                        <span className="mt-1 block truncate text-[13px] text-danger italic">
+                          {trip.cancellationReason}
+                        </span>
+                      )}
                     </span>
                     <span className="flex flex-col items-end gap-1">
                       <span className="font-mono text-[12px] text-ink">
                         {van?.code ?? "No van"}
                       </span>
-                      {trip.status === "CANCELLED" && (
-                        <StatusBadge value={trip.status} />
-                      )}
+                      {cancelled && <StatusBadge value={trip.status} />}
                     </span>
                   </button>
                 </li>

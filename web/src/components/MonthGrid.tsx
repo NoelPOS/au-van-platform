@@ -119,6 +119,7 @@ export function MonthGrid({
                   <span
                     className={`flex min-w-0 gap-1.5 font-mono text-[11.5px] leading-tight ${trip.status === "CANCELLED" ? "text-muted line-through" : day < today ? "text-muted" : "text-ink"}`}
                     key={trip.id}
+                    title={trip.cancellationReason ?? undefined}
                   >
                     {bangkokTime(trip.departureAt)}
                     <span className="truncate font-sans text-muted">

@@ -82,17 +82,29 @@ export function TripList({
       ),
     },
     { label: "Seats", render: (trip) => trip.seats.length },
-    { label: "Status", render: (trip) => <StatusBadge value={trip.status} /> },
+    {
+      label: "Status",
+      render: (trip) => (
+        <span className="flex flex-col items-start gap-1">
+          <StatusBadge value={trip.status} />
+          {trip.cancellationReason && (
+            <span className="max-w-56 text-[13px] text-danger italic">
+              {trip.cancellationReason}
+            </span>
+          )}
+        </span>
+      ),
+    },
     {
       label: "",
       align: "end",
       render: (trip) => (
         <Button
-          aria-label={`Edit trip on ${bangkokDateTime(trip.departureAt)}`}
+          aria-label={`${trip.status === "CANCELLED" ? "See cancelled" : "Edit"} trip on ${bangkokDateTime(trip.departureAt)}`}
           onClick={() => onEdit(trip)}
           variant="text"
         >
-          Edit
+          {trip.status === "CANCELLED" ? "See" : "Edit"}
         </Button>
       ),
     },
