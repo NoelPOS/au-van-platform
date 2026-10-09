@@ -6,7 +6,7 @@ import { isUnauthorized } from "../utils/errors";
 
 type LiveSignal = { kind: string; id: string };
 
-const anythingOfMine: QueryKey[] = [
+const allLiveKeys: QueryKey[] = [
   ["booking"],
   ["payments"],
   ["overview"],
@@ -14,7 +14,7 @@ const anythingOfMine: QueryKey[] = [
 ];
 
 function keysFor(signal: LiveSignal): QueryKey[] {
-  if (signal.kind === "booking") return anythingOfMine;
+  if (signal.kind === "booking") return allLiveKeys;
   if (signal.kind === "trip")
     return [
       ["booking", "trips"],
@@ -57,7 +57,7 @@ export function useLiveUpdates(session: AuthSession) {
         source.onopen = () => {
           failures = 0;
           // Anything that changed while the stream was down sent no signal.
-          if (connectedBefore) invalidate(anythingOfMine);
+          if (connectedBefore) invalidate(allLiveKeys);
           connectedBefore = true;
         };
         source.onmessage = (event: MessageEvent<string>) =>
