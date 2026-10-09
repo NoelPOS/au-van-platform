@@ -138,4 +138,20 @@ describe("Student cancelling a booking", () => {
     expect(screen.queryByRole("button", { name: "Cancel this booking" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Cancelling closed" })).not.toBeInTheDocument();
   });
+
+  it("offers nothing once the trip has left", async () => {
+    const departed = {
+      ...booking,
+      status: "CONFIRMED",
+      trip: { ...booking.trip, departureAt: new Date(Date.now() - hour).toISOString() },
+      cancellableUntil: new Date(Date.now() - 3 * hour).toISOString(),
+    };
+    stubApi({ bookings: () => json([departed]) });
+
+    renderPage("/tickets/booking-1");
+
+    await screen.findByRole("heading", { name: "You’re all set" });
+    expect(screen.queryByRole("button", { name: "Cancel this booking" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Cancelling closed" })).not.toBeInTheDocument();
+  });
 });

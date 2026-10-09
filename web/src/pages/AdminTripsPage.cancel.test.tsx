@@ -103,6 +103,28 @@ describe("AdminTripsPage cancelling a trip", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("refreshes the trips so the cancelled one shows as cancelled", async () => {
+    let cancelled = false;
+    stubAdminApi({
+      "GET /trips": () => json([cancelled ? { ...trip, status: "CANCELLED", cancellationReason: "Driver unwell" } : trip]),
+      "GET /operations/trips/trip-1": () => json(tripOperations("trip-1")),
+      "POST /trips/trip-1/cancel": () => {
+        cancelled = true;
+        return json({ ...trip, status: "CANCELLED" });
+      },
+    });
+
+    await openCancel();
+    giveReason("Driver unwell");
+    fireEvent.click(drawer().getByRole("button", { name: "Cancel trip" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "Cancelled" }));
+
+    expect(
+      await screen.findByRole("button", { name: "See cancelled trip on Mon 5 Jan · 16:00" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Driver unwell")).toBeInTheDocument();
+  });
+
   it("goes back to the trip without cancelling when the administrator keeps it", async () => {
     const fetcher = stub();
 
