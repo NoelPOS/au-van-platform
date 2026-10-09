@@ -1,6 +1,6 @@
 # Data Model
 
-The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed. `V10` clears the deadline of bookings already under payment review, and `V11` adds `booking_cooldown_clears`, the record of an administrator lifting a student's booking pause.
+The transport-inventory tables are implemented in migration `V2`. The booking tables are created by migration `V3` and completed by `V4`, and all five are now in use. `V5` adds `payment_proofs` and `V6` its reviewer columns. `V7` adds `outbox_events`, which is the only asynchronous-workflow table there will be: ADR-010 replaced the planned `reminder_jobs` and `notifications` with it. `V8` adds `bookings.payment_deadline_at`, which is what finally bounds a held seat. `V9` adds `waitlist_entries`, the queue for a trip whose seats are all claimed. `V10` clears the deadline of bookings already under payment review, `V11` adds `booking_cooldown_clears`, the record of an administrator lifting a student's booking pause. `V12` adds the refund columns on `bookings`, and `V13` adds `trips.cancellation_reason`.
 
 ## Schema ownership
 
@@ -19,10 +19,10 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `seat_layouts` | `V2` | Named reusable vehicle seat templates |
 | `seat_layout_seats` | `V2` | Labelled row/column positions inside a reusable layout |
 | `vehicles` | `V2` | Vehicle code, name, active status, and assigned seat layout |
-| `trips` | `V2` | A scheduled route departure, vehicle, status, and snapshot of fare/duration |
+| `trips` | `V2`, `V13` | A scheduled route departure, vehicle, status, snapshot of fare/duration, and why it was cancelled |
 | `trip_seats` | `V2` | Labelled row/column seat snapshot created with a trip |
 | `seat_claims` | `V3` | One claimed seat, held for a few minutes or attached to a booking |
-| `bookings` | `V3`, `V4`, `V8` | Student booking, passenger details, price, lifecycle state, customer-facing reference, and payment deadline |
+| `bookings` | `V3`, `V4`, `V8`, `V12` | Student booking, passenger details, price, lifecycle state, customer-facing reference, payment deadline, and refund state |
 | `booking_seats` | `V3` | Which seats a booking bought, kept after cancellation frees the claims |
 | `booking_events` | `V3` | Append-only history of a booking's state changes |
 | `idempotency_keys` | `V3`, `V4` | The response a critical client write already produced, for replay on retry |
@@ -94,12 +94,23 @@ One student cannot keep seats they never pay for. ADR-016 records the decision.
 - Holds, waitlist joins, and waitlist promotions stop `booking.closes-before-departure` before departure (`booking_closed`). A booking made from a hold taken before that is still accepted.
 - These checks run at seat hold and again at booking creation, where the student's `app_users` row is locked `PESSIMISTIC_WRITE` after the hold's claims, so two holds on different trips cannot both become unpaid bookings.
 
+## Trip cancellation, rescheduling and refunds
+
+A trip change that can reach a passenger is one transaction behind the trip's row lock. ADR-017 records the decision.
+
+- `trips.cancellation_reason` is `VARCHAR(300)`, null on every trip that is not `CANCELLED`. A trip is cancelled only through `POST /api/v1/admin/trips/{id}/cancel`. The generic update refuses `CANCELLED`, refuses any change to a cancelled trip, and refuses any change once departure has passed.
+- Cancellation, rescheduling and booking confirmation all lock the `trips` row `PESSIMISTIC_WRITE`. A booking confirmation takes it after the hold's claims and before the student's `app_users` row. Cancellation and rescheduling read the trip's active booking ids and then lock each booking, so every decision is made from what the lock returned.
+- A trip cancellation sets every active booking `CANCELLED` and appends a `TRIP_CANCELLED` booking event. It deletes the claims attached to those bookings in one bulk delete, after one flush. It sets `WAITING` and `PROMOTED` waitlist entries to the new terminal status `CANCELLED`. Unbooked holds on the trip are left to lapse.
+- `bookings.refund_status` is `NONE`, `DUE` or `REFUNDED`, `NOT NULL` with default `NONE`. It becomes `DUE` when a `CONFIRMED` booking is cancelled by its trip or by its student, and when a `PAYMENT_UNDER_REVIEW` booking is cancelled by its trip. `refunded_at`, `refunded_by_user_id` (referencing `app_users`) and `refund_note` (`VARCHAR(500)`) are written when an administrator records the refund, which also appends a `REFUNDED` booking event. `bookings_refund_status_idx` is `(refund_status, updated_at)`, the refund list's query and order.
+- Moving a departure appends a `TRIP_RESCHEDULED` booking event to every active booking. It caps an unpaid booking's `payment_deadline_at` at the new departure bound, and rebuilds a confirmed booking's reminders: see below.
+- Students can cancel until `booking.cancellation-closes-before-departure` (two hours) before departure. The booking response's `cancellableUntil` is derived and never stored.
+
 ## The waitlist
 
 A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. A seat that comes free is offered to whoever has waited longest. ADR-011 records the decision. Joining, leaving, reading a place, the promotion sweep, and the administrator's read-only view of the queue in `OperationsViewService` are all implemented.
 
 - One row per `(trip_id, user_id)`, enforced by a plain `waitlist_entries_trip_user_unique`. Not a partial index on the active statuses: ADR-006 rejected partial indexes because H2 does not support them, so the suite would stop exercising the one constraint this shape rests on.
-- `status` is `WAITING`, `PROMOTED`, `FULFILLED`, `WITHDRAWN`, or `EXPIRED`. The first two are the queued states — the only ones that occupy a place — and the other three are terminal. `WAITING` and `WITHDRAWN` are the student's own doing; the promotion sweep writes the other three, each from behind the entry's row lock.
+- `status` is `WAITING`, `PROMOTED`, `FULFILLED`, `WITHDRAWN`, `EXPIRED`, or `CANCELLED`. The first two are the queued states — the only ones that occupy a place — and the other four are terminal. `WAITING` and `WITHDRAWN` are the student's own doing; the promotion sweep writes `PROMOTED`, `FULFILLED` and `EXPIRED`, and a trip cancellation writes `CANCELLED`, each from behind the entry's row lock.
 - **Position is derived, never stored.** The ordering is `ORDER BY joined_at, id` over the queued entries alone, so a student who leaves stops occupying a place for everyone behind them with nothing to update. A maintained `position` integer would have to rewrite every row behind a leaver, and one that had drifted from reality would be invisible — the same reasoning that leaves `seat_claims` without a status column.
 - Joining is idempotent. A repeated join returns the entry that already exists, with the place it already had; tapping the button twice must not cost a student their place.
 - Leaving and re-joining **reuses the same row with a fresh `joined_at`**, so it costs the student their place. That is the only behaviour one row per student per trip permits, and ADR-011 accepts it as the price of refusing a partial index.
@@ -122,7 +133,7 @@ Everything a committed transaction owes the outside world is one row in `outbox_
 - `status` is `PENDING`, `IN_FLIGHT`, `SENT`, or `DEAD`. The first two are claimable; the last two are terminal. A row that fails `outbox.max-attempts` times lands `DEAD` with `last_error` set and is never retried again. So does one whose failure can never succeed, on its first attempt — see delivery below.
 - `payload` is `VARCHAR(2000)` of JSON — facts about the booking, or about the trip for a waitlist promotion, and never message text, so rewording a message does not have to be migrated into rows written before it. Beside the reference (or trip summary) and the `detail` sentence it carries the route's origin and destination, the departure, the seat labels, the fare, and the payment deadline or waitlist offer expiry. Those fields are nullable: a row written before they existed renders as a simpler card from its `detail` and still delivers. The width is deliberate; ADR-010 gives the arithmetic.
 - `dedupe_key` is unique and nullable: null for a state-change event, which legitimately repeats, and set for a departure reminder, where the constraint is what makes scheduling idempotent. It is therefore also the column that identifies a row as a reminder, which is what the withdrawal below selects on.
-- `aggregate_id` is the thing the row is about: the booking for every event type but the two waitlist ones, whose aggregate is a `waitlist_entries` row because a promotion happens before any booking exists. Widening that meaning cost a javadoc and this line and no migration, for the reason below.
+- `aggregate_id` is the thing the row is about: the booking for most event types, and a `waitlist_entries` row for the two waitlist ones, because a promotion happens before any booking exists. A `TRIP_CANCELLED` row is about a booking or, when it tells a waiting student, about their waitlist entry. Widening that meaning cost a javadoc and this line and no migration, for the reason below.
 - There are **no foreign keys** on this table. A queue row must not block the deletion of the booking or the user it names, and the dispatcher must tolerate an aggregate that has since gone.
 - The index is `(status, next_attempt_at)`, which is exactly the dispatcher's predicate.
 
@@ -144,7 +155,8 @@ A reminder is not a second mechanism. It is an `outbox_events` row whose `next_a
 - They are scheduled when a payment proof is **approved**, inside that approval's own transaction, so an approval that rolls back schedules nothing.
 - A reminder whose moment has already passed is **not queued at all**. A row due in the past is a row due now, so queueing the twenty-four hour reminder for a booking approved twelve hours before departure would fire it immediately, announcing notice the student has not got.
 - `dedupe_key` is `"<bookingId>:<type>"`, the legacy's `unique (bookingId, type)` written as one column. The unique constraint is what makes scheduling idempotent.
-- Cancelling a booking marks its unsent (`PENDING`) reminders `DEAD` whatever their due time — a reminder that has come due but that no worker has claimed yet is exactly the one that must not go out; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on.
+- Cancelling a booking marks its unsent (`PENDING`) reminders `DEAD` whatever their due time — a reminder that has come due but that no worker has claimed yet is exactly the one that must not go out; expiry does the same. Without it a student who cancelled yesterday is told this afternoon that their trip departs in an hour. The withdrawal is scoped to rows carrying a `dedupe_key`, so the cancellation's or expiry's own message — which the student does need — is untouched, as is a reminder that has already been sent or that another worker is mid-send on. A trip cancellation withdraws reminders the same way.
+- Moving a trip's departure **deletes** a confirmed booking's unsent reminders and schedules them again for the new time. It deletes rather than marks them `DEAD`, so their `dedupe_key` can be written again. A reminder already sent is kept, and so is its key, so that offset is not sent a second time.
 
 ## Critical constraints to design
 
