@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { useLiveUpdates } from "../hooks/useLiveUpdates";
 import type { AuthSession } from "../types/auth";
 import { Drawer } from "./ui/Drawer";
 import { ToastProvider } from "./ui/Toast";
@@ -64,6 +65,7 @@ export function AdminLayout({ session }: { session: AuthSession }) {
   const { pathname } = useLocation();
   const name = session.user.displayName ?? "Administrator";
   const inTucked = tucked.some((entry) => pathname.startsWith(entry.path));
+  useLiveUpdates(session);
 
   return (
     <ToastProvider>

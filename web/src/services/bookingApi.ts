@@ -128,4 +128,9 @@ export const bookingApi = {
 
     return (await response.json()) as Booking;
   },
+  openLiveTicket: (session: AuthSession) =>
+    request<{ ticket: string }>(session, "/events/ticket", { method: "POST" }),
+  // EventSource sends no Authorization header, so the stream takes a short-lived ticket instead.
+  liveStreamUrl: (ticket: string) =>
+    `${apiBaseUrl}/api/v1/events?ticket=${encodeURIComponent(ticket)}`,
 };

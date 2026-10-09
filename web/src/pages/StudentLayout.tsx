@@ -6,6 +6,7 @@ import { LineFriendBanner } from "../components/LineFriendBanner";
 import { SignInAgain } from "../components/SignInAgain";
 import { StudentTabBar } from "../components/StudentTabBar";
 import { useMyBookings } from "../hooks/useBookingQueries";
+import { useLiveUpdates } from "../hooks/useLiveUpdates";
 import type { StudentContext } from "../hooks/useStudent";
 import type { AuthSession } from "../types/auth";
 import type { Notice } from "../types/booking";
@@ -38,6 +39,7 @@ export function StudentLayout({ session }: { session: AuthSession }) {
   const booking = useMatch("/trips/:tripId");
   const bookings = useMyBookings(session);
   const expired = useSignInExpired();
+  useLiveUpdates(session);
   const carried = (location.state as { notice?: Notice } | null)?.notice ?? null;
   // Keyed to the screen it was raised on, so a message never outlives its screen.
   const [raised, setRaised] = useState<{ key: string; notice: Notice | null } | null>(null);
