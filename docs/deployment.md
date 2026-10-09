@@ -20,6 +20,7 @@ table below into a chat.
 | `POSTGRES_PASSWORD` | RDS-managed secret in Secrets Manager | RDS, during the demo apply | The API's database login. No person, tfvars file or Terraform state ever holds it |
 | `LINE_CHANNEL_ID` | `line_channel_id` in the gitignored `infra/demo/terraform.tfvars`, passed to the task as plain environment | Owner | The **Login** channel id the API checks id tokens against. An identifier, not a secret |
 | `VITE_LIFF_ID` | Build-time environment of `npm run build`, inlined into the bundle | Owner | The LIFF app id the SDK needs before any network call. Public |
+| `VITE_LINE_OA_ID` | Build-time environment of `npm run build`, inlined into the bundle | Owner | The Official Account's basic ID (`@…`), for the student app's "Add AU-Van on LINE" prompt. Public. Empty hides the prompt |
 | `LINE_LIFF_URL` | `line_liff_url` in `infra/demo/terraform.tfvars`, passed to the task as plain environment | Owner | `https://liff.line.me/<LIFF id>`, which the button on a notification card opens. Public. Empty sends cards without a button |
 | Budget email and limit | `notification_email` and `monthly_limit_usd` in the gitignored `infra/budget/terraform.tfvars` | Owner | Where the budget notifications go, and the monthly ceiling in USD |
 | Alarm email (optional) | `alarm_notification_email` in `infra/demo/terraform.tfvars` | Owner | Where the three CloudWatch alarms send. Empty creates no SNS topic |

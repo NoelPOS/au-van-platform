@@ -40,6 +40,7 @@ services:
       context: web
       args:
         VITE_LIFF_ID: ${VITE_LIFF_ID:-}
+        VITE_LINE_OA_ID: ${VITE_LINE_OA_ID:-}
     ports: !reset []
     mem_limit: 128m
 
