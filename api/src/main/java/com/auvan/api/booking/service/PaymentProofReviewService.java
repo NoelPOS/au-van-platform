@@ -50,7 +50,7 @@ public class PaymentProofReviewService {
     @Transactional(readOnly = true)
     public List<PaymentProofResponse> list() {
         Map<UUID, Set<SameSlipBooking>> reused = new HashMap<>();
-        for (SlipReuse reuse : proofs.findSlipsReusedByWaitingProofs()) {
+        for (SlipReuse reuse : proofs.findReusedSlips()) {
             reused.computeIfAbsent(reuse.proofId(), proofId -> new LinkedHashSet<>())
                     .add(new SameSlipBooking(reuse.bookingId(), reuse.bookingReference()));
         }
