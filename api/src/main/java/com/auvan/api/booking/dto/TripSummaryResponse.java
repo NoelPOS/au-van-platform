@@ -12,14 +12,15 @@ public record TripSummaryResponse(
         String origin,
         String destination,
         OffsetDateTime departureAt,
+        OffsetDateTime bookingClosesAt,
         BigDecimal fare,
         int durationMinutes,
         int totalSeats,
         int availableSeats) {
-    public static TripSummaryResponse from(Trip trip, long claimedSeats) {
+    public static TripSummaryResponse from(Trip trip, OffsetDateTime bookingClosesAt, long claimedSeats) {
         int totalSeats = trip.getSeats().size();
         return new TripSummaryResponse(trip.getId(), trip.getRoute().getId(), trip.getRoute().getOrigin(),
-                trip.getRoute().getDestination(), trip.getDepartureAt(), trip.getFare(), trip.getDurationMinutes(),
-                totalSeats, totalSeats - (int) claimedSeats);
+                trip.getRoute().getDestination(), trip.getDepartureAt(), bookingClosesAt, trip.getFare(),
+                trip.getDurationMinutes(), totalSeats, totalSeats - (int) claimedSeats);
     }
 }

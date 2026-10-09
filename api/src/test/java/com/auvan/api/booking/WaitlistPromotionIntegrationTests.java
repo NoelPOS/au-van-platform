@@ -52,13 +52,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
@@ -335,24 +333,25 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
     }
 
     @Test
-    void aPromotionCloseToDepartureGetsTheShorterDeadline() {
-        Trip soon = createTrip("VAN-WP3", OffsetDateTime.now().plusMinutes(70), 1);
+    void aTripWhoseBookingHasClosedPromotesNobody() {
+        Trip soon = createTrip("VAN-WP3", OffsetDateTime.now().plusDays(1), 1);
         fillEverySeatOf(soon);
         UUID first = join(studentA, soon, 1);
+        departIn(soon, Duration.ofMinutes(80));
         lapseHoldOn(soon.getSeats().getFirst());
 
-        assertThat(promotion.sweep()).isOne();
+        assertThat(promotion.sweep()).isZero();
 
-        OffsetDateTime deadline = entry(first).getPromotionExpiresAt();
-        assertThat(deadline).isCloseTo(soon.getDepartureAt().minusHours(1), within(2, ChronoUnit.SECONDS));
-        assertThat(deadline).isBefore(OffsetDateTime.now().plusMinutes(30));
+        assertThat(entry(first).getStatus()).isEqualTo(WaitlistStatus.WAITING);
+        assertThat(events.count()).isZero();
     }
 
     @Test
     void aTripPastItsDepartureBoundPromotesNobody() {
-        Trip departing = createTrip("VAN-WP4", OffsetDateTime.now().plusMinutes(30), 1);
+        Trip departing = createTrip("VAN-WP4", OffsetDateTime.now().plusDays(1), 1);
         fillEverySeatOf(departing);
         UUID first = join(studentA, departing, 1);
+        departIn(departing, Duration.ofMinutes(30));
         lapseHoldOn(departing.getSeats().getFirst());
 
         assertThat(promotion.sweep()).isZero();
@@ -473,6 +472,10 @@ class WaitlistPromotionIntegrationTests extends AuthenticationTestSupport {
     private void lapseHoldOn(TripSeat seat) {
         jdbc.update("update seat_claims set expires_at = ? where trip_seat_id = ?",
                 OffsetDateTime.now().minusMinutes(1), seat.getId());
+    }
+
+    private void departIn(Trip on, Duration fromNow) {
+        jdbc.update("update trips set departure_at = ? where id = ?", OffsetDateTime.now().plus(fromNow), on.getId());
     }
 
     private void lapsePromotion(UUID entryId) {

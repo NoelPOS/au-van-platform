@@ -310,7 +310,7 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
 
     @Test
     void aBookingMadeCloseToDepartureIsBoundedByTheDepartureCutoffInstead() {
-        Trip soon = trips.save(new Trip(trip.getRoute(), trip.getVehicle(), OffsetDateTime.now().plusMinutes(90)));
+        Trip soon = trips.save(new Trip(trip.getRoute(), trip.getVehicle(), OffsetDateTime.now().plusMinutes(100)));
         UUID holdId = holds.hold(student, new CreateSeatHoldRequest(soon.getId(),
                 List.of(soon.getSeats().getFirst().getId()))).holdId();
         bookingService.create(student, "key-soon", new CreateBookingRequest(holdId, "Somchai P.", "0812345678"));

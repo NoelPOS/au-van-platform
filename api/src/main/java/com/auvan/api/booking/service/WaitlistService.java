@@ -98,6 +98,10 @@ public class WaitlistService {
         if (!trip.getDepartureAt().isAfter(now)) {
             throw Problems.conflict("trip_departed", "This trip has already departed.");
         }
+        if (!now.isBefore(properties.bookingClosesAt(trip.getDepartureAt()))) {
+            throw Problems.conflict("booking_closed", "Booking for this trip has closed. Seats can be booked until "
+                    + properties.closesBeforeDeparture().toMinutes() + " minutes before departure.");
+        }
         if (seatsWanted > properties.maxSeatsPerHold()) {
             throw Problems.badRequest("too_many_seats",
                     "You can hold at most " + properties.maxSeatsPerHold() + " seats at a time.");

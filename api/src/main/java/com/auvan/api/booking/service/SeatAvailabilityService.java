@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.SeatState;
 import com.auvan.api.booking.dto.TripSeatMapResponse;
 import com.auvan.api.booking.dto.TripSummaryResponse;
@@ -24,10 +25,12 @@ import java.util.stream.Collectors;
 public class SeatAvailabilityService {
     private final TripRepository trips;
     private final SeatClaimRepository claims;
+    private final BookingProperties properties;
 
-    public SeatAvailabilityService(TripRepository trips, SeatClaimRepository claims) {
+    public SeatAvailabilityService(TripRepository trips, SeatClaimRepository claims, BookingProperties properties) {
         this.trips = trips;
         this.claims = claims;
+        this.properties = properties;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +44,8 @@ public class SeatAvailabilityService {
                 .filter(claim -> claim.blocksSeatAt(now))
                 .collect(Collectors.groupingBy(claim -> claim.getTripSeat().getTrip().getId(), Collectors.counting()));
         return bookable.stream()
-                .map(trip -> TripSummaryResponse.from(trip, claimedPerTrip.getOrDefault(trip.getId(), 0L)))
+                .map(trip -> TripSummaryResponse.from(trip, properties.bookingClosesAt(trip.getDepartureAt()),
+                        claimedPerTrip.getOrDefault(trip.getId(), 0L)))
                 .toList();
     }
 
@@ -55,7 +59,8 @@ public class SeatAvailabilityService {
                 .map(seat -> new TripSeatMapResponse.SeatResponse(seat.getId(), seat.getLabel(), seat.getRowNumber(),
                         seat.getColumnNumber(), stateOf(blocking.get(seat.getId()), userId)))
                 .toList();
-        return new TripSeatMapResponse(trip.getId(), trip.getDepartureAt(), trip.getFare(), seats);
+        return new TripSeatMapResponse(trip.getId(), trip.getDepartureAt(),
+                properties.bookingClosesAt(trip.getDepartureAt()), trip.getFare(), seats);
     }
 
     @Transactional(readOnly = true)
