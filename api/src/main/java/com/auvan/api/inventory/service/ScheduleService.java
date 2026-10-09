@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -40,16 +39,13 @@ public class ScheduleService {
         return new SchedulePreviewResponse(plan.hash(), plan.departures());
     }
 
-    // Not @Transactional: a failed write is rollback-only, so the replay needs its own transaction.
+    // Not @Transactional: a replay fails its write (every departure now clashes), so the stored answer
+    // is read back in a transaction of its own.
     public IdempotencyService.StoredResponse apply(UUID userId, String key, SchedulePlanRequest request) {
         if (request.planHash() == null || request.planHash().isBlank()) {
             throw Problems.badRequest("preview_required", "Preview the schedule before applying it.");
         }
         String requestHash = idempotency.fingerprint(request);
-        Optional<IdempotencyService.StoredResponse> replay = idempotency.find(userId, APPLY_ENDPOINT, key, requestHash);
-        if (replay.isPresent()) {
-            return replay.get();
-        }
         try {
             return writer.apply(userId, APPLY_ENDPOINT, key, requestHash, request);
         } catch (RuntimeException failure) {
