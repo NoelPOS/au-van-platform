@@ -46,6 +46,14 @@ ENV VITE_LIFF_ID=$VITE_LIFF_ID
 ARG VITE_LINE_OA_ID=""
 ENV VITE_LINE_OA_ID=$VITE_LINE_OA_ID
 
+# Where students pay: a PromptPay mobile number or 13-digit ID, and the name the
+# bank app should show. Public by design, since the QR carries it. Blank shows a
+# sample QR that pays no one.
+ARG VITE_PROMPTPAY_ID=""
+ENV VITE_PROMPTPAY_ID=$VITE_PROMPTPAY_ID
+ARG VITE_PROMPTPAY_NAME=""
+ENV VITE_PROMPTPAY_NAME=$VITE_PROMPTPAY_NAME
+
 # The Playwright suite's sign-in control, and the only build argument here that
 # must never be set for a real image (ADR-013). compose.e2e.yaml sets it to
 # "true"; nothing else does. The default is an empty string rather than absent
