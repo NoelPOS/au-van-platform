@@ -35,8 +35,7 @@ class DatabaseMigrationIntegrationTests extends AuthenticationTestSupport {
 
     @Test
     void theSchemaCarriesABookingCheckConstraintNoMappingCouldExpress() {
-        // Read from the catalog, not provoked: a foreign-key violation would look the same here
-        // and the test would pass without the constraint.
+        // Read from the catalog: a foreign-key violation would pass without the constraint.
         assertThat(jdbc.queryForObject("""
                 select count(*) from information_schema.table_constraints
                 where upper(constraint_name) = 'BOOKINGS_TOTAL_FARE_NON_NEGATIVE'

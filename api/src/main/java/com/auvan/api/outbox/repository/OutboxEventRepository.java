@@ -23,8 +23,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             """)
     List<UUID> findDispatchable(@Param("now") OffsetDateTime now, Pageable pageable);
 
-    // Both WHERE halves are load-bearing: status stops a resend, nextAttemptAt stops two holders.
-    // The claim spends the attempt, so a send that kills its worker still exhausts the budget.
+    // status stops a resend and nextAttemptAt stops two holders; claiming spends the attempt.
     @Transactional
     @Modifying
     @Query("""
@@ -95,8 +94,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
             """)
     int deleteScheduled(@Param("aggregateId") UUID aggregateId);
 
-    // dedupeKey is not null spares the BOOKING_CANCELLED row; PENDING only spares an IN_FLIGHT
-    // send. No due-time clause: a due-but-unclaimed reminder must be withdrawn too.
+    // Spares state-change rows and IN_FLIGHT sends; no due-time clause, so due reminders go too.
     @Transactional
     @Modifying
     @Query("""

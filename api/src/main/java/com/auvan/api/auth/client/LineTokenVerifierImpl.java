@@ -42,8 +42,7 @@ class LineTokenVerifierImpl implements LineTokenVerifier {
                     .retrieve()
                     .body(LineVerificationResponse.class);
 
-            // The configured host may be a test double (ADR-013); these iss, aud and
-            // sub checks are what stop it vouching for a forged token.
+            // The host may be a test double; these checks stop it vouching for a forged token.
             if (response == null
                     || response.sub() == null || response.sub().isBlank()
                     || !properties.line().channelId().equals(response.aud())

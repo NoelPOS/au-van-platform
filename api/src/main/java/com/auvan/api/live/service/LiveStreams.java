@@ -19,7 +19,7 @@ public class LiveStreams {
     private final Map<SseEmitter, LiveSubscriber> open = new ConcurrentHashMap<>();
     private final Duration lifetime;
 
-    // A stream outlives no access token, so staying connected keeps needing a signed-in session.
+    // SECURITY CONTROL: a stream never outlives an access token.
     public LiveStreams(AuthProperties auth) {
         this.lifetime = auth.jwt().accessTokenTtl();
     }

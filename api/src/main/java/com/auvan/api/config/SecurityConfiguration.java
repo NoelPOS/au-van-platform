@@ -43,10 +43,9 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/api/v1/auth/line/exchange").permitAll()
-                        // SECURITY CONTROL: the stream checks its own short-lived ticket (ADR-018).
+                        // SECURITY CONTROL: the stream checks its own short-lived ticket.
                         .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
-                        // The only ADMIN check: there is no method security, so every
-                        // admin mapping must sit under /api/v1/admin/**.
+                        // The only ADMIN check: every admin mapping must sit under /api/v1/admin/**.
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
@@ -73,8 +72,7 @@ public class SecurityConfiguration {
         var configuration = new CorsConfiguration();
         // Never a wildcard origin: requests carry an Authorization header.
         configuration.setAllowedOrigins(properties.allowedOrigins());
-        // No DELETE: cancel, release and leave are POSTs, because a DELETE mapping
-        // passes MockMvc and fails in a real browser.
+        // No DELETE: a DELETE mapping passes MockMvc but fails CORS in a real browser.
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         // Idempotency-Key is not a CORS-safelisted header.
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
