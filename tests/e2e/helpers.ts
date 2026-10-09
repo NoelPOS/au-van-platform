@@ -4,12 +4,8 @@ import { adminSubject } from "./global-setup";
 
 export { adminSubject };
 
-// Sessions live only in memory, so a reload means signing in again; one journey
-// relies on that to refresh what the student sees.
-
 let sequence = 0;
 
-/** Unique per test, so every run and every worker has its own fixtures. */
 function uniqueSuffix(): string {
   sequence += 1;
   return `${Date.now().toString(36)}${sequence}`;
@@ -19,13 +15,10 @@ export function studentSubject(): string {
   return `e2e-student-${uniqueSuffix()}`;
 }
 
-/**
- * The day chip and clock time the trip form shows for a departure this many
- * days out: Bangkok wall-clock time, which is UTC+7 all year, whatever timezone
- * the browser runs in.
- */
+const bangkokOffsetMs = 7 * 3_600_000;
+
 function departureInDays(days: number): { dayChip: string; time: string } {
-  const bangkok = new Date(Date.now() + days * 86_400_000 + 7 * 3_600_000);
+  const bangkok = new Date(Date.now() + days * 86_400_000 + bangkokOffsetMs);
   const dayChip = new Intl.DateTimeFormat("en-GB", {
     timeZone: "UTC",
     weekday: "short",
@@ -79,18 +72,11 @@ export async function goToOperations(page: Page): Promise<void> {
 
 export type TripFixture = {
   routeLabel: string;
-  /** Part of the departure row's accessible name on the student board. */
   departureName: string;
   vehicleCode: string;
   seatLabels: string[];
 };
 
-/**
- * A route, a seat layout, a van and a departure, created through the four
- * pages of the administrator's own inventory rather than seeded into
- * the database. That is the point: it is the administrator journey, and it is
- * also every other test's fixture, so a break in it is a break in the product.
- */
 export async function createTrip(
   page: Page,
   seatLabels: string[],
@@ -145,9 +131,7 @@ export async function createTrip(
   await tripForm
     .getByRole("option", { name: `${vehicleCode} — White Hiace ${suffix}` })
     .click();
-  // A week out, so that a booking's deadline is always the two-hour payment
-  // window rather than `departureAt - departure-cutoff`, and the live expiry
-  // sweep can never reach a booking made during a test.
+  // A week out, so the payment deadline is the two-hour window and the expiry sweep never runs mid-test.
   const departure = departureInDays(7);
   await tripForm
     .getByRole("group", { name: "Days" })
@@ -169,7 +153,6 @@ export async function createTrip(
   };
 }
 
-/** The trip's row on the student board, on whichever day tab it falls. */
 export async function findDeparture(page: Page, trip: TripFixture) {
   const departure = page.getByRole("button", { name: trip.departureName });
   await expect(page.getByRole("tab").first()).toBeVisible();
@@ -185,12 +168,6 @@ export async function chooseTrip(page: Page, trip: TripFixture): Promise<void> {
   await expect(page.getByRole("group", { name: "Seat map" })).toBeVisible();
 }
 
-/**
- * Holds one seat, fills the passenger form and confirms, returning the booking
- * reference the API minted. The reference is read off the response rather than
- * scraped out of the confirmation panel, because the administrator's review
- * queue is keyed on it and a misread would look like a missing booking.
- */
 export async function bookSeat(
   page: Page,
   trip: TripFixture,
@@ -216,12 +193,10 @@ export async function bookSeat(
   return booking.reference;
 }
 
-/** The boarding pass on the open ticket page. */
 export function boardingPass(page: Page, reference: string) {
   return page.getByRole("article", { name: `Boarding pass ${reference}` });
 }
 
-/** Opens a ticket from the Tickets tab, the way a returning student would. */
 export async function openTicket(page: Page, reference: string): Promise<void> {
   await page
     .getByRole("navigation", { name: "Student" })
@@ -231,14 +206,10 @@ export async function openTicket(page: Page, reference: string): Promise<void> {
   await expect(boardingPass(page, reference)).toBeVisible();
 }
 
-/**
- * Opens a booking reference in the administrator's review queue. The queue is
- * every student's, so it is found by reference rather than by position.
- */
 export async function openProof(page: Page, reference: string): Promise<void> {
   const row = page.getByRole("button", { name: reference });
   await expect(row).toBeVisible();
-  // Clicked on the fare stub, well away from the reference, so the whole ticket is the target.
+  // Clicked away from the reference button, so the ticket itself must open the proof.
   await page
     .getByRole("listitem")
     .filter({ has: row })
