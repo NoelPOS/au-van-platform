@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { session } from "../test/bookingFixtures";
 import { useLiveUpdates } from "./useLiveUpdates";
+import { refundKeys } from "./useRefundQueries";
 
 class FakeEventSource {
   static opened: FakeEventSource[] = [];
@@ -47,7 +48,7 @@ const known: QueryKey[] = [
   ["booking", "seat-map", "trip-2"],
   ["booking", "trips"],
   ["payments", "proofs"],
-  ["payments", "refunds"],
+  refundKeys.due,
   ["overview", "payment-proofs"],
 ];
 
