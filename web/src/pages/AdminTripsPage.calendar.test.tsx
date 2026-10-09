@@ -109,7 +109,7 @@ describe("AdminTripsPage calendar", () => {
     const tuesday = within(
       calendar().getByRole("region", { name: "Tuesday 6 January" }),
     );
-    expect(tuesday.getByRole("listitem")).toHaveClass("line-through");
+    expect(tuesday.getByText("08:00").parentElement).toHaveClass("line-through");
     expect(tuesday.getByText("08:00")).toBeInTheDocument();
   });
 
