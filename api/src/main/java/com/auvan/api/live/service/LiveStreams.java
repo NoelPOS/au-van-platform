@@ -10,6 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -34,7 +35,7 @@ public class LiveStreams {
     }
 
     public void deliver(LiveSignal signal) {
-        Map<String, Object> visible = Map.of("kind", signal.kind(), "id", signal.id());
+        Visible visible = new Visible(signal.kind(), signal.id());
         open.forEach((emitter, subscriber) -> {
             if (subscriber.receives(signal)) {
                 send(emitter, SseEmitter.event().data(visible));
@@ -46,6 +47,8 @@ public class LiveStreams {
     public void heartbeat() {
         open.keySet().forEach(emitter -> send(emitter, SseEmitter.event().comment("heartbeat")));
     }
+
+    private record Visible(String kind, UUID id) { }
 
     private void send(SseEmitter emitter, SseEmitter.SseEventBuilder event) {
         try {
