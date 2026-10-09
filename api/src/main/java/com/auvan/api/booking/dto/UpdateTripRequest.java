@@ -5,4 +5,6 @@ import jakarta.validation.constraints.Future;
 
 import java.time.OffsetDateTime;
 
-public record UpdateTripRequest(@Future OffsetDateTime departureAt, TripStatus status) { }
+public record UpdateTripRequest(
+        @Future(message = CreateTripRequest.PAST_DEPARTURE) OffsetDateTime departureAt,
+        TripStatus status) { }

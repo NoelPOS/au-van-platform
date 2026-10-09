@@ -20,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -187,6 +188,23 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
         authenticatedPost("/api/v1/admin/trips", """
                 {"routeId":"%s","vehicleId":"%s","departureAt":"%s"}
                 """.formatted(routeId, vehicleId, departureAt), adminToken).andExpect(status().isConflict());
+    }
+
+    @Test
+    void aPastDepartureIsRefusedWithAReasonAPersonCanRead() throws Exception {
+        String adminToken = tokenFor("admin-token", "Uadmin", true);
+        String past = OffsetDateTime.now().minusMinutes(5).withNano(0).toString();
+
+        authenticatedPost("/api/v1/admin/trips", """
+                {"routeId":"%s","vehicleId":"%s","departureAt":"%s"}
+                """.formatted(UUID.randomUUID(), UUID.randomUUID(), past), adminToken)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("That departure time has already passed. Choose a later time."));
+        authenticatedPost("/api/v1/admin/trips", """
+                {"vehicleId":"%s","departureAt":"%s"}
+                """.formatted(UUID.randomUUID(), past.replace(past.substring(0, 4), "2999")), adminToken)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Invalid request content."));
     }
 
     private String tokenFor(String idToken, String lineSubject, boolean administrator) throws Exception {
