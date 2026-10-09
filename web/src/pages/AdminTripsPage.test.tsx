@@ -12,6 +12,7 @@ import {
   freezeBangkokTime,
   layout,
   route,
+  showList,
   tripAt,
   van,
 } from "../test/tripFixtures";
@@ -21,8 +22,9 @@ import { AdminTripsPage } from "./AdminTripsPage";
 const trip = tripAt("2026-01-05T09:00:00Z", { id: "trip-1" });
 const editTrip = { name: "Edit trip on Mon 5 Jan · 16:00" };
 
-function renderPage() {
+async function renderPage() {
   renderAdminPage(<AdminTripsPage session={adminSession} />);
+  await showList();
 }
 
 describe("AdminTripsPage", () => {
@@ -42,7 +44,7 @@ describe("AdminTripsPage", () => {
       "GET /seat-layouts": () => json([layout]),
     });
 
-    renderPage();
+    await renderPage();
 
     const day = await screen.findByRole("table", { name: "Trips on Mon 5 Jan" });
     const row = within(day).getByRole("row", { name: /VAN-01/ });
@@ -61,7 +63,7 @@ describe("AdminTripsPage", () => {
       "PUT /trips/trip-1": (body) => json({ ...trip, ...(body as object) }),
     });
 
-    renderPage();
+    await renderPage();
     fireEvent.click(await screen.findByRole("button", editTrip));
 
     const status = within(drawer().getByRole("radiogroup", { name: "Status" }));
@@ -96,7 +98,7 @@ describe("AdminTripsPage", () => {
       "PUT /trips/trip-1": (body) => json({ ...trip, ...(body as object) }),
     });
 
-    renderPage();
+    await renderPage();
     fireEvent.click(await screen.findByRole("button", editTrip));
 
     const days = within(drawer().getByRole("group", { name: "Day" }));
@@ -123,7 +125,7 @@ describe("AdminTripsPage", () => {
   it("asks before it cancels a trip and saves nothing if the administrator goes back", async () => {
     const fetcher = stubAdminApi({ "GET /trips": () => json([trip]) });
 
-    renderPage();
+    await renderPage();
     fireEvent.click(await screen.findByRole("button", editTrip));
     fireEvent.click(drawer().getByRole("radio", { name: "Cancelled" }));
     fireEvent.click(drawer().getByRole("button", { name: "Save trip" }));
@@ -146,14 +148,15 @@ describe("AdminTripsPage", () => {
         refuse ? json({ detail: "Access denied." }, 403) : json([]),
     });
 
-    renderPage();
+    renderAdminPage(<AdminTripsPage session={adminSession} />);
 
     expect(await screen.findByText("Could not load trips")).toBeInTheDocument();
     expect(screen.getByText("Access denied.")).toBeInTheDocument();
     refuse = false;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await showList();
 
     expect(await screen.findByText("No trips yet")).toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "Show trips" })).toBeNull();
   });
 });

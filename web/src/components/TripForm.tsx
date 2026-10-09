@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useUpdateTrip } from "../hooks/useInventoryQueries";
+import { useNow } from "../hooks/useNow";
 import { useScheduleTrips } from "../hooks/useScheduleTrips";
 import { useToast } from "../hooks/useToast";
 import type { AuthSession } from "../types/auth";
@@ -11,6 +12,7 @@ import type {
   Vehicle,
 } from "../types/inventory";
 import { fromBangkokInputs, parseClock, toBangkokInputs } from "../utils/dates";
+import { passedToday, pastClockError } from "../utils/schedule";
 import {
   departureTimes,
   routeOption,
@@ -39,10 +41,12 @@ export function TripForm({
   vans,
   layouts,
   trips,
+  startDay,
   onDone,
 }: {
   session: AuthSession;
   trip: Trip | null;
+  startDay?: string;
   routes: VanRoute[];
   vans: Vehicle[];
   layouts: SeatLayout[];
@@ -55,10 +59,13 @@ export function TripForm({
   const initial = trip ? toBangkokInputs(trip.departureAt) : null;
   const [routeId, setRouteId] = useState(trip?.routeId ?? routes[0]?.id ?? "");
   const [vehicleId, setVehicleId] = useState(trip?.vehicleId ?? vans[0]?.id ?? "");
-  const [days, setDays] = useState(initial ? [initial.date] : []);
+  const [days, setDays] = useState(
+    initial ? [initial.date] : startDay ? [startDay] : [],
+  );
   const [time, setTime] = useState(initial?.time ?? "");
   const [status, setStatus] = useState<TripStatus>(trip?.status ?? "ACTIVE");
   const [submitted, setSubmitted] = useState(false);
+  const now = useNow();
 
   if (!trip && (routes.length === 0 || vans.length === 0)) {
     return (
@@ -75,6 +82,11 @@ export function TripForm({
   }
 
   const clock = parseClock(time);
+  const passedUntil = passedToday(days, now);
+  const timeError =
+    submitted && !clock
+      ? "Enter a 24-hour time, like 07:30."
+      : pastClockError(clock, passedUntil);
   const route = routes.find((entry) => entry.id === routeId);
   const summary = tripSummary({
     clock,
@@ -92,6 +104,7 @@ export function TripForm({
     event.preventDefault();
     setSubmitted(true);
     if (!clock || days.length === 0) return;
+    if (pastClockError(clock, passedToday(days, Date.now()))) return;
     if (trip) {
       const departureAt = fromBangkokInputs(days[0], clock);
       updateTrip.mutate(
@@ -150,12 +163,9 @@ export function TripForm({
           selected={days}
         />
         <TimeField
-          error={
-            submitted && !clock
-              ? "Enter a 24-hour time, like 07:30."
-              : undefined
-          }
+          error={timeError}
           onChange={setTime}
+          passedUntil={passedUntil}
           suggestions={departureTimes(trips, routeId, trip?.id)}
           value={time}
         />

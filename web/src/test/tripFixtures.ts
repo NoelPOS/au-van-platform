@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { vi } from "vitest";
 import type { Trip } from "../types/inventory";
 
@@ -50,4 +50,8 @@ export function freezeBangkokTime(wallClock: string) {
 
 export function drawer() {
   return within(screen.getByRole("dialog"));
+}
+
+export async function showList() {
+  fireEvent.click(await screen.findByRole("radio", { name: "List" }));
 }

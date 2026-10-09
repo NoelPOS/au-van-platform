@@ -6,7 +6,7 @@ import { Calendar } from "./ui/Calendar";
 import { labelClass } from "./ui/Field";
 
 const chipClass =
-  "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-card px-3.5 text-sm font-medium text-ink tabular-nums transition-colors duration-150 ease-out hover:border-ink/25 aria-pressed:border-brand-600 aria-pressed:bg-brand-600 aria-pressed:text-white aria-expanded:border-brand-500";
+  "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-card px-3.5 text-sm font-medium text-ink tabular-nums transition-colors duration-150 ease-out hover:border-ink/25 disabled:cursor-not-allowed disabled:border-dashed disabled:text-muted disabled:line-through aria-pressed:border-brand-600 aria-pressed:bg-brand-600 aria-pressed:text-white aria-expanded:border-brand-500";
 
 export function DayPicker({
   selected,
@@ -66,7 +66,9 @@ export function DayPicker({
           <button
             aria-pressed={selected.includes(day)}
             className={chipClass}
+            disabled={day < today}
             key={day}
+            title={day < today ? "This day has passed." : undefined}
             onClick={() => toggle(day)}
             type="button"
           >

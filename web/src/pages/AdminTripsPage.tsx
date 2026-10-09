@@ -1,14 +1,13 @@
-import { Plus } from "lucide-react";
+import { CalendarCheck, LayoutTemplate, Plus } from "lucide-react";
 import { useState } from "react";
 import { InventoryPage } from "../components/InventoryPage";
-import { TripForm } from "../components/TripForm";
+import { PlanBar } from "../components/PlanBar";
+import { TripCalendar } from "../components/TripCalendar";
+import { TripList } from "../components/TripList";
+import { TripPanels, type Panel } from "../components/TripPanels";
 import { Button } from "../components/ui/Button";
-import { Drawer } from "../components/ui/Drawer";
-import { EmptyState } from "../components/ui/EmptyState";
-import { RouteLine } from "../components/ui/RouteLine";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
-import { StatusBadge } from "../components/ui/StatusBadge";
-import { Table, type Column } from "../components/ui/Table";
+import { useDayTemplates } from "../hooks/useDayTemplates";
 import {
   useRoutes,
   useSeatLayouts,
@@ -16,162 +15,157 @@ import {
   useVehicles,
 } from "../hooks/useInventoryQueries";
 import type { AuthSession } from "../types/auth";
-import type { Trip } from "../types/inventory";
-import { bangkokToday, dayHeading, shortDay } from "../utils/calendar";
-import { bangkokDateTime, bangkokTime } from "../utils/dates";
-import {
-  filterTrips,
-  groupByDay,
-  type TripFilter,
-} from "../utils/tripFilters";
+import type { DepartureLine } from "../types/schedule";
+import { bangkokToday, shortDay } from "../utils/calendar";
+import { linesOf, tripsByDay } from "../utils/schedule";
 
-const filters: { value: TripFilter; label: string }[] = [
-  { value: "upcoming", label: "Upcoming" },
-  { value: "past", label: "Past" },
-  { value: "cancelled", label: "Cancelled" },
+type View = "month" | "week" | "list";
+
+type Planning = { copy: { day: string; lines: DepartureLine[] } | null };
+
+const views: { value: View; label: string }[] = [
+  { value: "month", label: "Month" },
+  { value: "week", label: "Week" },
+  { value: "list", label: "List" },
 ];
-
-const empty: Record<TripFilter | "none", { title: string; detail: string }> = {
-  none: {
-    title: "No trips yet",
-    detail: "Schedule a departure once a route and a van are ready.",
-  },
-  upcoming: {
-    title: "Nothing on the board",
-    detail: "No departures ahead. Schedule one, or a week of them at once.",
-  },
-  past: {
-    title: "No departures have run yet",
-    detail: "Trips move here once their departure time has passed.",
-  },
-  cancelled: {
-    title: "No cancelled trips",
-    detail: "Every scheduled departure is still running.",
-  },
-};
 
 export function AdminTripsPage({ session }: { session: AuthSession }) {
   const trips = useTrips(session);
   const routes = useRoutes(session);
   const vans = useVehicles(session);
   const layouts = useSeatLayouts(session);
-  const [filter, setFilter] = useState<TripFilter>("upcoming");
-  const [now] = useState(Date.now);
-  const [editing, setEditing] = useState<Trip | "new" | null>(null);
+  const templates = useDayTemplates(session);
+  const [view, setView] = useState<View>("month");
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const [planning, setPlanning] = useState<Planning | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const allTrips = trips.data ?? [];
   const routeList = routes.data ?? [];
   const vanList = vans.data ?? [];
-  const allTrips = trips.data ?? [];
-  const groups = groupByDay(filterTrips(allTrips, filter, now));
+  const days = tripsByDay(allTrips);
   const today = bangkokToday();
-  const close = () => setEditing(null);
 
-  const columns: Column<Trip>[] = [
-    {
-      label: "Departs",
-      render: (trip) => (
-        <span className="font-display text-lg text-brand-900">
-          {bangkokTime(trip.departureAt)}
-        </span>
-      ),
-    },
-    {
-      label: "Route",
-      render: (trip) => {
-        const route = routeList.find((entry) => entry.id === trip.routeId);
-        return route ? (
-          <RouteLine destination={route.destination} origin={route.origin} />
-        ) : (
-          "Unknown route"
-        );
-      },
-    },
-    {
-      label: "Van",
-      render: (trip) => (
-        <span className="font-mono text-[13px]">
-          {vanList.find((entry) => entry.id === trip.vehicleId)?.code ??
-            "Unknown van"}
-        </span>
-      ),
-    },
-    { label: "Seats", render: (trip) => trip.seats.length },
-    { label: "Status", render: (trip) => <StatusBadge value={trip.status} /> },
-    {
-      label: "",
-      align: "end",
-      render: (trip) => (
-        <Button
-          aria-label={`Edit trip on ${bangkokDateTime(trip.departureAt)}`}
-          onClick={() => setEditing(trip)}
-          variant="text"
-        >
-          Edit
-        </Button>
-      ),
-    },
-  ];
+  function plan(copy: Planning["copy"]) {
+    setPlanning({ copy });
+    setSelected([]);
+    setPanel(null);
+    if (view === "list") setView("month");
+  }
+
+  function stopPlanning() {
+    setPlanning(null);
+    setSelected([]);
+  }
+
+  function toggle(toggled: string[]) {
+    const allIn = toggled.every((day) => selected.includes(day));
+    setSelected(
+      allIn
+        ? selected.filter((day) => !toggled.includes(day))
+        : [...new Set([...selected, ...toggled])].sort(),
+    );
+  }
+
+  function preview() {
+    const copy = planning?.copy;
+    if (!copy) return setPanel({ kind: "templates" });
+    setPanel({
+      kind: "preview",
+      title: `Copy ${shortDay(copy.day)}`,
+      plan: { dates: selected, departures: copy.lines },
+    });
+  }
 
   return (
     <InventoryPage
       action={
-        <Button onClick={() => setEditing("new")}>
-          <Plus aria-hidden className="size-4" />
-          New trip
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setPanel({ kind: "trip", trip: null })}>
+            <Plus aria-hidden className="size-4" />
+            New trip
+          </Button>
+          <Button
+            onClick={() => setPanel({ kind: "templates" })}
+            variant="secondary"
+          >
+            <LayoutTemplate aria-hidden className="size-4" />
+            Templates
+          </Button>
+        </div>
       }
       description="Every scheduled departure, in Bangkok time."
       queries={[trips, routes, vans, layouts]}
       title="Trips"
     >
-      {allTrips.length > 0 && (
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <SegmentedControl
           hideLabel
-          label="Show trips"
-          onChange={setFilter}
-          options={filters}
-          value={filter}
+          label="View"
+          onChange={setView}
+          options={views}
+          value={view}
         />
-      )}
-      {groups.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-dashed border-line bg-card/60">
-          <EmptyState {...empty[allTrips.length ? filter : "none"]} />
-        </div>
-      ) : (
-        groups.map((group) => (
-          <section className="mt-8" key={group.day}>
-            <h2 className="mb-3 flex items-baseline justify-between gap-4 font-display text-xl text-brand-900">
-              {dayHeading(group.day, today)}
-              <span className="font-sans text-[13px] text-muted">
-                {group.trips.length === 1
-                  ? "1 departure"
-                  : `${group.trips.length} departures`}
-              </span>
-            </h2>
-            <Table
-              columns={columns}
-              empty={null}
-              label={`Trips on ${shortDay(group.day)}`}
-              rowKey={(trip) => trip.id}
-              rows={group.trips}
-            />
-          </section>
-        ))
-      )}
-      <Drawer
-        onClose={close}
-        open={editing !== null}
-        title={editing === "new" ? "Schedule a trip" : "Edit trip"}
-      >
-        <TripForm
-          layouts={layouts.data ?? []}
-          onDone={close}
+        {view !== "list" && !planning && (
+          <Button onClick={() => plan(null)} variant="secondary">
+            <CalendarCheck aria-hidden className="size-4" />
+            Select days
+          </Button>
+        )}
+      </div>
+      {view === "list" ? (
+        <TripList
+          onEdit={(trip) => setPanel({ kind: "trip", trip })}
           routes={routeList}
-          session={session}
-          trip={editing === "new" ? null : editing}
+          today={today}
           trips={allTrips}
           vans={vanList}
         />
-      </Drawer>
+      ) : (
+        <div className={planning ? "pb-32 lg:pb-24" : undefined}>
+          <TripCalendar
+            days={days}
+            onOpen={(day) => setPanel({ kind: "day", day })}
+            onToggle={toggle}
+            routes={routeList}
+            selected={selected}
+            selecting={planning !== null}
+            today={today}
+            vans={vanList}
+            view={view}
+          />
+        </div>
+      )}
+      {planning && (
+        <PlanBar
+          actionLabel={planning.copy ? "Preview copy" : "Apply template"}
+          count={selected.length}
+          onAction={preview}
+          onCancel={stopPlanning}
+          title={
+            planning.copy
+              ? `Copy ${shortDay(planning.copy.day)} to`
+              : "Plan days"
+          }
+        />
+      )}
+      <TripPanels
+        applyTo={planning && !planning.copy ? selected : []}
+        days={days}
+        layouts={layouts.data ?? []}
+        onApplied={() => {
+          setPanel(null);
+          stopPlanning();
+        }}
+        onCopyDay={(day) => plan({ day, lines: linesOf(days.get(day) ?? []) })}
+        onPanel={setPanel}
+        panel={panel}
+        routes={routeList}
+        session={session}
+        templates={templates.data ?? []}
+        today={today}
+        trips={allTrips}
+        vans={vanList}
+      />
     </InventoryPage>
   );
 }

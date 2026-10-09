@@ -6,15 +6,16 @@ import {
   renderAdminPage,
   stubAdminApi,
 } from "../test/renderAdminPage";
-import { freezeBangkokTime, tripAt, van } from "../test/tripFixtures";
+import { freezeBangkokTime, showList, tripAt, van } from "../test/tripFixtures";
 import { AdminTripsPage } from "./AdminTripsPage";
 
-function renderWith(trips: ReturnType<typeof tripAt>[]) {
+async function renderWith(trips: ReturnType<typeof tripAt>[]) {
   stubAdminApi({
     "GET /trips": () => json(trips),
     "GET /vehicles": () => json([van]),
   });
   renderAdminPage(<AdminTripsPage session={adminSession} />);
+  await showList();
 }
 
 function dayHeadings() {
@@ -40,7 +41,7 @@ describe("AdminTripsPage filters", () => {
   });
 
   it("shows upcoming trips first, grouped by Bangkok day in departure order", async () => {
-    renderWith([
+    await renderWith([
       tripAt("2026-01-05T18:30:00Z"),
       tripAt("2026-01-04T05:00:00Z"),
       tripAt("2026-01-04T16:59:00Z"),
@@ -56,7 +57,7 @@ describe("AdminTripsPage filters", () => {
   });
 
   it("shows departed and cancelled trips under their own filters, latest first", async () => {
-    renderWith([
+    await renderWith([
       tripAt("2026-01-04T01:00:00Z"),
       tripAt("2026-01-02T01:00:00Z"),
       tripAt("2026-01-03T01:00:00Z"),
@@ -77,7 +78,7 @@ describe("AdminTripsPage filters", () => {
   });
 
   it("says what is missing for a filter with nothing in it", async () => {
-    renderWith([tripAt("2026-01-02T01:00:00Z")]);
+    await renderWith([tripAt("2026-01-02T01:00:00Z")]);
 
     expect(await screen.findByText("Nothing on the board")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Cancelled" }));
