@@ -10,6 +10,5 @@ export function officialAccountUrl(): string | null {
     : null;
 }
 
-// Must stay a module-level constant: only then does the bundler drop the E2E
-// sign-in from other builds. Only "true" enables it; the Dockerfile passes "".
+// Must stay a module-level constant, or the bundler keeps the E2E sign-in in other builds.
 export const e2eAuthEnabled = import.meta.env.VITE_E2E_AUTH === "true";

@@ -10,8 +10,7 @@ function format(milliseconds: number): string {
   return `${Math.floor(totalSeconds / 60)}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Recomputed from expiresAt on every tick because a backgrounded LINE browser
-// throttles timers; callers key it on expiresAt so a new hold restarts it.
+// Recomputed from expiresAt each tick because LINE throttles background timers; key it on expiresAt.
 export function HoldCountdown({
   expiresAt,
   onExpire,

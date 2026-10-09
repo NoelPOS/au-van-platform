@@ -1,8 +1,7 @@
 import type { Notice } from "../types/booking";
 
 export function BookingNotice({ notice }: { notice: Notice | null }) {
-  // Both regions stay mounted and only their text changes: a live region
-  // inserted together with its first text is announced unreliably.
+  // Both regions stay mounted: a live region inserted with its first text is announced unreliably.
   return (
     <div className={notice ? "" : "sr-only"}>
       <p
