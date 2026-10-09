@@ -3,6 +3,8 @@ package com.auvan.api.booking.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+
 public final class Problems {
     private Problems() { }
 
@@ -20,6 +22,12 @@ public final class Problems {
 
     public static ResponseStatusException conflict(String code, String detail, Throwable cause) {
         return of(HttpStatus.CONFLICT, code, detail, cause);
+    }
+
+    public static ResponseStatusException conflict(String code, String detail, Map<String, Object> properties) {
+        var exception = of(HttpStatus.CONFLICT, code, detail, null);
+        properties.forEach(exception.getBody()::setProperty);
+        return exception;
     }
 
     // The cause is for the log only; never render it: SDK messages name the bucket and endpoint.

@@ -187,7 +187,8 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
 
     @Test
     void theStudentSeesTheirOwnBookingsNewestFirst() throws Exception {
-        confirm(studentToken, holdOn(seats.get(0)), "key-1").andExpect(status().isCreated());
+        String first = bookingIdFrom(confirm(studentToken, holdOn(seats.get(0)), "key-1"));
+        cancel(studentToken, first).andExpect(status().isOk());
         confirm(studentToken, holdOn(seats.get(1)), "key-2").andExpect(status().isCreated());
 
         mockMvc.perform(authenticated(get("/api/v1/bookings")))
@@ -262,7 +263,7 @@ class BookingIntegrationTests extends AuthenticationTestSupport {
     void reusingAKeyForADifferentRequestIsRejected() throws Exception {
         confirm(studentToken, holdOn(seats.get(0)), "key-1").andExpect(status().isCreated());
 
-        confirm(studentToken, holdOn(seats.get(1)), "key-1")
+        confirm(studentToken, UUID.randomUUID().toString(), "key-1")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("idempotency_key_reused"));
 

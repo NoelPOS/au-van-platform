@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
 @SpringBootTest
@@ -216,19 +217,16 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     @Test
     void eachExpiredBookingLeavesExactlyOnePendingOutboxRowAddressedToItsOwner() {
         UUID first = createBooking("key-outbox-1");
-        UUID second = createBooking("key-outbox-2", trip.getSeats().get(1));
+        UUID second = createBooking("key-outbox-2", trip.getSeats().get(1), otherStudent);
         overdue(first);
         overdue(second);
 
         assertThat(expiry.sweep()).isEqualTo(2);
 
         assertThat(outboxOfType(OutboxEventType.BOOKING_EXPIRED)).hasSize(2)
-                .allSatisfy(event -> {
-                    assertThat(event.getRecipientUserId()).isEqualTo(student);
-                    assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
-                })
-                .extracting(OutboxEvent::getAggregateId)
-                .containsExactlyInAnyOrder(first, second);
+                .allSatisfy(event -> assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING))
+                .extracting(OutboxEvent::getAggregateId, OutboxEvent::getRecipientUserId)
+                .containsExactlyInAnyOrder(tuple(first, student), tuple(second, otherStudent));
     }
 
     @Test
@@ -332,8 +330,8 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
 
     @Test
     void theV10MigrationClearsTheDeadlineOfEveryBookingAlreadyUnderReview() throws Exception {
-        UUID waiting = createBooking("key-v10-waiting");
-        UUID underReview = createBooking("key-v10-under-review", trip.getSeats().get(1));
+        UUID waiting = createBooking("key-v10-waiting", trip.getSeats().get(1), otherStudent);
+        UUID underReview = createBooking("key-v10-under-review");
         paymentProofs.submit(student, underReview, jpeg("the-slip"));
         overdue(underReview);
 
@@ -370,11 +368,12 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     @Test
     void theV8BackfillBoundsEachNonTerminalStatusByItsOwnFormulaAndLeavesTerminalOnesNull() throws Exception {
         UUID waiting = createBooking("key-backfill-waiting");
-        UUID confirmed = createBooking("key-backfill-confirmed", trip.getSeats().get(1));
-        paymentProofs.submit(student, confirmed, jpeg("the-slip"));
+        UUID confirmed = createBooking("key-backfill-confirmed", trip.getSeats().get(1), otherStudent);
+        paymentProofs.submit(otherStudent, confirmed, jpeg("the-slip"));
         review.approve(administrator, proofs.findAll().getFirst().getId(), null);
-        UUID underReview = createBooking("key-backfill-under-review", trip.getSeats().get(2));
-        paymentProofs.submit(student, underReview, jpeg("the-slip"));
+        UUID thirdStudent = users.save(new AppUser("Uthird-expiry", "Third Student")).getId();
+        UUID underReview = createBooking("key-backfill-under-review", trip.getSeats().get(2), thirdStudent);
+        paymentProofs.submit(thirdStudent, underReview, jpeg("the-slip"));
         jdbc.update("update bookings set payment_deadline_at = null");
 
         jdbc.update(statementOf("db/migration/V8__add_booking_payment_deadline.sql", "UPDATE bookings"));
@@ -400,14 +399,14 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     }
 
     private UUID createBooking(String idempotencyKey) {
-        return createBooking(idempotencyKey, trip.getSeats().getFirst());
+        return createBooking(idempotencyKey, trip.getSeats().getFirst(), student);
     }
 
-    private UUID createBooking(String idempotencyKey, TripSeat seat) {
-        UUID holdId = holds.hold(student, new CreateSeatHoldRequest(trip.getId(), List.of(seat.getId()))).holdId();
-        bookingService.create(student, idempotencyKey,
+    private UUID createBooking(String idempotencyKey, TripSeat seat, UUID owner) {
+        UUID holdId = holds.hold(owner, new CreateSeatHoldRequest(trip.getId(), List.of(seat.getId()))).holdId();
+        bookingService.create(owner, idempotencyKey,
                 new CreateBookingRequest(holdId, "Somchai P.", "0812345678"));
-        return bookings.findByUserIdOrderByCreatedAtDesc(student).getFirst().getId();
+        return bookings.findByUserIdOrderByCreatedAtDesc(owner).getFirst().getId();
     }
 
     private void overdue(UUID bookingId) {

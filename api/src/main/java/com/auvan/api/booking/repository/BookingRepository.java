@@ -1,6 +1,7 @@
 package com.auvan.api.booking.repository;
 
 import com.auvan.api.booking.entity.Booking;
+import com.auvan.api.booking.entity.BookingStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +21,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     Optional<Booking> findByIdAndUserId(UUID id, UUID userId);
 
     List<Booking> findByTripId(UUID tripId);
+
+    Optional<Booking> findFirstByUserIdAndStatusInOrderByCreatedAtAsc(UUID userId, Collection<BookingStatus> statuses);
+
+    boolean existsByUserIdAndTripIdAndStatusNot(UUID userId, UUID tripId, BookingStatus status);
 
     // No fetch join: PostgreSQL refuses FOR UPDATE on the nullable side of an outer join.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
