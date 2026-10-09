@@ -13,8 +13,11 @@ import { RouteLine } from "./ui/RouteLine";
 
 const goneFromQueue = ["refund_already_recorded", "refund_not_due", "booking_not_found"];
 
-function cancellationOf(booking: Booking) {
-  return booking.events.findLast((event) => event.type === "TRIP_CANCELLED" || event.type === "CANCELLED");
+function cancellationNote(booking: Booking): string {
+  const cancellation = booking.events.findLast((event) => event.type === "TRIP_CANCELLED" || event.type === "CANCELLED");
+  if (!cancellation) return "";
+  const who = cancellation.type === "TRIP_CANCELLED" ? "trip cancelled" : "student cancelled";
+  return ` · ${who} ${formatAgo(cancellation.createdAt)}`;
 }
 
 export function RefundRow({ session, booking }: { session: AuthSession; booking: Booking }) {
@@ -22,7 +25,6 @@ export function RefundRow({ session, booking }: { session: AuthSession; booking:
   const notify = useToast();
   const [recording, setRecording] = useState(false);
   const [note, setNote] = useState("");
-  const cancellation = cancellationOf(booking);
   const amount = formatBaht(booking.totalFare);
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -54,9 +56,7 @@ export function RefundRow({ session, booking }: { session: AuthSession; booking:
           <RouteLine destination={booking.trip.destination} origin={booking.trip.origin} />
         </p>
         <p className="mt-1.5 font-mono text-xs text-muted tabular-nums">
-          {`Departs ${bangkokDateTime(booking.trip.departureAt)}`}
-          {cancellation &&
-            ` · ${cancellation.type === "TRIP_CANCELLED" ? "trip cancelled" : "student cancelled"} ${formatAgo(cancellation.createdAt)}`}
+          {`Departs ${bangkokDateTime(booking.trip.departureAt)}${cancellationNote(booking)}`}
         </p>
       </div>
       {!recording && (
