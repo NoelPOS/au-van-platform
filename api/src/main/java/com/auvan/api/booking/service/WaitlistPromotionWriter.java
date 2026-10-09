@@ -46,7 +46,8 @@ public class WaitlistPromotionWriter {
         }
         Trip trip = entry.getTrip();
         OffsetDateTime expiresAt = properties.promotionDeadlineFor(trip.getDepartureAt(), now);
-        if (trip.getStatus() != TripStatus.ACTIVE || !expiresAt.isAfter(now)) {
+        if (trip.getStatus() != TripStatus.ACTIVE || !expiresAt.isAfter(now)
+                || !now.isBefore(properties.bookingClosesAt(trip.getDepartureAt()))) {
             return false;
         }
 
