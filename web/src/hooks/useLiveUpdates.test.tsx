@@ -167,11 +167,39 @@ describe("useLiveUpdates", () => {
     const view = await mount();
 
     view.unmount();
-    latest()?.onerror?.();
+    expect(live()).toHaveLength(0);
     await flush(60_000);
 
+    expect(fetcher).toHaveBeenCalledTimes(1);
     expect(FakeEventSource.opened).toHaveLength(1);
-    expect(live()).toHaveLength(0);
+  });
+
+  it("does not retry a ticket request that fails after the layout unmounts", async () => {
+    let answer: (response: Response) => void = () => {};
+    fetcher.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+    const view = await mount();
+
+    view.unmount();
+    answer(new Response(null, { status: 503 }));
+    await flush(60_000);
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens no stream for a ticket that arrives after the layout unmounts", async () => {
+    let answer: (response: Response) => void = () => {};
+    fetcher.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+    const view = await mount();
+
+    view.unmount();
+    answer(new Response(JSON.stringify({ ticket: "late" }), { status: 200 }));
+    await flush(0);
+
+    expect(FakeEventSource.opened).toHaveLength(0);
   });
 
   it("stops trying once the session is no longer accepted, leaving polling in charge", async () => {
