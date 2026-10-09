@@ -65,7 +65,7 @@ test.describe("the administrator journey", () => {
     page,
   }) => {
     await signIn(page, studentSubject(), "/admin/operations");
-    await expect(page.getByRole("heading", { name: "Book a seat" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Catch the next van" })).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
     await expect(
       page.getByRole("navigation", { name: "Administration" }),

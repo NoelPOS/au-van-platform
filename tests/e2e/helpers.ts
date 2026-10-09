@@ -56,7 +56,9 @@ export async function signInAsStudent(
   subject: string,
 ): Promise<void> {
   await signIn(page, subject);
-  await expect(page.getByRole("heading", { name: "Book a seat" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Catch the next van" }),
+  ).toBeVisible();
 }
 
 function adminDestination(page: Page, label: string) {
@@ -77,6 +79,8 @@ export async function goToOperations(page: Page): Promise<void> {
 
 export type TripFixture = {
   routeLabel: string;
+  /** Part of the departure row's accessible name on the student board. */
+  departureName: string;
   vehicleCode: string;
   seatLabels: string[];
 };
@@ -155,11 +159,27 @@ export async function createTrip(
     page.getByRole("row", { name: new RegExp(vehicleCode) }),
   ).toBeVisible();
 
-  return { routeLabel, vehicleCode, seatLabels };
+  return {
+    routeLabel,
+    departureName: `${origin} to ${destination}`,
+    vehicleCode,
+    seatLabels,
+  };
+}
+
+/** The trip's row on the student board, on whichever day tab it falls. */
+export async function findDeparture(page: Page, trip: TripFixture) {
+  const departure = page.getByRole("button", { name: trip.departureName });
+  await expect(page.getByRole("tab").first()).toBeVisible();
+  for (const day of await page.getByRole("tab").all()) {
+    await day.click();
+    if (await departure.isVisible()) break;
+  }
+  return departure;
 }
 
 export async function chooseTrip(page: Page, trip: TripFixture): Promise<void> {
-  await page.getByRole("button", { name: trip.routeLabel }).click();
+  await (await findDeparture(page, trip)).click();
   await expect(page.getByRole("group", { name: "Seat map" })).toBeVisible();
 }
 
@@ -176,7 +196,7 @@ export async function bookSeat(
 ): Promise<string> {
   await chooseTrip(page, trip);
   await page.getByRole("button", { name: `Seat ${seatLabel}, available` }).click();
-  await page.getByRole("button", { name: "Hold these seats" }).click();
+  await page.getByRole("button", { name: "Hold seats" }).click();
   await expect(page.getByRole("heading", { name: "Passenger details" })).toBeVisible();
 
   await page.getByLabel("Full name").fill("Somchai P.");
@@ -194,14 +214,19 @@ export async function bookSeat(
   return booking.reference;
 }
 
-/** The `<li>` in My bookings that carries this reference. */
-export function bookingCard(page: Page, reference: string) {
-  return page.getByRole("listitem").filter({ hasText: reference });
+/** The boarding pass on the open ticket page. */
+export function boardingPass(page: Page, reference: string) {
+  return page.getByRole("article", { name: `Boarding pass ${reference}` });
 }
 
-export async function backToTrips(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Back to trips" }).click();
-  await expect(page.getByRole("heading", { name: "My bookings" })).toBeVisible();
+/** Opens a ticket from the Tickets tab, the way a returning student would. */
+export async function openTicket(page: Page, reference: string): Promise<void> {
+  await page
+    .getByRole("navigation", { name: "Student" })
+    .getByRole("link", { name: /^Tickets/ })
+    .click();
+  await page.getByRole("link", { name: new RegExp(reference) }).click();
+  await expect(boardingPass(page, reference)).toBeVisible();
 }
 
 /**
