@@ -45,6 +45,8 @@ booking:
   max-seats-per-hold: 4
   payment-window: PT2H
   departure-cutoff: PT1H
+  closes-before-departure: PT90M
+  resubmit-window: PT30M
   idempotency-key-retention: PT24H
   expiry:
     enabled: false
@@ -55,6 +57,10 @@ booking:
     promotion-window: PT30M
     poll-interval: PT1M
     batch-size: 50
+  cooldown:
+    expiries: 2
+    lookback: P7D
+    duration: PT24H
 
 outbox:
   batch-size: 50
