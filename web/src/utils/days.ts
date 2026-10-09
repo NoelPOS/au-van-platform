@@ -28,7 +28,7 @@ export type Day = {
   relative: "Today" | "Tomorrow" | null;
 };
 
-export function dayKey(value: string | Date): string {
+function dayKey(value: string | Date): string {
   return dayKeyFormat.format(new Date(value));
 }
 
