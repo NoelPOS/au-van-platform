@@ -1,7 +1,12 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { booking, eligible, json, trip } from "../test/bookingFixtures";
-import { holdFailsWith, renderPage, stubApi } from "../test/renderStudentApp";
+import {
+  holdFailsWith,
+  reachPassengerDetails,
+  renderPage,
+  stubApi,
+} from "../test/renderStudentApp";
 
 describe("Student fair-booking rules", () => {
   afterEach(() => {
@@ -58,6 +63,30 @@ describe("Student fair-booking rules", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Mega Bangna/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Seat A1, available" }));
     fireEvent.click(screen.getByRole("button", { name: "Hold seats" }));
+
+    expect(
+      await screen.findByText(/You have an unpaid booking, AUV-260921-7KQ2M4XR/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pay to keep your seats" })).toBeInTheDocument();
+  });
+
+  it("takes a student to the unpaid ticket when confirming finds one", async () => {
+    stubApi({
+      bookings: () => json([booking]),
+      createBooking: () =>
+        json(
+          {
+            code: "unpaid_booking_exists",
+            detail: "You have an unpaid booking, AUV-260921-7KQ2M4XR. Pay for it or cancel it before booking another seat.",
+            bookingId: "booking-1",
+          },
+          409,
+        ),
+    });
+
+    renderPage();
+    await reachPassengerDetails();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
     expect(
       await screen.findByText(/You have an unpaid booking, AUV-260921-7KQ2M4XR/),
