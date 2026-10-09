@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-// Never add an object key, bucket or URL: the image is reached only through the API (ADR-009).
+// Never add an object key, bucket or URL: the image is reached only through the API.
 public record PaymentProofResponse(
         UUID id,
         UUID bookingId,

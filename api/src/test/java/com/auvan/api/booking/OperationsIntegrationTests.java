@@ -52,8 +52,7 @@ class OperationsIntegrationTests extends OperationsTestSupport {
         mockMvc.perform(get("/api/v1/admin/operations/dead-letters")).andExpect(status().isUnauthorized());
     }
 
-    // Recorded a minute back: the column keeps less precision than the clock, so a row
-    // written and claimed at the same now can read as not yet due.
+    // A minute back: the column is coarser than the clock, so a row claimed now can read as not due.
     private UUID deadLetter(UUID aggregateId, UUID recipient, String error) {
         OffsetDateTime now = OffsetDateTime.now();
         UUID id = outbox.save(new OutboxEvent(OutboxEventType.BOOKING_CANCELLED, aggregateId, recipient,

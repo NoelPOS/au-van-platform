@@ -102,8 +102,7 @@ class WaitlistPromotionIntegrationTests extends WaitlistPromotionTestSupport {
                     .containsPattern("\"offerExpiresAt\":\"20");
         });
 
-        // Aged a minute back: the column keeps less precision than the clock, so a row
-        // recorded and claimed at the same now can read as not yet due.
+        // A minute back: the column is coarser than the clock, so a row claimed now can read as not due.
         dueAt(recorded.getId(), OffsetDateTime.now().minusMinutes(1));
 
         assertThat(dispatcher.dispatchBatch()).isOne();

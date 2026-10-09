@@ -44,8 +44,7 @@ public class BookingExpiryWriter {
         booking.expire(now);
         String detail = "Expired unpaid and released seats " + labelsOf(booking) + ".";
         booking.recordEvent(BookingEventType.EXPIRED, detail, null, now);
-        // Record and flush before deleteByBookingId: it clears the context and would silently
-        // discard the expiry and its outbox row.
+        // Flush before deleteByBookingId: it clears the context and would discard the expiry.
         outbox.record(OutboxEventType.BOOKING_EXPIRED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, detail), now);
         bookings.flush();

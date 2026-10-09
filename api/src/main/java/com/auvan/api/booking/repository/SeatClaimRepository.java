@@ -34,16 +34,14 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
 
     List<SeatClaim> findByHoldId(UUID holdId);
 
-    // Serialises confirmations of one hold, which the unique constraint cannot see. No fetch
-    // join: PostgreSQL refuses FOR UPDATE on the nullable side of an outer join.
+    // Serialises confirmations of one hold. No fetch join: PostgreSQL refuses FOR UPDATE on an outer join.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select claim from SeatClaim claim where claim.holdId = :holdId")
     List<SeatClaim> lockByHoldId(@Param("holdId") UUID holdId);
 
     List<SeatClaim> findByBookingId(UUID bookingId);
 
-    // Bulk rather than deleteAll, which throws StaleStateException when two reclaim one row.
-    // The booking_id is null guard stops it freeing a seat sold since the read; never widen it.
+    // Bulk, as deleteAll throws when two reclaim one row; the booking_id is null guard spares sold seats.
     @Modifying(clearAutomatically = true)
     @Query("delete from SeatClaim claim where claim.id in :ids and claim.bookingId is null")
     void deleteByIdIn(@Param("ids") Collection<UUID> ids);
@@ -53,8 +51,7 @@ public interface SeatClaimRepository extends JpaRepository<SeatClaim, UUID> {
     @Query("delete from SeatClaim claim where claim.bookingId = :bookingId")
     void deleteByBookingId(@Param("bookingId") UUID bookingId);
 
-    // Booked claims only: an unbooked hold may be locked by a BookingWriter waiting on this trip's
-    // lock, and deleting it would deadlock. clearAutomatically: flush before calling this.
+    // Booked claims only: deleting a hold a waiting BookingWriter has locked would deadlock. Flush first.
     @Modifying(clearAutomatically = true)
     @Query("""
             delete from SeatClaim claim

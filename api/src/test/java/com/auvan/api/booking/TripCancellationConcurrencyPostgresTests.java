@@ -260,7 +260,6 @@ class TripCancellationConcurrencyPostgresTests extends PostgresTestSupport {
         try {
             started.get(3, TimeUnit.SECONDS);
         } catch (TimeoutException | ExecutionException settledLaterOrRefused) {
-            // The caller reads the outcome from the future.
         }
         return started;
     }
