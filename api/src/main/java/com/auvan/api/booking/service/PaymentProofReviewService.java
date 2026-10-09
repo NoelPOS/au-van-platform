@@ -3,6 +3,7 @@ package com.auvan.api.booking.service;
 import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.dto.PaymentProofResponse;
+import com.auvan.api.booking.dto.PaymentProofResponse.SameSlipBooking;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEventType;
 import com.auvan.api.booking.entity.PaymentProof;
@@ -10,13 +11,18 @@ import com.auvan.api.booking.entity.PaymentProofStatus;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.PaymentProofRepository;
+import com.auvan.api.booking.repository.PaymentProofRepository.SlipReuse;
 import com.auvan.api.outbox.entity.OutboxEventType;
 import com.auvan.api.outbox.service.OutboxRecorder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -43,8 +49,14 @@ public class PaymentProofReviewService {
 
     @Transactional(readOnly = true)
     public List<PaymentProofResponse> list() {
+        Map<UUID, Set<SameSlipBooking>> reused = new HashMap<>();
+        for (SlipReuse reuse : proofs.findSlipsReusedByWaitingProofs()) {
+            reused.computeIfAbsent(reuse.proofId(), proofId -> new LinkedHashSet<>())
+                    .add(new SameSlipBooking(reuse.bookingId(), reuse.bookingReference()));
+        }
         return proofs.findByStatusOrderByCreatedAt(PaymentProofStatus.SUBMITTED).stream()
-                .map(PaymentProofResponse::from)
+                .map(proof -> PaymentProofResponse.from(proof,
+                        List.copyOf(reused.getOrDefault(proof.getId(), Set.of()))))
                 .toList();
     }
 
