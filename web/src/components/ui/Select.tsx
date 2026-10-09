@@ -13,6 +13,7 @@ export type SelectOption = { value: string; label: string; detail?: string };
 
 export function Select({
   label,
+  hideLabel,
   hint,
   name,
   options,
@@ -21,6 +22,7 @@ export function Select({
   className,
 }: {
   label: string;
+  hideLabel?: boolean;
   hint?: string;
   name?: string;
   options: SelectOption[];
@@ -111,7 +113,13 @@ export function Select({
   }
 
   return (
-    <Field className={className} hint={hint} id={id} label={label}>
+    <Field
+      className={className}
+      hideLabel={hideLabel}
+      hint={hint}
+      id={id}
+      label={label}
+    >
       <div className="relative" ref={root}>
         <input name={name} type="hidden" value={value} />
         <button

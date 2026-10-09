@@ -1,9 +1,10 @@
 import { apiBaseUrl } from "./apiBaseUrl";
 import type { AuthSession } from "../types/auth";
 import { authenticatedFetch } from "./authService";
+import { ApiError } from "./bookingApi";
 import type { Seat, SeatLayout, Trip, VanRoute, Vehicle } from "../types/inventory";
 
-async function request<T>(
+export async function adminRequest<T>(
   session: AuthSession,
   path: string,
   init: RequestInit = {},
@@ -23,24 +24,28 @@ async function request<T>(
       message?: string;
       code?: string;
     } | null;
-    throw new Error(
+    throw new ApiError(
       body?.detail ??
         body?.message ??
         body?.code ??
         `Request failed (${response.status}).`,
+      response.status,
+      body?.code ?? null,
     );
   }
+
+  if (response.status === 204) return undefined as T;
 
   return (await response.json()) as T;
 }
 
 export const inventoryApi = {
-  listRoutes: (session: AuthSession) => request<VanRoute[]>(session, "/routes"),
+  listRoutes: (session: AuthSession) => adminRequest<VanRoute[]>(session, "/routes"),
   listSeatLayouts: (session: AuthSession) =>
-    request<SeatLayout[]>(session, "/seat-layouts"),
+    adminRequest<SeatLayout[]>(session, "/seat-layouts"),
   listVehicles: (session: AuthSession) =>
-    request<Vehicle[]>(session, "/vehicles"),
-  listTrips: (session: AuthSession) => request<Trip[]>(session, "/trips"),
+    adminRequest<Vehicle[]>(session, "/vehicles"),
+  listTrips: (session: AuthSession) => adminRequest<Trip[]>(session, "/trips"),
   createRoute: (
     session: AuthSession,
     input: Pick<
@@ -48,12 +53,12 @@ export const inventoryApi = {
       "origin" | "destination" | "fare" | "durationMinutes"
     >,
   ) =>
-    request<VanRoute>(session, "/routes", {
+    adminRequest<VanRoute>(session, "/routes", {
       method: "POST",
       body: JSON.stringify(input),
     }),
   updateRoute: (session: AuthSession, id: string, input: Partial<VanRoute>) =>
-    request<VanRoute>(session, `/routes/${id}`, {
+    adminRequest<VanRoute>(session, `/routes/${id}`, {
       method: "PUT",
       body: JSON.stringify(input),
     }),
@@ -61,7 +66,7 @@ export const inventoryApi = {
     session: AuthSession,
     input: { name: string; seats: Seat[] },
   ) =>
-    request<SeatLayout>(session, "/seat-layouts", {
+    adminRequest<SeatLayout>(session, "/seat-layouts", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -70,7 +75,7 @@ export const inventoryApi = {
     id: string,
     input: { name: string; seats: Seat[] },
   ) =>
-    request<SeatLayout>(session, `/seat-layouts/${id}`, {
+    adminRequest<SeatLayout>(session, `/seat-layouts/${id}`, {
       method: "PUT",
       body: JSON.stringify(input),
     }),
@@ -78,7 +83,7 @@ export const inventoryApi = {
     session: AuthSession,
     input: Pick<Vehicle, "code" | "name" | "seatLayoutId">,
   ) =>
-    request<Vehicle>(session, "/vehicles", {
+    adminRequest<Vehicle>(session, "/vehicles", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -87,7 +92,7 @@ export const inventoryApi = {
     id: string,
     input: Pick<Vehicle, "code" | "name" | "seatLayoutId" | "status">,
   ) =>
-    request<Vehicle>(session, `/vehicles/${id}`, {
+    adminRequest<Vehicle>(session, `/vehicles/${id}`, {
       method: "PUT",
       body: JSON.stringify(input),
     }),
@@ -95,7 +100,7 @@ export const inventoryApi = {
     session: AuthSession,
     input: Pick<Trip, "routeId" | "vehicleId" | "departureAt">,
   ) =>
-    request<Trip>(session, "/trips", {
+    adminRequest<Trip>(session, "/trips", {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -104,7 +109,7 @@ export const inventoryApi = {
     id: string,
     input: Pick<Trip, "departureAt" | "status">,
   ) =>
-    request<Trip>(session, `/trips/${id}`, {
+    adminRequest<Trip>(session, `/trips/${id}`, {
       method: "PUT",
       body: JSON.stringify(input),
     }),

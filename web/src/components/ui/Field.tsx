@@ -10,11 +10,13 @@ export function Field({
   label,
   hint,
   error,
+  hideLabel = false,
   className = "",
   children,
 }: {
   id: string;
   label: string;
+  hideLabel?: boolean;
   hint?: string;
   error?: string;
   className?: string;
@@ -22,7 +24,11 @@ export function Field({
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label className={labelClass} htmlFor={id} id={`${id}-label`}>
+      <label
+        className={hideLabel ? "sr-only" : labelClass}
+        htmlFor={id}
+        id={`${id}-label`}
+      >
         {label}
       </label>
       {children}
