@@ -20,6 +20,10 @@ function skippedSummary(counts: ReturnType<typeof countOutcomes>) {
   ].filter(Boolean);
 }
 
+function createLabel(count: number) {
+  return count === 0 ? "Nothing to create" : `Create ${plural(count, "departure")}`;
+}
+
 export function SchedulePreview({
   session,
   plan,
@@ -60,9 +64,11 @@ export function SchedulePreview({
 
   const { planHash, departures } = preview.data;
   const counts = countOutcomes(departures);
+  const skippedNotes = skippedSummary(counts);
   const today = bangkokToday();
 
   function confirm() {
+    // The same plan keeps its key, so a retry cannot create its departures twice.
     const key = attempt?.hash === planHash ? attempt.key : crypto.randomUUID();
     setAttempt({ hash: planHash, key });
     apply.mutate(
@@ -93,9 +99,9 @@ export function SchedulePreview({
             new {counts.CREATE === 1 ? "departure" : "departures"}
           </span>
         </p>
-        {skippedSummary(counts).length > 0 && (
+        {skippedNotes.length > 0 && (
           <p className="mt-2 text-sm text-warning">
-            {skippedSummary(counts).join(" · ")}
+            {skippedNotes.join(" · ")}
           </p>
         )}
       </div>
@@ -130,11 +136,7 @@ export function SchedulePreview({
           onClick={confirm}
           type="button"
         >
-          {apply.isPending
-            ? "Creating…"
-            : counts.CREATE === 0
-              ? "Nothing to create"
-              : `Create ${plural(counts.CREATE, "departure")}`}
+          {apply.isPending ? "Creating…" : createLabel(counts.CREATE)}
         </Button>
       </div>
     </div>
