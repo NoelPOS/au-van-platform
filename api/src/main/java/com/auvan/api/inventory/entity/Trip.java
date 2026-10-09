@@ -81,9 +81,8 @@ public class Trip {
     public String getCancellationReason() { return cancellationReason; }
     public List<TripSeat> getSeats() { return List.copyOf(seats); }
 
-    public void update(OffsetDateTime departureAt, TripStatus status) {
+    public void reschedule(OffsetDateTime departureAt) {
         this.departureAt = departureAt;
-        this.status = status;
     }
 
     public boolean isCancelled() {

@@ -84,6 +84,17 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
     // Checked first: hitting the unique constraint would make the approval rollback-only.
     boolean existsByDedupeKey(String dedupeKey);
 
+    // Deleted rather than killed, so a rescheduled reminder's dedupe key is free to be scheduled again.
+    @Transactional
+    @Modifying
+    @Query("""
+            delete from OutboxEvent event
+            where event.aggregateId = :aggregateId
+              and event.dedupeKey is not null
+              and event.status = com.auvan.api.outbox.entity.OutboxStatus.PENDING
+            """)
+    int deleteScheduled(@Param("aggregateId") UUID aggregateId);
+
     // dedupeKey is not null spares the BOOKING_CANCELLED row; PENDING only spares an IN_FLIGHT
     // send. No due-time clause: a due-but-unclaimed reminder must be withdrawn too.
     @Transactional

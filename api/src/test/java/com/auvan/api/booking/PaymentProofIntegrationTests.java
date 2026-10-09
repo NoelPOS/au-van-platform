@@ -15,7 +15,6 @@ import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
-import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.repository.SeatLayoutRepository;
@@ -294,7 +293,6 @@ class PaymentProofIntegrationTests extends AuthenticationTestSupport {
         SeatLayout layout = seatLayouts.save(new SeatLayout("Layout VAN-01", layoutSeats));
         Vehicle vehicle = vehicles.save(new Vehicle("VAN-01", "Toyota Commuter", layout));
         Trip created = new Trip(route, vehicle, departureAt);
-        created.update(departureAt, TripStatus.ACTIVE);
         return trips.save(created);
     }
 

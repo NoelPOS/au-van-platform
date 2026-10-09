@@ -351,7 +351,9 @@ class WaitlistIntegrationTests extends AuthenticationTestSupport {
         SeatLayout layout = seatLayouts.save(new SeatLayout("Layout " + vehicleCode, layoutSeats));
         Vehicle vehicle = vehicles.save(new Vehicle(vehicleCode, "Toyota Commuter", layout));
         Trip created = new Trip(route, vehicle, departureAt);
-        created.update(departureAt, status);
+        if (status == TripStatus.CANCELLED) {
+            created.cancel("The van has broken down.");
+        }
         return trips.save(created);
     }
 

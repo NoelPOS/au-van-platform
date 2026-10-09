@@ -43,6 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -164,8 +165,11 @@ abstract class TripChangeTestSupport extends AuthenticationTestSupport {
     }
 
     protected void departIn(int minutes) {
-        jdbc.update("update trips set departure_at = ? where id = ?",
-                OffsetDateTime.now().plusMinutes(minutes), trip.getId());
+        departAt(OffsetDateTime.now().plusMinutes(minutes));
+    }
+
+    protected void departAt(OffsetDateTime departureAt) {
+        jdbc.update("update trips set departure_at = ? where id = ?", departureAt, trip.getId());
     }
 
     protected MockHttpServletRequestBuilder admin(MockHttpServletRequestBuilder request, String body) {
@@ -199,7 +203,7 @@ abstract class TripChangeTestSupport extends AuthenticationTestSupport {
         }
         SeatLayout layout = seatLayouts.save(new SeatLayout("Layout VAN-CHANGE", layoutSeats));
         Vehicle vehicle = vehicles.save(new Vehicle("VAN-CHANGE", "Toyota Commuter", layout));
-        return trips.save(new Trip(route, vehicle, OffsetDateTime.now().plusDays(2)));
+        return trips.save(new Trip(route, vehicle, OffsetDateTime.now().plusDays(2).truncatedTo(ChronoUnit.SECONDS)));
     }
 
     private String tokenFor(String idToken, String lineSubject, boolean administrator) throws Exception {

@@ -1,6 +1,7 @@
 package com.auvan.api.booking.controller;
 
 import com.auvan.api.booking.dto.CancelTripRequest;
+import com.auvan.api.booking.dto.UpdateTripRequest;
 import com.auvan.api.booking.service.TripChangeService;
 import com.auvan.api.inventory.dto.TripResponse;
 import jakarta.validation.Valid;
@@ -8,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +23,12 @@ public class TripChangeAdminController {
 
     public TripChangeAdminController(TripChangeService changes) {
         this.changes = changes;
+    }
+
+    @PutMapping("/{tripId}")
+    public TripResponse update(@PathVariable UUID tripId, @Valid @RequestBody UpdateTripRequest request,
+                               @AuthenticationPrincipal Jwt jwt) {
+        return changes.update(UUID.fromString(jwt.getSubject()), tripId, request);
     }
 
     @PostMapping("/{tripId}/cancel")

@@ -1,4 +1,4 @@
-package com.auvan.api.inventory.dto;
+package com.auvan.api.booking.dto;
 
 import com.auvan.api.inventory.entity.TripStatus;
 import jakarta.validation.constraints.Future;

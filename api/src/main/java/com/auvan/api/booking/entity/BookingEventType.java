@@ -8,5 +8,6 @@ public enum BookingEventType {
     CANCELLED,
     EXPIRED,
     TRIP_CANCELLED,
+    TRIP_RESCHEDULED,
     REFUNDED
 }
