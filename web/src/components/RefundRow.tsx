@@ -6,7 +6,7 @@ import type { AuthSession } from "../types/auth";
 import type { Booking } from "../types/booking";
 import { bangkokDateTime } from "../utils/dates";
 import { formatAgo, formatBaht } from "../utils/format";
-import { ErrorMessage } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { RouteLine } from "./ui/RouteLine";

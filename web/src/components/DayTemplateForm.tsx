@@ -10,7 +10,8 @@ import type { DayTemplate, DepartureLine } from "../types/schedule";
 import { parseClock } from "../utils/dates";
 import { draftLine, type DraftLine } from "../utils/schedule";
 import { DepartureLinesEditor } from "./DepartureLinesEditor";
-import { ErrorMessage, FormActions } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
+import { FormActions } from "./FormActions";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 

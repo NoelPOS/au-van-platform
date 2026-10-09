@@ -7,7 +7,7 @@ import type { VanRoute, Vehicle } from "../types/inventory";
 import type { SchedulePlan } from "../types/schedule";
 import { bangkokToday } from "../utils/calendar";
 import { countOutcomes, groupByDate, plural } from "../utils/schedule";
-import { ErrorMessage } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
 import { PreviewDay } from "./PreviewDay";
 import { Button } from "./ui/Button";
 import { Skeleton } from "./ui/Skeleton";

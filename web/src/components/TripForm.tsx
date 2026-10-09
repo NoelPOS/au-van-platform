@@ -15,7 +15,8 @@ import {
   vanOption,
 } from "../utils/tripDetails";
 import { DayPicker } from "./DayPicker";
-import { ErrorMessage, FormActions } from "./FormCard";
+import { ErrorMessage } from "./ErrorMessage";
+import { FormActions } from "./FormActions";
 import { NotReadyToSchedule } from "./NotReadyToSchedule";
 import { ScheduleOutcome } from "./ScheduleOutcome";
 import { TimeField } from "./TimeField";
