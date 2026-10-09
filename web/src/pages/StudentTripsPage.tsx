@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router";
+import { CooldownBanner } from "../components/CooldownBanner";
 import { DayStrip } from "../components/DayStrip";
 import { DepartureBoard } from "../components/DepartureBoard";
 import { UnpaidBookingBanner } from "../components/UnpaidBookingBanner";
@@ -6,7 +7,11 @@ import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { FailurePanel } from "../components/ui/FailurePanel";
 import { Skeleton } from "../components/ui/Skeleton";
-import { useAvailableTrips, useMyBookings } from "../hooks/useBookingQueries";
+import {
+  useAvailableTrips,
+  useBookingEligibility,
+  useMyBookings,
+} from "../hooks/useBookingQueries";
 import { useStudent } from "../hooks/useStudent";
 import { useWaitlist } from "../hooks/useWaitlist";
 import { dayOf, formatLongDate, groupByDay } from "../utils/days";
@@ -17,6 +22,7 @@ export function StudentTripsPage() {
   const [params, setParams] = useSearchParams();
   const trips = useAvailableTrips(session);
   const bookings = useMyBookings(session);
+  const eligibility = useBookingEligibility(session);
   const waitlist = useWaitlist(session, setNotice);
 
   const byDay = groupByDay(trips.data ?? [], (trip) => trip.departureAt);
@@ -42,6 +48,7 @@ export function StudentTripsPage() {
       </header>
 
       <UnpaidBookingBanner bookings={bookings.data ?? []} />
+      <CooldownBanner eligibility={eligibility.data} />
 
       {trips.isPending && (
         <div className="flex flex-col gap-3" role="status">

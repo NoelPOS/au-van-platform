@@ -8,7 +8,17 @@ const bookingKeys = {
   seatMap: (tripId: string) => ["booking", "seat-map", tripId] as const,
   bookings: ["booking", "bookings"] as const,
   waitlist: ["booking", "waitlist"] as const,
+  eligibility: ["booking", "eligibility"] as const,
 };
+
+export function useBookingEligibility(session: AuthSession) {
+  return useQuery({
+    queryKey: bookingKeys.eligibility,
+    queryFn: () => bookingApi.getEligibility(session),
+    staleTime: 5_000,
+    refetchInterval: 60_000,
+  });
+}
 
 export function useAvailableTrips(session: AuthSession) {
   return useQuery({
@@ -58,6 +68,7 @@ export function useCancelBooking(session: AuthSession) {
       bookingApi.cancelBooking(session, bookingId),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.eligibility });
       void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
     },
   });
@@ -124,8 +135,10 @@ export function useSubmitPaymentProof(session: AuthSession) {
   return useMutation({
     mutationFn: (variables: { bookingId: string; file: File }) =>
       bookingApi.submitPaymentProof(session, variables.bookingId, variables.file),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: bookingKeys.bookings }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.eligibility });
+    },
   });
 }
 
@@ -143,6 +156,7 @@ export function useCreateBooking(session: AuthSession) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingKeys.bookings });
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.eligibility });
       void queryClient.invalidateQueries({ queryKey: bookingKeys.trips });
     },
   });

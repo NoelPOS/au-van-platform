@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Button } from "./ui/Button";
 import { RouteRule } from "./ui/RouteLine";
+import { useNow } from "../hooks/useNow";
 import type { AvailableTrip, WaitlistEntry } from "../types/booking";
 import { formatTime } from "../utils/days";
 import { formatBaht } from "../utils/format";
@@ -38,6 +39,26 @@ function SeatsLeft({ count }: { count: number }) {
       </span>
       <ChevronRight aria-hidden className="size-4 text-muted" />
     </span>
+  );
+}
+
+function ClosedRow({ trip }: { trip: AvailableTrip }) {
+  return (
+    <div
+      aria-label={`${formatTime(trip.departureAt)}, ${trip.origin} to ${trip.destination}, booking closed`}
+      className={`${columns} px-4 py-4`}
+      role="group"
+    >
+      <span className="font-mono text-[22px] font-medium tracking-tight text-muted/70 tabular-nums">
+        {formatTime(trip.departureAt)}
+      </span>
+      <span className="opacity-70">
+        <Route trip={trip} />
+      </span>
+      <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">
+        Closed
+      </span>
+    </div>
   );
 }
 
@@ -99,6 +120,7 @@ export function DepartureBoard({
   onJoinWaitlist: (trip: AvailableTrip) => void;
   onLeaveWaitlist: (entry: WaitlistEntry) => void;
 }) {
+  const now = useNow();
   return (
     <section
       aria-label="Departures"
@@ -115,7 +137,9 @@ export function DepartureBoard({
       <ol className="divide-y divide-dashed divide-line">
         {trips.map((trip) => (
           <li key={trip.id}>
-            {trip.availableSeats > 0 ? (
+            {Date.parse(trip.bookingClosesAt) <= now ? (
+              <ClosedRow trip={trip} />
+            ) : trip.availableSeats > 0 ? (
               <button
                 aria-label={`${formatTime(trip.departureAt)}, ${trip.origin} to ${trip.destination}, ${trip.availableSeats} of ${trip.totalSeats} seats left`}
                 className={`${columns} w-full px-4 py-4 text-left transition-colors duration-150 ease-out hover:bg-paper/70 active:bg-paper`}

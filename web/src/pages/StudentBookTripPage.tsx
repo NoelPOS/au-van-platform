@@ -50,7 +50,7 @@ export function StudentBookTripPage() {
   const trips = useAvailableTrips(session);
   const bookings = useMyBookings(session);
   const trip = trips.data?.find((candidate) => candidate.id === tripId) ?? null;
-  const leave = (message: string, to: "/" | "/tickets" = "/") => {
+  const leave = (message: string, to = "/") => {
     void (to === "/" ? trips.refetch() : bookings.refetch());
     navigate(to, { state: { notice: { tone: "error", message } } });
   };
