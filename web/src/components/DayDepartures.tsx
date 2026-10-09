@@ -79,7 +79,7 @@ export function DayDepartures({
                         <span className="truncate">from {route?.origin}</span>
                       </span>
                       {cancelled && trip.cancellationReason && (
-                        <span className="mt-1 block truncate text-[13px] text-danger italic">
+                        <span className="mt-1 line-clamp-2 text-[13px] leading-snug text-danger italic">
                           {trip.cancellationReason}
                         </span>
                       )}

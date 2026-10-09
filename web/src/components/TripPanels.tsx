@@ -6,7 +6,6 @@ import type {
   SchedulePlan,
 } from "../types/schedule";
 import { longDay } from "../utils/calendar";
-import { bangkokDateTime } from "../utils/dates";
 import { linesOf, plural } from "../utils/schedule";
 import { CancelledTrip } from "./CancelledTrip";
 import { CancelTrip } from "./CancelTrip";
@@ -168,10 +167,7 @@ function headingOf(panel: Panel | null, applyTo: number) {
       if (panel.trip?.status === "CANCELLED") return { title: "Cancelled trip" };
       return { title: panel.trip ? "Edit trip" : "Schedule a trip" };
     case "cancel":
-      return {
-        title: "Cancel this trip?",
-        description: `${bangkokDateTime(panel.trip.departureAt)} · Bangkok time`,
-      };
+      return { title: "Cancel this trip?" };
     case "templates":
       return {
         title: "Day templates",
