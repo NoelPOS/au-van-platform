@@ -47,6 +47,7 @@ const known: QueryKey[] = [
   ["booking", "seat-map", "trip-2"],
   ["booking", "trips"],
   ["payments", "proofs"],
+  ["payments", "refunds"],
   ["overview", "payment-proofs"],
 ];
 
@@ -101,7 +102,7 @@ describe("useLiveUpdates", () => {
     expect(latest()?.url).toBe("/api/v1/events?ticket=ticket-1");
   });
 
-  it("refreshes everything about the student's bookings and the admin queues on a booking signal", async () => {
+  it("refreshes everything about the student's bookings and the admin queues, refunds included, on a booking signal", async () => {
     await mount();
 
     latest()?.signal("booking", "booking-1");

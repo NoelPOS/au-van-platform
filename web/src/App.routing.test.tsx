@@ -73,6 +73,7 @@ describe("App routing", () => {
     ["/admin/routes", "Routes"],
     ["/admin/vans", "Vans"],
     ["/admin/seat-layouts", "Seat layouts"],
+    ["/admin/refunds", "Refunds"],
   ])(
     "opens %s for an administrator who signs in there",
     async (path, title) => {
