@@ -51,6 +51,7 @@ booking:
   payment-window: PT2H
   departure-cutoff: PT1H
   closes-before-departure: PT90M
+  cancellation-closes-before-departure: PT2H
   resubmit-window: PT30M
   # Must exceed any client's retry horizon: a pruned key lets a retry write a second booking.
   idempotency-key-retention: PT24H

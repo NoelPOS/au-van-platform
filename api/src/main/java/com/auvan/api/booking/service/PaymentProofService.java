@@ -1,5 +1,6 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.config.PaymentProofProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.entity.Booking;
@@ -24,15 +25,18 @@ public class PaymentProofService {
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
     private final OutboxRecorder outbox;
+    private final BookingProperties properties;
     private final long maxFileBytes;
 
     public PaymentProofService(BookingRepository bookings, PaymentProofRepository proofs,
-                               PaymentProofStorage storage, OutboxRecorder outbox, PaymentProofProperties properties) {
+                               PaymentProofStorage storage, OutboxRecorder outbox, BookingProperties properties,
+                               PaymentProofProperties proofProperties) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
         this.outbox = outbox;
-        this.maxFileBytes = properties.maxFileSize().toBytes();
+        this.properties = properties;
+        this.maxFileBytes = proofProperties.maxFileSize().toBytes();
     }
 
     @Transactional
@@ -58,7 +62,7 @@ public class PaymentProofService {
         booking.markPaymentUnderReview(now);
         outbox.record(OutboxEventType.PAYMENT_PROOF_SUBMITTED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, detail), now);
-        return BookingResponse.from(booking);
+        return BookingResponse.from(booking, properties);
     }
 
     private void store(String objectKey, String contentType, byte[] content) {

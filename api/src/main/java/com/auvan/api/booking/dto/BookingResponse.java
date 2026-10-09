@@ -1,5 +1,6 @@
 package com.auvan.api.booking.dto;
 
+import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEvent;
 import com.auvan.api.booking.entity.BookingSeat;
@@ -26,12 +27,13 @@ public record BookingResponse(
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         OffsetDateTime paymentDeadlineAt,
+        OffsetDateTime cancellableUntil,
         RefundStatus refundStatus,
         OffsetDateTime refundedAt,
         UUID refundedByUserId,
         String refundNote) {
 
-    public static BookingResponse from(Booking booking) {
+    public static BookingResponse from(Booking booking, BookingProperties properties) {
         return new BookingResponse(
                 booking.getId(),
                 booking.getReference(),
@@ -45,6 +47,7 @@ public record BookingResponse(
                 booking.getCreatedAt(),
                 booking.getUpdatedAt(),
                 booking.getPaymentDeadlineAt(),
+                booking.isCancelled() ? null : properties.cancellableUntil(booking.getTrip().getDepartureAt()),
                 booking.getRefundStatus(),
                 booking.getRefundedAt(),
                 booking.getRefundedByUserId(),
