@@ -113,15 +113,15 @@ export function StudentTicketPage() {
       )}
       <TicketRefund booking={booking} />
       {needsPayment(booking) && (
-        <HowToPay amount={booking.totalFare} reference={booking.reference} />
-      )}
-      {needsPayment(booking) && (
-        <SlipUpload
-          error={submit.error ? messageOf(submit.error) : null}
-          onChoose={submit.reset}
-          onSend={(file) => void send(file)}
-          sending={submit.isPending}
-        />
+        <>
+          <HowToPay amount={booking.totalFare} reference={booking.reference} />
+          <SlipUpload
+            error={submit.error ? messageOf(submit.error) : null}
+            onChoose={submit.reset}
+            onSend={(file) => void send(file)}
+            sending={submit.isPending}
+          />
+        </>
       )}
       <TicketTimeline booking={booking} />
       <CancelBooking booking={booking} />
