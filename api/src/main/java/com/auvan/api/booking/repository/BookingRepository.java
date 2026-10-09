@@ -2,6 +2,7 @@ package com.auvan.api.booking.repository;
 
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingStatus;
+import com.auvan.api.booking.entity.RefundStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +22,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     Optional<Booking> findByIdAndUserId(UUID id, UUID userId);
 
     List<Booking> findByTripId(UUID tripId);
+
+    List<Booking> findByRefundStatusOrderByUpdatedAtAsc(RefundStatus refundStatus);
 
     Optional<Booking> findFirstByUserIdAndStatusInOrderByCreatedAtAsc(UUID userId, Collection<BookingStatus> statuses);
 
