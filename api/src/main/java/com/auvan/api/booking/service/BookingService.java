@@ -75,7 +75,8 @@ public class BookingService {
             throw Problems.conflict("booking_already_cancelled", "That booking has already been cancelled.");
         }
         booking.cancel(now);
-        String detail = "Cancelled and released seats " + labelsOf(booking) + ".";
+        String detail = "Cancelled and released seats " + labelsOf(booking) + "."
+                + BookingNotifications.refundNote(booking);
         booking.recordEvent(BookingEventType.CANCELLED, detail, userId, now);
         // Record, flush and build the response before deleteByBookingId: it clears the context,
         // silently discarding unflushed changes and detaching the booking.

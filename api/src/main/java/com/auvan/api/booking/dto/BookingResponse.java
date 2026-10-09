@@ -5,6 +5,7 @@ import com.auvan.api.booking.entity.BookingEvent;
 import com.auvan.api.booking.entity.BookingSeat;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.BookingEventType;
+import com.auvan.api.booking.entity.RefundStatus;
 import com.auvan.api.inventory.entity.Trip;
 
 import java.math.BigDecimal;
@@ -24,7 +25,11 @@ public record BookingResponse(
         List<BookingEventResponse> events,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        OffsetDateTime paymentDeadlineAt) {
+        OffsetDateTime paymentDeadlineAt,
+        RefundStatus refundStatus,
+        OffsetDateTime refundedAt,
+        UUID refundedByUserId,
+        String refundNote) {
 
     public static BookingResponse from(Booking booking) {
         return new BookingResponse(
@@ -39,7 +44,11 @@ public record BookingResponse(
                 booking.getEvents().stream().map(BookingEventResponse::from).toList(),
                 booking.getCreatedAt(),
                 booking.getUpdatedAt(),
-                booking.getPaymentDeadlineAt());
+                booking.getPaymentDeadlineAt(),
+                booking.getRefundStatus(),
+                booking.getRefundedAt(),
+                booking.getRefundedByUserId(),
+                booking.getRefundNote());
     }
 
     public record BookedTrip(UUID id, String origin, String destination, OffsetDateTime departureAt) {

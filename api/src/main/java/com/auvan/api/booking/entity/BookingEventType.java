@@ -6,5 +6,6 @@ public enum BookingEventType {
     PAYMENT_APPROVED,
     PAYMENT_REJECTED,
     CANCELLED,
-    EXPIRED
+    EXPIRED,
+    REFUNDED
 }

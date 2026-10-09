@@ -57,6 +57,19 @@ public class Booking {
     @Column(name = "payment_deadline_at")
     private OffsetDateTime paymentDeadlineAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_status", nullable = false, length = 16)
+    private RefundStatus refundStatus;
+
+    @Column(name = "refunded_at")
+    private OffsetDateTime refundedAt;
+
+    @Column(name = "refunded_by_user_id")
+    private UUID refundedByUserId;
+
+    @Column(name = "refund_note", length = 500)
+    private String refundNote;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -82,6 +95,7 @@ public class Booking {
         this.totalFare = totalFare;
         this.status = BookingStatus.PENDING_PAYMENT;
         this.paymentDeadlineAt = paymentDeadlineAt;
+        this.refundStatus = RefundStatus.NONE;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -95,6 +109,10 @@ public class Booking {
     public BigDecimal getTotalFare() { return totalFare; }
     public BookingStatus getStatus() { return status; }
     public OffsetDateTime getPaymentDeadlineAt() { return paymentDeadlineAt; }
+    public RefundStatus getRefundStatus() { return refundStatus; }
+    public OffsetDateTime getRefundedAt() { return refundedAt; }
+    public UUID getRefundedByUserId() { return refundedByUserId; }
+    public String getRefundNote() { return refundNote; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public List<BookingSeat> getSeats() { return List.copyOf(seats); }
@@ -143,12 +161,31 @@ public class Booking {
     }
 
     public void cancel(OffsetDateTime now) {
-        this.status = BookingStatus.CANCELLED;
-        this.paymentDeadlineAt = null;
-        this.updatedAt = now;
+        if (status == BookingStatus.CONFIRMED) {
+            this.refundStatus = RefundStatus.DUE;
+        }
+        close(now);
     }
 
     public void expire(OffsetDateTime now) {
-        cancel(now);
+        close(now);
+    }
+
+    public boolean isRefundDue() {
+        return refundStatus == RefundStatus.DUE;
+    }
+
+    public void markRefunded(UUID adminId, String note, OffsetDateTime now) {
+        this.refundStatus = RefundStatus.REFUNDED;
+        this.refundedAt = now;
+        this.refundedByUserId = adminId;
+        this.refundNote = note;
+        this.updatedAt = now;
+    }
+
+    private void close(OffsetDateTime now) {
+        this.status = BookingStatus.CANCELLED;
+        this.paymentDeadlineAt = null;
+        this.updatedAt = now;
     }
 }

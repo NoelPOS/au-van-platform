@@ -6,6 +6,8 @@ import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.notification.dto.BookingNotification;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +21,14 @@ final class BookingNotifications {
 
     static String moment(OffsetDateTime value) {
         return MOMENT.format(value);
+    }
+
+    static String refundNote(Booking booking) {
+        return booking.isRefundDue() ? " A refund of " + baht(booking.getTotalFare()) + " is due." : "";
+    }
+
+    static String baht(BigDecimal amount) {
+        return amount.setScale(2, RoundingMode.HALF_UP).toPlainString() + " THB";
     }
 
     static BookingNotification of(Booking booking, String detail) {
