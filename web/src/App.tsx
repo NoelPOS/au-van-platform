@@ -5,6 +5,7 @@ import { RedirectHome, RequireRole } from "./components/RouteGuards";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminOverviewPage } from "./pages/AdminOverviewPage";
 import { AdminPaymentReviewPage } from "./pages/AdminPaymentReviewPage";
+import { AdminRefundsPage } from "./pages/AdminRefundsPage";
 import { AdminRoutesPage } from "./pages/AdminRoutesPage";
 import { AdminSeatLayoutsPage } from "./pages/AdminSeatLayoutsPage";
 import { AdminTripsPage } from "./pages/AdminTripsPage";
@@ -70,6 +71,7 @@ function App() {
           path="payments"
           element={<AdminPaymentReviewPage session={session} />}
         />
+        <Route path="refunds" element={<AdminRefundsPage session={session} />} />
         <Route
           path="operations"
           element={<AdminOperationsPage session={session} />}
