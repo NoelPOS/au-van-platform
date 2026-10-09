@@ -56,7 +56,7 @@ A student never receives another student's `booking` signal. The owner is used f
 
 - An approval reaches an open ticket as fast as the commit plus one refetch. The Playwright journey now asserts five seconds where it used to allow thirty.
 - Signals are best effort and at most once, with no replay. A signal sent while the listener is reconnecting, or while a browser is between streams, is lost. Polling and the catch-up invalidation after a reconnect cover that gap, so a missed signal costs freshness, never correctness.
-- Some changes send no signal at all. A seat hold lapses without any code running (ADR-006), so other students learn of it from the seat-map poll. Administrators' edits to trips and routes are not signalled either.
+- Some changes send no public signal. A seat hold lapses without any code running (ADR-006). Confirming a booking turns a held seat into a booked one, which the owner and administrators hear about but other students do not. Administrators' edits to trips and routes are not signalled either. Other students learn of all three from the existing polls.
 - Each instance holds one database connection for `LISTEN`. It counts against the pool, and the API driver is now a compile-time dependency, because JDBC has no API for notifications.
 - A stream can outlive the session that opened it by up to one access-token lifetime. It carries only kinds and ids, and every refetch it prompts needs a valid token.
 - A ticket can appear in proxy access logs. It expires a minute after it is issued and can open only a stream.
