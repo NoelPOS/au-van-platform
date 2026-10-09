@@ -11,7 +11,7 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
       <dt className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
         {label}
       </dt>
-      <dd className="mt-1 font-mono text-[15px] font-medium text-ink tabular-nums">
+      <dd className="mt-1 font-mono text-[15px] font-medium whitespace-nowrap text-ink tabular-nums">
         {children}
       </dd>
     </div>
@@ -60,7 +60,7 @@ export function BoardingPass({ booking }: { booking: Booking }) {
             </p>
           </div>
         </div>
-        <dl className="mt-5 grid grid-cols-3 gap-3 pb-4">
+        <dl className="mt-5 flex justify-between gap-4 pb-4">
           <Detail label="Date">{formatShortDate(booking.trip.departureAt)}</Detail>
           <Detail label="Departs">{formatTime(booking.trip.departureAt)}</Detail>
           <Detail label="Fare">{formatBaht(booking.totalFare)}</Detail>
