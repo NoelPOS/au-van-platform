@@ -155,6 +155,8 @@ export async function createTrip(
     .click();
   await tripForm.getByLabel("Time", { exact: true }).fill(departure.time);
   await tripForm.getByRole("button", { name: "Schedule trip" }).click();
+  await expect(tripForm).toBeHidden();
+  await page.getByRole("radio", { name: "List" }).check();
   await expect(
     page.getByRole("row", { name: new RegExp(vehicleCode) }),
   ).toBeVisible();
