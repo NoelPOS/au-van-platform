@@ -5,5 +5,6 @@ public enum WaitlistStatus {
     PROMOTED,
     FULFILLED,
     WITHDRAWN,
-    EXPIRED
+    EXPIRED,
+    CANCELLED
 }

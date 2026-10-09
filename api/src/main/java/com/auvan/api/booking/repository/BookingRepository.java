@@ -25,6 +25,15 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findByRefundStatusOrderByUpdatedAtAsc(RefundStatus refundStatus);
 
+    // Ids, not entities: a booking loaded here is handed back stale by the later lockById.
+    @Query("""
+            select booking.id from Booking booking
+            where booking.trip.id = :tripId
+              and booking.status <> com.auvan.api.booking.entity.BookingStatus.CANCELLED
+            order by booking.createdAt asc
+            """)
+    List<UUID> findActiveIdsByTripId(@Param("tripId") UUID tripId);
+
     Optional<Booking> findFirstByUserIdAndStatusInOrderByCreatedAtAsc(UUID userId, Collection<BookingStatus> statuses);
 
     boolean existsByUserIdAndTripIdAndStatusNot(UUID userId, UUID tripId, BookingStatus status);

@@ -109,6 +109,11 @@ public class WaitlistEntry {
         this.updatedAt = now;
     }
 
+    public void cancel(OffsetDateTime now) {
+        this.status = WaitlistStatus.CANCELLED;
+        this.updatedAt = now;
+    }
+
     public void withdraw(OffsetDateTime now) {
         this.status = WaitlistStatus.WITHDRAWN;
         this.promotionHoldId = null;
