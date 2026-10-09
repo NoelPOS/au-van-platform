@@ -41,16 +41,16 @@ public class FlexMessageFactory {
     }
 
     private record Ticket(String origin, String destination, OffsetDateTime departureAt, List<String> seats,
-                          BigDecimal fare, OffsetDateTime deadline, String reason, String reference) { }
+                          BigDecimal fare, OffsetDateTime deadline, String explanation, String reference) { }
 
     public FlexMessage booking(OutboxEventType type, BookingNotification booking) {
         NotificationLook look = NotificationLook.of(type);
-        boolean rejected = type == OutboxEventType.PAYMENT_REJECTED;
+        boolean explained = look.detailLabel() != null;
         Ticket ticket = new Ticket(booking.origin(), booking.destination(), booking.departureAt(), booking.seats(),
-                booking.fare(), booking.paymentDeadlineAt(), rejected ? booking.detail() : null,
+                booking.fare(), booking.paymentDeadlineAt(), explained ? booking.detail() : null,
                 booking.reference());
         String heading = present(booking.reference()) ? "AU-Van booking " + booking.reference() : "AU-Van booking";
-        return card(look, ticket, rejected ? List.of() : Stream.of(booking.detail()).toList(),
+        return card(look, ticket, explained ? List.of() : Stream.of(booking.detail()).toList(),
                 lines(heading, look.lead(), booking.detail()));
     }
 
@@ -64,9 +64,9 @@ public class FlexMessageFactory {
 
     private FlexMessage card(NotificationLook look, Ticket ticket, List<String> fallback, String altText) {
         List<Object> body = new ArrayList<>(List.of(pill(look.status()), paragraph(look.lead())));
-        if (present(ticket.reason())) {
-            body.add(box("vertical", List.of(text("Reason", "xs", MUTED),
-                    text(ticket.reason(), "sm", NAVY, "weight", "bold", "wrap", true))));
+        if (present(ticket.explanation())) {
+            body.add(box("vertical", List.of(text(look.detailLabel(), "xs", MUTED),
+                    text(ticket.explanation(), "sm", NAVY, "weight", "bold", "wrap", true))));
         }
         if (present(ticket.origin()) && present(ticket.destination())) {
             body.add(route(ticket.origin(), ticket.destination()));

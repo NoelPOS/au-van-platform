@@ -52,7 +52,7 @@ public class BookingNotificationHandler {
         OutboxEventType type = event.getEventType();
         return switch (type) {
             case BOOKING_CREATED, BOOKING_CANCELLED, BOOKING_EXPIRED, PAYMENT_PROOF_SUBMITTED, PAYMENT_APPROVED,
-                 PAYMENT_REJECTED, DEPARTURE_REMINDER_24H, DEPARTURE_REMINDER_1H ->
+                 PAYMENT_REJECTED, DEPARTURE_REMINDER_24H, DEPARTURE_REMINDER_1H, TRIP_CANCELLED, TRIP_RESCHEDULED ->
                     cards.booking(type, json.readValue(event.getPayload(), BookingNotification.class));
             case WAITLIST_PROMOTED, WAITLIST_PROMOTION_EXPIRED ->
                     cards.waitlist(type, json.readValue(event.getPayload(), WaitlistNotification.class));

@@ -63,9 +63,11 @@ class FlexMessageFactoryTests {
             FlexMessage message = FlexCards.render(cards, type, FlexCards.payloadFor(type));
             String expected = switch (type) {
                 case BOOKING_CREATED, PAYMENT_REJECTED -> "Upload payment slip";
-                case PAYMENT_APPROVED, DEPARTURE_REMINDER_24H, DEPARTURE_REMINDER_1H -> "View booking";
+                case PAYMENT_APPROVED, DEPARTURE_REMINDER_24H, DEPARTURE_REMINDER_1H, TRIP_RESCHEDULED ->
+                        "View booking";
                 case WAITLIST_PROMOTED -> "Take the seat";
-                case BOOKING_CANCELLED, BOOKING_EXPIRED, PAYMENT_PROOF_SUBMITTED, WAITLIST_PROMOTION_EXPIRED -> null;
+                case BOOKING_CANCELLED, BOOKING_EXPIRED, PAYMENT_PROOF_SUBMITTED, WAITLIST_PROMOTION_EXPIRED,
+                     TRIP_CANCELLED -> null;
             };
 
             assertThat(buttons(message).stream().map(button -> button.path("action").path("label").asString()))
@@ -104,6 +106,30 @@ class FlexMessageFactoryTests {
 
         assertThat(texts(message)).containsSubsequence("Reason", "Wrong amount.");
         assertThat(Collections.frequency(texts(message), "Wrong amount.")).isOne();
+    }
+
+    @Test
+    void aTripCancellationShowsTheAdminsReasonAndPromisesARefundToAnyoneWhoPaid() {
+        FlexMessage message = cards.booking(OutboxEventType.TRIP_CANCELLED, booking("The van has broken down."));
+
+        assertThat(texts(message)).containsSubsequence("AU·VAN · TRIP", "Trip cancelled", "Cancelled",
+                "AU-Van has cancelled this trip. If you paid, your fare will be refunded.", "Reason",
+                "The van has broken down.", "AU Suvarnabhumi", "Seats", "A1, A2", "Booking ref AUV-261002-ABCD");
+        assertThat(Collections.frequency(texts(message), "The van has broken down.")).isOne();
+        assertThat(texts(message)).doesNotContain("Pay by");
+        assertThat(buttons(message)).isEmpty();
+    }
+
+    @Test
+    void aRescheduleShowsWhatChangedBesideTheNewDeparture() {
+        FlexMessage message = cards.booking(OutboxEventType.TRIP_RESCHEDULED,
+                booking("Departure moved from 2 Oct 2026 at 20:00 to 2 Oct 2026 at 22:14."));
+
+        assertThat(texts(message)).containsSubsequence("Departure time changed", "New time", "What changed",
+                "Departure moved from 2 Oct 2026 at 20:00 to 2 Oct 2026 at 22:14.", "Departs", "Fri 2 Oct · 22:14");
+        assertThat(message.altText()).endsWith("Departure moved from 2 Oct 2026 at 20:00 to 2 Oct 2026 at 22:14.");
+        assertThat(buttons(message)).extracting(button -> button.path("action").path("label").asString())
+                .containsExactly("View booking");
     }
 
     @Test
