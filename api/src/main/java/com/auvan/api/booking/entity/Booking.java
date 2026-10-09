@@ -121,15 +121,12 @@ public class Booking {
     }
 
     public boolean isExpirable(OffsetDateTime now) {
-        return (status == BookingStatus.PENDING_PAYMENT
-                || status == BookingStatus.PAYMENT_UNDER_REVIEW
-                || status == BookingStatus.PAYMENT_REJECTED)
-                && paymentDeadlineAt != null && !paymentDeadlineAt.isAfter(now);
+        return isAwaitingPaymentProof() && paymentDeadlineAt != null && !paymentDeadlineAt.isAfter(now);
     }
 
-    public void markPaymentUnderReview(OffsetDateTime paymentDeadlineAt, OffsetDateTime now) {
+    public void markPaymentUnderReview(OffsetDateTime now) {
         this.status = BookingStatus.PAYMENT_UNDER_REVIEW;
-        this.paymentDeadlineAt = paymentDeadlineAt;
+        this.paymentDeadlineAt = null;
         this.updatedAt = now;
     }
 

@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BookingLifecycleTests {
     private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-09-21T10:00:00Z");
     private static final OffsetDateTime DEADLINE = NOW.plusHours(2);
-    private static final OffsetDateTime DEPARTURE_BOUND = NOW.plusDays(1).minusHours(1);
 
     @Test
     void aNewBookingWaitsForPaymentRatherThanBeingConfirmed() {
@@ -36,13 +35,14 @@ class BookingLifecycleTests {
     void aSubmittedProofPutsTheBookingUnderReview() {
         Booking booking = newBooking();
 
-        booking.markPaymentUnderReview(DEPARTURE_BOUND, NOW.plusMinutes(3));
+        booking.markPaymentUnderReview(NOW.plusMinutes(3));
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
         assertThat(booking.getUpdatedAt()).isEqualTo(NOW.plusMinutes(3));
-        assertThat(booking.getPaymentDeadlineAt()).isEqualTo(DEPARTURE_BOUND);
+        assertThat(booking.getPaymentDeadlineAt()).isNull();
         assertThat(booking.isUnderPaymentReview()).isTrue();
         assertThat(booking.isAwaitingPaymentProof()).isFalse();
+        assertThat(booking.isExpirable(NOW.plusYears(1))).isFalse();
     }
 
     @Test
@@ -58,7 +58,7 @@ class BookingLifecycleTests {
     @Test
     void anApprovedPaymentConfirmsTheBooking() {
         Booking booking = newBooking();
-        booking.markPaymentUnderReview(DEPARTURE_BOUND, NOW.plusMinutes(3));
+        booking.markPaymentUnderReview(NOW.plusMinutes(3));
 
         booking.confirm(NOW.plusMinutes(9));
 
@@ -96,7 +96,7 @@ class BookingLifecycleTests {
     @Test
     void aRejectedBookingAcceptsAnotherProof() {
         Booking booking = newBooking();
-        booking.markPaymentUnderReview(DEPARTURE_BOUND, NOW.plusMinutes(3));
+        booking.markPaymentUnderReview(NOW.plusMinutes(3));
 
         booking.markPaymentRejected(NOW.plusMinutes(9).plusHours(2), NOW.plusMinutes(9));
 

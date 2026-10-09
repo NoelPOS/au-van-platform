@@ -1,6 +1,5 @@
 package com.auvan.api.booking.service;
 
-import com.auvan.api.booking.config.BookingProperties;
 import com.auvan.api.booking.config.PaymentProofProperties;
 import com.auvan.api.booking.dto.BookingResponse;
 import com.auvan.api.booking.entity.Booking;
@@ -25,17 +24,14 @@ public class PaymentProofService {
     private final PaymentProofRepository proofs;
     private final PaymentProofStorage storage;
     private final OutboxRecorder outbox;
-    private final BookingProperties bookingProperties;
     private final long maxFileBytes;
 
     public PaymentProofService(BookingRepository bookings, PaymentProofRepository proofs,
-                               PaymentProofStorage storage, OutboxRecorder outbox,
-                               BookingProperties bookingProperties, PaymentProofProperties properties) {
+                               PaymentProofStorage storage, OutboxRecorder outbox, PaymentProofProperties properties) {
         this.bookings = bookings;
         this.proofs = proofs;
         this.storage = storage;
         this.outbox = outbox;
-        this.bookingProperties = bookingProperties;
         this.maxFileBytes = properties.maxFileSize().toBytes();
     }
 
@@ -59,8 +55,7 @@ public class PaymentProofService {
         proofs.save(new PaymentProof(booking, userId, objectKey, image.contentType(), file.getSize(), now));
         String detail = "Payment proof submitted for review.";
         booking.recordEvent(BookingEventType.PAYMENT_PROOF_SUBMITTED, detail, userId, now);
-        booking.markPaymentUnderReview(
-                bookingProperties.departureBoundFor(booking.getTrip().getDepartureAt()), now);
+        booking.markPaymentUnderReview(now);
         outbox.record(OutboxEventType.PAYMENT_PROOF_SUBMITTED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, detail), now);
         return BookingResponse.from(booking);

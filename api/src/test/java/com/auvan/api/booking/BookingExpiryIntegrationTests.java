@@ -11,13 +11,13 @@ import com.auvan.api.booking.dto.TripSeatMapResponse;
 import com.auvan.api.booking.entity.BookingEventType;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.IdempotencyKey;
-import com.auvan.api.booking.entity.PaymentProofStatus;
 import com.auvan.api.booking.repository.BookingRepository;
 import com.auvan.api.booking.repository.IdempotencyKeyRepository;
 import com.auvan.api.booking.repository.PaymentProofRepository;
 import com.auvan.api.booking.repository.SeatClaimRepository;
 import com.auvan.api.booking.service.BookingExpiryScheduler;
 import com.auvan.api.booking.service.BookingExpiryService;
+import com.auvan.api.booking.service.BookingExpiryWriter;
 import com.auvan.api.booking.service.BookingService;
 import com.auvan.api.booking.service.PaymentProofReviewService;
 import com.auvan.api.booking.service.PaymentProofService;
@@ -47,6 +47,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -77,6 +78,9 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
 
     @Autowired
     private BookingExpiryService expiry;
+
+    @Autowired
+    private BookingExpiryWriter expiryWriter;
 
     @Autowired
     private BookingService bookingService;
@@ -193,19 +197,19 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     }
 
     @Test
-    void anOverdueUnderReviewBookingIsExpiredAndItsProofLeavesTheReviewQueue() {
+    void anUnderReviewBookingIsNeitherAnExpiryCandidateNorExpirableEvenWithAStaleDeadline() {
         UUID bookingId = createBooking("key-under-review");
         paymentProofs.submit(student, bookingId, jpeg("the-slip"));
-        assertThat(review.list()).hasSize(1);
         overdue(bookingId);
+        OffsetDateTime now = OffsetDateTime.now();
 
-        assertThat(expiry.sweep()).isOne();
+        assertThat(bookings.findExpirable(now, PageRequest.of(0, 50))).doesNotContain(bookingId);
+        assertThat(expiryWriter.expire(bookingId, now)).isFalse();
 
-        assertThat(bookings.findById(bookingId).orElseThrow().getStatus()).isEqualTo(BookingStatus.CANCELLED);
-        assertThat(claims.findByBookingId(bookingId)).isEmpty();
-        assertThat(proofs.findAll()).singleElement()
-                .satisfies(proof -> assertThat(proof.getStatus()).isEqualTo(PaymentProofStatus.SUBMITTED));
-        assertThat(review.list()).isEmpty();
+        assertThat(bookings.findById(bookingId).orElseThrow().getStatus())
+                .isEqualTo(BookingStatus.PAYMENT_UNDER_REVIEW);
+        assertThat(claims.findByBookingId(bookingId)).hasSize(1);
+        assertThat(review.list()).hasSize(1);
     }
 
     @Test
@@ -316,13 +320,26 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     }
 
     @Test
-    void submittingAProofMovesTheDeadlineToTheDepartureBound() {
+    void submittingAProofStopsTheDeadlineSoASlowReviewNeverExpiresTheBooking() {
         UUID bookingId = createBooking("key-submit");
 
         paymentProofs.submit(student, bookingId, jpeg("the-slip"));
 
-        assertThat(bookings.findById(bookingId).orElseThrow().getPaymentDeadlineAt())
-                .isCloseTo(trip.getDepartureAt().minusHours(1), within(1, ChronoUnit.MINUTES));
+        assertThat(bookings.findById(bookingId).orElseThrow().getPaymentDeadlineAt()).isNull();
+        assertThat(expiry.sweep()).isZero();
+    }
+
+    @Test
+    void theV10MigrationClearsTheDeadlineOfEveryBookingAlreadyUnderReview() throws Exception {
+        UUID waiting = createBooking("key-v10-waiting");
+        UUID underReview = createBooking("key-v10-under-review", trip.getSeats().get(1));
+        paymentProofs.submit(student, underReview, jpeg("the-slip"));
+        overdue(underReview);
+
+        jdbc.update(statementOf("db/migration/V10__stop_deadline_under_payment_review.sql", "UPDATE bookings"));
+
+        assertThat(bookings.findById(underReview).orElseThrow().getPaymentDeadlineAt()).isNull();
+        assertThat(bookings.findById(waiting).orElseThrow().getPaymentDeadlineAt()).isNotNull();
     }
 
     @Test
@@ -346,7 +363,7 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
         paymentProofs.submit(student, underReview, jpeg("the-slip"));
         jdbc.update("update bookings set payment_deadline_at = null");
 
-        jdbc.update(backfillStatementOfV8());
+        jdbc.update(statementOf("db/migration/V8__add_booking_payment_deadline.sql", "UPDATE bookings"));
 
         assertThat(bookings.findById(waiting).orElseThrow().getPaymentDeadlineAt())
                 .isCloseTo(OffsetDateTime.now().plusHours(2), within(1, ChronoUnit.MINUTES));
@@ -355,11 +372,10 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
         assertThat(bookings.findById(confirmed).orElseThrow().getPaymentDeadlineAt()).isNull();
     }
 
-    private static String backfillStatementOfV8() throws Exception {
-        String migration = new String(new ClassPathResource(
-                "db/migration/V8__add_booking_payment_deadline.sql").getInputStream().readAllBytes(),
+    private static String statementOf(String path, String opening) throws Exception {
+        String migration = new String(new ClassPathResource(path).getInputStream().readAllBytes(),
                 StandardCharsets.UTF_8);
-        int start = migration.indexOf("UPDATE bookings");
+        int start = migration.indexOf(opening);
         assertThat(start).isNotNegative();
         return migration.substring(start, migration.indexOf(';', start) + 1);
     }

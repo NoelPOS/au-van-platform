@@ -294,7 +294,7 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
                 new BigDecimal("35.00"), now.plusMinutes(30), now);
         switch (status) {
             case PENDING_PAYMENT -> { }
-            case PAYMENT_UNDER_REVIEW -> booking.markPaymentUnderReview(now.plusMinutes(30), now);
+            case PAYMENT_UNDER_REVIEW -> booking.markPaymentUnderReview(now);
             case PAYMENT_REJECTED -> booking.markPaymentRejected(now.plusMinutes(30), now);
             case CONFIRMED -> booking.confirm(now);
             case CANCELLED -> booking.cancel(now);
