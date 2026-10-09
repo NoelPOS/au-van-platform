@@ -12,20 +12,20 @@ export function useWaitlist(
   session: AuthSession,
   setNotice: (notice: Notice | null) => void,
 ) {
-  const waitlist = useMyWaitlist(session);
-  const joinWaitlist = useJoinWaitlist(session);
-  const leaveWaitlist = useLeaveWaitlist(session);
+  const entries = useMyWaitlist(session);
+  const joining = useJoinWaitlist(session);
+  const leaving = useLeaveWaitlist(session);
 
-  async function joinTheWaitlist(next: AvailableTrip) {
+  async function join(trip: AvailableTrip) {
     setNotice(null);
     try {
-      const entry = await joinWaitlist.mutateAsync({
-        tripId: next.id,
+      const entry = await joining.mutateAsync({
+        tripId: trip.id,
         seatsWanted: 1,
       });
       setNotice({
         tone: "status",
-        message: `You are number ${entry.position} on the waitlist for ${next.origin} → ${next.destination}.`,
+        message: `You are number ${entry.position} on the waitlist for ${trip.origin} → ${trip.destination}.`,
       });
     } catch (error) {
       const code = error instanceof ApiError ? error.code : null;
@@ -43,10 +43,10 @@ export function useWaitlist(
     }
   }
 
-  async function leaveTheWaitlist(entry: WaitlistEntry) {
+  async function leave(entry: WaitlistEntry) {
     setNotice(null);
     try {
-      await leaveWaitlist.mutateAsync({ entryId: entry.id });
+      await leaving.mutateAsync({ entryId: entry.id });
       setNotice({ tone: "status", message: "You have left the waitlist." });
     } catch (error) {
       // A 404 means the entry is already gone, which is what was asked for.
@@ -56,9 +56,9 @@ export function useWaitlist(
   }
 
   return {
-    waitlist,
-    waitlistPending: joinWaitlist.isPending || leaveWaitlist.isPending,
-    joinTheWaitlist,
-    leaveTheWaitlist,
+    entries,
+    pending: joining.isPending || leaving.isPending,
+    join,
+    leave,
   };
 }

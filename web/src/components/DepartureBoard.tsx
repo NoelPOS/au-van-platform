@@ -7,6 +7,8 @@ import { formatTime } from "../utils/days";
 import { formatBaht } from "../utils/format";
 
 const columns = "grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-center gap-3";
+const badge =
+  "rounded-md border border-line px-2 py-0.5 font-mono text-[11px] tracking-[0.14em] text-muted uppercase";
 
 function Route({ trip }: { trip: AvailableTrip }) {
   return (
@@ -55,10 +57,27 @@ function ClosedRow({ trip }: { trip: AvailableTrip }) {
       <span className="opacity-70">
         <Route trip={trip} />
       </span>
-      <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">
+      <span className={badge}>
         Closed
       </span>
     </div>
+  );
+}
+
+function OpenRow({ trip, onSelect }: { trip: AvailableTrip; onSelect: () => void }) {
+  return (
+    <button
+      aria-label={`${formatTime(trip.departureAt)}, ${trip.origin} to ${trip.destination}, ${trip.availableSeats} of ${trip.totalSeats} seats left`}
+      className={`${columns} w-full px-4 py-4 text-left transition-colors duration-150 ease-out hover:bg-paper/70 active:bg-paper`}
+      onClick={onSelect}
+      type="button"
+    >
+      <span className="font-mono text-[22px] font-medium tracking-tight text-ink tabular-nums">
+        {formatTime(trip.departureAt)}
+      </span>
+      <Route trip={trip} />
+      <SeatsLeft count={trip.availableSeats} />
+    </button>
   );
 }
 
@@ -82,7 +101,7 @@ function FullRow({
           {formatTime(trip.departureAt)}
         </span>
         <Route trip={trip} />
-        <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] tracking-[0.14em] text-muted uppercase">
+        <span className={badge}>
           Full
         </span>
       </div>
@@ -121,6 +140,25 @@ export function DepartureBoard({
   onLeaveWaitlist: (entry: WaitlistEntry) => void;
 }) {
   const now = useNow();
+
+  function row(trip: AvailableTrip) {
+    if (Date.parse(trip.bookingClosesAt) <= now) return <ClosedRow trip={trip} />;
+    if (trip.availableSeats > 0)
+      return <OpenRow onSelect={() => onSelect(trip)} trip={trip} />;
+    const entry = waitlist.find((queued) => queued.tripId === trip.id);
+    return (
+      <FullRow
+        entry={entry}
+        onJoin={() => onJoinWaitlist(trip)}
+        onLeave={() => {
+          if (entry) onLeaveWaitlist(entry);
+        }}
+        pending={waitlistPending}
+        trip={trip}
+      />
+    );
+  }
+
   return (
     <section
       aria-label="Departures"
@@ -136,35 +174,7 @@ export function DepartureBoard({
       </div>
       <ol className="divide-y divide-dashed divide-line">
         {trips.map((trip) => (
-          <li key={trip.id}>
-            {Date.parse(trip.bookingClosesAt) <= now ? (
-              <ClosedRow trip={trip} />
-            ) : trip.availableSeats > 0 ? (
-              <button
-                aria-label={`${formatTime(trip.departureAt)}, ${trip.origin} to ${trip.destination}, ${trip.availableSeats} of ${trip.totalSeats} seats left`}
-                className={`${columns} w-full px-4 py-4 text-left transition-colors duration-150 ease-out hover:bg-paper/70 active:bg-paper`}
-                onClick={() => onSelect(trip)}
-                type="button"
-              >
-                <span className="font-mono text-[22px] font-medium tracking-tight text-ink tabular-nums">
-                  {formatTime(trip.departureAt)}
-                </span>
-                <Route trip={trip} />
-                <SeatsLeft count={trip.availableSeats} />
-              </button>
-            ) : (
-              <FullRow
-                entry={waitlist.find((queued) => queued.tripId === trip.id)}
-                onJoin={() => onJoinWaitlist(trip)}
-                onLeave={() => {
-                  const entry = waitlist.find((queued) => queued.tripId === trip.id);
-                  if (entry) onLeaveWaitlist(entry);
-                }}
-                pending={waitlistPending}
-                trip={trip}
-              />
-            )}
-          </li>
+          <li key={trip.id}>{row(trip)}</li>
         ))}
       </ol>
     </section>

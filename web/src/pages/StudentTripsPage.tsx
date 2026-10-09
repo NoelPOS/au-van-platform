@@ -79,12 +79,12 @@ export function StudentTripsPage() {
             selected={selected}
           />
           <DepartureBoard
-            onJoinWaitlist={(trip) => void waitlist.joinTheWaitlist(trip)}
-            onLeaveWaitlist={(entry) => void waitlist.leaveTheWaitlist(entry)}
+            onJoinWaitlist={(trip) => void waitlist.join(trip)}
+            onLeaveWaitlist={(entry) => void waitlist.leave(entry)}
             onSelect={(trip) => navigate(`/trips/${trip.id}`)}
             trips={departures}
-            waitlist={waitlist.waitlist.data ?? []}
-            waitlistPending={waitlist.waitlistPending}
+            waitlist={waitlist.entries.data ?? []}
+            waitlistPending={waitlist.pending}
           />
         </>
       )}
