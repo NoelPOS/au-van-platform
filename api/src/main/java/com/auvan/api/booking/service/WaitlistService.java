@@ -11,6 +11,8 @@ import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,16 +29,18 @@ public class WaitlistService {
     private final SeatAvailabilityService availability;
     private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
+    private final LiveSignalPublisher live;
 
     public WaitlistService(WaitlistEntryRepository entries, TripRepository trips, SeatClaimRepository claims,
                            SeatAvailabilityService availability, BookingEligibilityService eligibility,
-                           BookingProperties properties) {
+                           BookingProperties properties, LiveSignalPublisher live) {
         this.entries = entries;
         this.trips = trips;
         this.claims = claims;
         this.availability = availability;
         this.eligibility = eligibility;
         this.properties = properties;
+        this.live = live;
     }
 
     @Transactional
@@ -75,6 +79,7 @@ public class WaitlistService {
         UUID promotionHoldId = entry.getPromotionHoldId();
         entry.withdraw(OffsetDateTime.now());
         if (promotionHoldId != null) {
+            live.publish(LiveSignal.trip(entry.getTrip().getId()));
             release(promotionHoldId);
         }
     }

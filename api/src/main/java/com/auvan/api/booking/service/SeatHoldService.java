@@ -10,6 +10,8 @@ import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
 import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
+import com.auvan.api.live.dto.LiveSignal;
+import com.auvan.api.live.service.LiveSignalPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,13 +32,15 @@ public class SeatHoldService {
     private final TripRepository trips;
     private final BookingEligibilityService eligibility;
     private final BookingProperties properties;
+    private final LiveSignalPublisher live;
 
     public SeatHoldService(SeatClaimRepository claims, TripRepository trips, BookingEligibilityService eligibility,
-                           BookingProperties properties) {
+                           BookingProperties properties, LiveSignalPublisher live) {
         this.claims = claims;
         this.trips = trips;
         this.eligibility = eligibility;
         this.properties = properties;
+        this.live = live;
     }
 
     @Transactional
@@ -74,6 +78,7 @@ public class SeatHoldService {
         } catch (DataIntegrityViolationException exception) {
             throw Problems.conflict("seat_taken", SEAT_TAKEN, exception);
         }
+        live.publish(LiveSignal.trip(trip.getId()));
         return SeatHoldResponse.from(holdId, trip.getId(), expiresAt, held);
     }
 
@@ -84,6 +89,7 @@ public class SeatHoldService {
         if (held.isEmpty() || held.stream().anyMatch(claim -> !claim.isHeldBy(userId))) {
             throw Problems.notFound("hold_not_found", "Hold not found.");
         }
+        live.publish(LiveSignal.trip(held.getFirst().getTripSeat().getTrip().getId()));
         claims.deleteByIdIn(held.stream().map(SeatClaim::getId).toList());
     }
 
