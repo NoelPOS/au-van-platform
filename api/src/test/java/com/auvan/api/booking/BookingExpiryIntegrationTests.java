@@ -8,6 +8,7 @@ import com.auvan.api.booking.dto.CreateBookingRequest;
 import com.auvan.api.booking.dto.CreateSeatHoldRequest;
 import com.auvan.api.booking.dto.SeatState;
 import com.auvan.api.booking.dto.TripSeatMapResponse;
+import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEventType;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.IdempotencyKey;
@@ -343,14 +344,27 @@ class BookingExpiryIntegrationTests extends AuthenticationTestSupport {
     }
 
     @Test
-    void rejectingAProofGivesTheStudentAFreshWindowToResubmitIn() {
-        UUID bookingId = createBooking("key-reject-window");
+    void aQuickRejectionKeepsTheOriginalDeadlineRatherThanStartingAFreshWindow() {
+        UUID bookingId = createBooking("key-reject-early");
         paymentProofs.submit(student, bookingId, jpeg("the-slip"));
 
         review.reject(administrator, proofs.findAll().getFirst().getId(), "The slip is unreadable.");
 
+        Booking rejected = bookings.findById(bookingId).orElseThrow();
+        assertThat(rejected.getPaymentDeadlineAt())
+                .isCloseTo(rejected.getCreatedAt().plusHours(2), within(1, ChronoUnit.SECONDS));
+    }
+
+    @Test
+    void aRejectionAfterTheOriginalDeadlineGivesThirtyMinutesToResubmit() {
+        UUID bookingId = createBooking("key-reject-late");
+        paymentProofs.submit(student, bookingId, jpeg("the-slip"));
+        jdbc.update("update bookings set created_at = ? where id = ?", OffsetDateTime.now().minusHours(3), bookingId);
+
+        review.reject(administrator, proofs.findAll().getFirst().getId(), "The slip is unreadable.");
+
         assertThat(bookings.findById(bookingId).orElseThrow().getPaymentDeadlineAt())
-                .isCloseTo(OffsetDateTime.now().plusHours(2), within(1, ChronoUnit.MINUTES));
+                .isCloseTo(OffsetDateTime.now().plusMinutes(30), within(1, ChronoUnit.MINUTES));
     }
 
     @Test

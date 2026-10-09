@@ -31,4 +31,22 @@ class BookingPropertiesTests {
     void aTripInsideTheDepartureCutoffGetsADeadlineThatHasAlreadyPassed() {
         assertThat(properties.promotionDeadlineFor(NOW.plusMinutes(20), NOW)).isBefore(NOW);
     }
+
+    @Test
+    void aRejectionBeforeTheOriginalDeadlineKeepsIt() {
+        assertThat(properties.resubmitDeadlineFor(NOW.plusDays(1), NOW, NOW.plusMinutes(20)))
+                .isEqualTo(NOW.plusHours(2));
+    }
+
+    @Test
+    void aRejectionCloseToTheOriginalDeadlineGetsTheResubmitWindow() {
+        assertThat(properties.resubmitDeadlineFor(NOW.plusDays(1), NOW, NOW.plusMinutes(110)))
+                .isEqualTo(NOW.plusMinutes(140));
+    }
+
+    @Test
+    void theResubmitWindowIsCutShortByTheDepartureBound() {
+        assertThat(properties.resubmitDeadlineFor(NOW.plusMinutes(200), NOW, NOW.plusMinutes(125)))
+                .isEqualTo(NOW.plusMinutes(140));
+    }
 }
