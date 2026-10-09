@@ -4,7 +4,6 @@ import com.auvan.api.inventory.entity.RouteStatus;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
-import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.entity.VehicleStatus;
 import com.jayway.jsonpath.JsonPath;
@@ -109,7 +108,7 @@ class ScheduleApplyIntegrationTests extends ScheduleTestSupport {
     void aCancelledTripBlocksOnlyItsExactDepartureTime() throws Exception {
         LocalDate day = today().plusDays(1);
         Trip cancelled = tripAt(day, "07:00");
-        cancelled.update(cancelled.getDepartureAt(), TripStatus.CANCELLED);
+        cancelled.cancel("Van in for repairs.");
         trips.save(cancelled);
 
         postJson(PREVIEW, plan(List.of(day), line("07:00", van), line("07:30", van)))
