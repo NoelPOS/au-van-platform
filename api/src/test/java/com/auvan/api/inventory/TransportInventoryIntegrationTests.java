@@ -113,9 +113,10 @@ class TransportInventoryIntegrationTests extends AuthenticationTestSupport {
         authenticatedPut("/api/v1/admin/vehicles/" + vehicleId, """
                 {"code":"VAN-01","name":"Toyota Commuter","seatLayoutId":"%s","status":"ACTIVE"}
                 """.formatted(seatLayoutId), adminToken).andExpect(status().isOk());
-        authenticatedPut("/api/v1/admin/trips/" + tripId, "{\"status\":\"CANCELLED\"}", adminToken)
+        String later = OffsetDateTime.now().plusDays(2).withNano(0).toString();
+        authenticatedPut("/api/v1/admin/trips/" + tripId, "{\"departureAt\":\"" + later + "\"}", adminToken)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CANCELLED"));
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test

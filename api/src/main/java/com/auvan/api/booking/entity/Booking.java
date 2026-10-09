@@ -148,6 +148,13 @@ public class Booking {
         this.updatedAt = now;
     }
 
+    public void capPaymentDeadlineAt(OffsetDateTime bound, OffsetDateTime now) {
+        if (paymentDeadlineAt != null && paymentDeadlineAt.isAfter(bound)) {
+            this.paymentDeadlineAt = bound;
+            this.updatedAt = now;
+        }
+    }
+
     public void confirm(OffsetDateTime now) {
         this.status = BookingStatus.CONFIRMED;
         this.paymentDeadlineAt = null;

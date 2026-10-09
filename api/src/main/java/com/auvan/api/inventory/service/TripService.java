@@ -2,7 +2,6 @@ package com.auvan.api.inventory.service;
 
 import com.auvan.api.inventory.dto.CreateTripRequest;
 import com.auvan.api.inventory.dto.TripResponse;
-import com.auvan.api.inventory.dto.UpdateTripRequest;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.entity.Vehicle;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,17 +49,6 @@ public class TripService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This vehicle already has a trip at that departure time.", exception);
         }
-    }
-
-    @Transactional
-    public TripResponse update(UUID id, UpdateTripRequest request) {
-        Trip trip = trips.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found."));
-        OffsetDateTime departureAt = request.departureAt() == null ? trip.getDepartureAt() : request.departureAt();
-        if (trips.existsByVehicleIdAndDepartureAtAndIdNot(trip.getVehicle().getId(), departureAt, id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This vehicle already has a trip at that departure time.");
-        }
-        trip.update(departureAt, request.status() == null ? trip.getStatus() : request.status());
-        return TripResponse.from(trip);
     }
 
     private VanRoute findRoute(UUID id) {

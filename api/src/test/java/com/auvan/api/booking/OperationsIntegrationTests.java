@@ -16,7 +16,6 @@ import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
-import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.entity.VanRoute;
 import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.repository.SeatLayoutRepository;
@@ -338,7 +337,6 @@ class OperationsIntegrationTests extends AuthenticationTestSupport {
         SeatLayout layout = seatLayouts.save(new SeatLayout("Layout " + vehicleCode, layoutSeats));
         Vehicle vehicle = vehicles.save(new Vehicle(vehicleCode, "Toyota Commuter", layout));
         Trip created = new Trip(route, vehicle, departureAt);
-        created.update(departureAt, TripStatus.ACTIVE);
         return trips.save(created);
     }
 

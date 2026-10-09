@@ -1,8 +1,11 @@
 package com.auvan.api.booking.service;
 
+import com.auvan.api.booking.config.BookingProperties;
+import com.auvan.api.booking.dto.UpdateTripRequest;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingEventType;
 import com.auvan.api.booking.entity.BookingSeat;
+import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.WaitlistEntry;
 import com.auvan.api.booking.exception.Problems;
 import com.auvan.api.booking.repository.BookingRepository;
@@ -11,6 +14,7 @@ import com.auvan.api.booking.repository.WaitlistEntryRepository;
 import com.auvan.api.inventory.dto.TripResponse;
 import com.auvan.api.inventory.entity.Trip;
 import com.auvan.api.inventory.entity.TripSeat;
+import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.notification.dto.BookingNotification;
 import com.auvan.api.outbox.entity.OutboxEventType;
@@ -30,16 +34,46 @@ public class TripChangeService {
     private final WaitlistEntryRepository entries;
     private final OutboxRecorder outbox;
     private final DepartureReminderService reminders;
+    private final BookingProperties properties;
 
     public TripChangeService(TripRepository trips, BookingRepository bookings, SeatClaimRepository claims,
-                                   WaitlistEntryRepository entries, OutboxRecorder outbox,
-                                   DepartureReminderService reminders) {
+                             WaitlistEntryRepository entries, OutboxRecorder outbox,
+                             DepartureReminderService reminders, BookingProperties properties) {
         this.trips = trips;
         this.bookings = bookings;
         this.claims = claims;
         this.entries = entries;
         this.outbox = outbox;
         this.reminders = reminders;
+        this.properties = properties;
+    }
+
+    @Transactional
+    public TripResponse update(UUID adminId, UUID tripId, UpdateTripRequest request) {
+        OffsetDateTime now = OffsetDateTime.now();
+        Trip trip = lockChangeable(tripId, now);
+        if (request.status() == TripStatus.CANCELLED) {
+            throw Problems.badRequest("trip_cancellation_needs_reason",
+                    "Cancel a trip with its cancel action, which asks for a reason to tell the passengers.");
+        }
+        OffsetDateTime previous = trip.getDepartureAt();
+        OffsetDateTime departureAt = request.departureAt() == null ? previous : request.departureAt();
+        if (departureAt.isEqual(previous)) {
+            return TripResponse.from(trip);
+        }
+        if (!now.isBefore(properties.bookingClosesAt(departureAt))) {
+            throw Problems.badRequest("departure_too_soon", "A trip can only be moved to a time at least "
+                    + properties.closesBeforeDeparture().toMinutes() + " minutes from now.");
+        }
+        if (trips.existsByVehicleIdAndDepartureAtAndIdNot(trip.getVehicle().getId(), departureAt, tripId)) {
+            throw Problems.conflict("vehicle_already_scheduled",
+                    "This vehicle already has a trip at that departure time.");
+        }
+        trip.reschedule(departureAt);
+        String detail = "Departure moved from " + BookingNotifications.moment(previous) + " to "
+                + BookingNotifications.moment(departureAt) + ".";
+        bookings.findActiveIdsByTripId(tripId).forEach(bookingId -> retimeBooking(bookingId, adminId, detail, now));
+        return TripResponse.from(trip);
     }
 
     @Transactional
@@ -83,6 +117,20 @@ public class TripChangeService {
         outbox.record(OutboxEventType.TRIP_CANCELLED, booking.getId(), booking.getUserId(),
                 BookingNotifications.of(booking, reason), now);
         reminders.cancel(booking.getId(), now);
+    }
+
+    private void retimeBooking(UUID bookingId, UUID adminId, String detail, OffsetDateTime now) {
+        Booking booking = bookings.lockById(bookingId).orElseThrow();
+        if (booking.isCancelled()) {
+            return;
+        }
+        booking.capPaymentDeadlineAt(properties.departureBoundFor(booking.getTrip().getDepartureAt()), now);
+        booking.recordEvent(BookingEventType.TRIP_RESCHEDULED, detail, adminId, now);
+        outbox.record(OutboxEventType.TRIP_RESCHEDULED, booking.getId(), booking.getUserId(),
+                BookingNotifications.of(booking, detail), now);
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            reminders.reschedule(booking, now);
+        }
     }
 
     private void closeEntry(UUID entryId, Trip trip, String reason, OffsetDateTime now) {

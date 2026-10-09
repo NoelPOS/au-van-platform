@@ -48,6 +48,11 @@ public class DepartureReminderService {
         return queued;
     }
 
+    public int reschedule(Booking booking, OffsetDateTime now) {
+        events.deleteScheduled(booking.getId());
+        return schedule(booking, now);
+    }
+
     public int cancel(UUID bookingId, OffsetDateTime now) {
         return events.cancelScheduled(bookingId, now, NO_LONGER_ELIGIBLE);
     }
