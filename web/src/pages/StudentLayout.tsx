@@ -7,6 +7,7 @@ import { DemoRenewal } from "../components/DemoRenewal";
 import { LineFriendBanner } from "../components/LineFriendBanner";
 import { SignInAgain } from "../components/SignInAgain";
 import { StudentTabBar } from "../components/StudentTabBar";
+import { Logo } from "../components/ui/Logo";
 import { useMyBookings } from "../hooks/useBookingQueries";
 import { useDemoSession, type SessionChange } from "../hooks/useDemoSession";
 import { useLiveUpdates } from "../hooks/useLiveUpdates";
@@ -68,9 +69,9 @@ export function StudentLayout({
 
   return (
     <div className="min-h-dvh bg-paper pb-[calc(5rem+env(safe-area-inset-bottom))]">
-      <header className="mx-auto flex max-w-xl items-baseline justify-between px-5 pt-5">
+      <header className="mx-auto flex max-w-xl items-center justify-between px-5 pt-5">
         <p className="font-display text-xl tracking-tight text-brand-900">
-          AU<span className="text-accent">·</span>Van
+          <Logo />
         </p>
         {session.demo ? (
           <DemoBadge onLeave={demo.leave} />

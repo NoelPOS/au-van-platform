@@ -18,6 +18,7 @@ import { useRefundsDue } from "../hooks/useRefundQueries";
 import type { AuthSession } from "../types/auth";
 import { DemoBadge } from "./DemoBadge";
 import { Drawer } from "./ui/Drawer";
+import { Logo } from "./ui/Logo";
 import { ToastProvider } from "./ui/Toast";
 
 type Destination = {
@@ -64,14 +65,9 @@ function RefundsBadge({ count }: { count: number }) {
 
 function Wordmark() {
   return (
-    <span className="flex flex-col leading-none">
-      <span className="font-display text-2xl font-normal tracking-tight">
-        AU<span className="text-accent">·</span>Van
-      </span>
-      <span className="mt-1.5 text-[10px] font-semibold tracking-[0.2em] text-brand-100/80 uppercase">
-        Operations
-      </span>
-    </span>
+    <div className="font-display text-2xl font-normal tracking-tight">
+      <Logo onDark tagline="Operations" />
+    </div>
   );
 }
 

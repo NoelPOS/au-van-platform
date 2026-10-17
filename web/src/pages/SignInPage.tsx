@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { E2eSignIn } from "../components/E2eSignIn";
 import { Button } from "../components/ui/Button";
 import { FailurePanel } from "../components/ui/FailurePanel";
+import { Logo } from "../components/ui/Logo";
 import { Skeleton } from "../components/ui/Skeleton";
 import { apiBaseUrl } from "../services/apiBaseUrl";
 import { configuredLiffId, e2eAuthEnabled } from "../services/liffConfig";
@@ -72,7 +73,7 @@ export function SignInPage({
   return (
     <main className="mx-auto flex min-h-svh max-w-xl flex-col px-6 py-12">
       <p className="font-display text-2xl tracking-tight text-ink">
-        AU<span className="text-accent">·</span>Van
+        <Logo />
       </p>
       <div className="flex flex-1 flex-col justify-center py-16">
         <h1 className="font-display text-5xl leading-tight tracking-tight text-ink">
