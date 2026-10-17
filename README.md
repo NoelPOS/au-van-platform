@@ -14,6 +14,12 @@
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-AWS-844FBA?style=flat-square&logo=terraform&logoColor=white)
 
+<br>
+
+[![A booking from seat hold to staff approval, with the student's ticket updating live](docs/evidence/intro-video.gif)](https://auvan.duckdns.org/landing/intro.mp4)
+
+[Watch the full video](https://auvan.duckdns.org/landing/intro.mp4) · [Try the student app](https://auvan.duckdns.org)
+
 </div>
 
 ---
