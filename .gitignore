@@ -33,6 +33,10 @@ crash.*.log
 # Machine-specific Claude Code settings
 .claude/settings.local.json
 
+# Intro video render output and copied screenshots
+/video/out/
+/video/public/
+
 # Per-track git worktrees
 .worktrees/
 
