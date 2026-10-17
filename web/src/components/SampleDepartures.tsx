@@ -1,8 +1,8 @@
 const departures = [
-  { time: "07:30", destination: "BTS Udom Suk", seats: "4 left" },
-  { time: "10:00", destination: "Mega Bangna", seats: "9 left" },
-  { time: "13:15", destination: "Siam Paragon", seats: "Full" },
-  { time: "17:45", destination: "Future Park", seats: "2 left" },
+  { time: "07:30", destination: "Mega Bangna", seats: "Full" },
+  { time: "09:00", destination: "Siam Paragon", seats: "3 left" },
+  { time: "12:00", destination: "BTS Udom Suk", seats: "6 left" },
+  { time: "16:30", destination: "Future Park Rangsit", seats: "9 left" },
 ];
 
 export function SampleDepartures() {
