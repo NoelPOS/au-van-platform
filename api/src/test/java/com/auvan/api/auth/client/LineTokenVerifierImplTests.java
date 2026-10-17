@@ -28,7 +28,7 @@ class LineTokenVerifierImplTests {
         RestClient.Builder builder = RestClient.builder();
         line = MockRestServiceServer.bindTo(builder).build();
         verifier = new LineTokenVerifierImpl(
-                new AuthProperties(null, new AuthProperties.Line(channelId, baseUrl), null), builder);
+                new AuthProperties(null, new AuthProperties.Line(channelId, baseUrl), null, null), builder);
     }
 
     private void answeringWith(String iss, String sub, String aud) {

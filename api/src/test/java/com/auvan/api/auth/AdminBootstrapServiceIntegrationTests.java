@@ -49,7 +49,7 @@ class AdminBootstrapServiceIntegrationTests extends AuthenticationTestSupport {
 
     @Test
     void rejectsMissingConfigurationWithoutChangingUsers() {
-        var missingConfiguration = new AuthProperties(null, null, new AuthProperties.AdminBootstrap("  "));
+        var missingConfiguration = new AuthProperties(null, null, new AuthProperties.AdminBootstrap("  "), null);
         var service = new AdminBootstrapService(users, missingConfiguration);
 
         assertThatThrownBy(service::bootstrap)

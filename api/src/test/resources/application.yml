@@ -39,6 +39,9 @@ auth:
     api-base-url: https://api.line.me
   admin-bootstrap:
     line-subject:
+  demo:
+    enabled: false
+    staff-passcode:
 
 booking:
   hold-ttl: PT5M

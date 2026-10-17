@@ -44,6 +44,10 @@ auth:
     api-base-url: ${LINE_LOGIN_API_BASE_URL:https://api.line.me}
   admin-bootstrap:
     line-subject: ${ADMIN_BOOTSTRAP_LINE_SUBJECT:}
+  demo:
+    # SECURITY CONTROL: lets anyone sign in without LINE; only the demo host turns it on (ADR-020).
+    enabled: ${DEMO_LOGIN_ENABLED:false}
+    staff-passcode: ${DEMO_STAFF_PASSCODE:}
 
 booking:
   hold-ttl: PT5M
