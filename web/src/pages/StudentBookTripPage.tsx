@@ -82,7 +82,7 @@ export function StudentBookTripPage() {
         className="-ml-1 inline-flex min-h-10 items-center gap-1.5 self-start text-sm font-medium text-muted hover:text-ink"
         onClick={() => {
           flow.releaseCurrentHold();
-          navigate("/");
+          navigate(`/?route=${trip.routeId}`);
         }}
         type="button"
       >
