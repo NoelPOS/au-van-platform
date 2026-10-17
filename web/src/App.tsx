@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { AdminLayout } from "./components/AdminLayout";
+import { DemoStaffSignIn } from "./components/DemoStaffSignIn";
 import { RedirectHome, RequireRole } from "./components/RouteGuards";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminOverviewPage } from "./pages/AdminOverviewPage";
@@ -10,27 +11,46 @@ import { AdminRoutesPage } from "./pages/AdminRoutesPage";
 import { AdminSeatLayoutsPage } from "./pages/AdminSeatLayoutsPage";
 import { AdminTripsPage } from "./pages/AdminTripsPage";
 import { AdminVansPage } from "./pages/AdminVansPage";
+import { LandingPage } from "./pages/LandingPage";
 import { SignInPage } from "./pages/SignInPage";
 import { StudentBookTripPage } from "./pages/StudentBookTripPage";
 import { StudentLayout } from "./pages/StudentLayout";
 import { StudentTicketPage } from "./pages/StudentTicketPage";
 import { StudentTicketsPage } from "./pages/StudentTicketsPage";
 import { StudentTripsPage } from "./pages/StudentTripsPage";
+import { savedDemoSession } from "./services/demoSession";
+import {
+  demoLoginEnabled,
+  e2eAuthEnabled,
+  insideLineApp,
+  returningFromLine,
+} from "./services/liffConfig";
 import type { AuthSession } from "./types/auth";
 
 function App() {
-  const [session, setSession] = useState<AuthSession | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(savedDemoSession);
+  const { search } = useLocation();
 
   if (!session) {
+    const signIn = <SignInPage onSignedIn={setSession} />;
+    const landing =
+      !e2eAuthEnabled && !insideLineApp() && !returningFromLine(search);
     return (
       <Routes>
-        {["/", "/trips/*", "/tickets/*", "/admin/*"].map((path) => (
-          <Route
-            element={<SignInPage onSignedIn={setSession} />}
-            key={path}
-            path={path}
-          />
-        ))}
+        <Route
+          element={landing ? <LandingPage onSignedIn={setSession} /> : signIn}
+          path="/"
+        />
+        <Route element={signIn} path="/trips/*" />
+        <Route element={signIn} path="/tickets/*" />
+        <Route
+          element={
+            <SignInPage onSignedIn={setSession}>
+              {demoLoginEnabled && <DemoStaffSignIn onSignedIn={setSession} />}
+            </SignInPage>
+          }
+          path="/admin/*"
+        />
         <Route path="*" element={<RedirectHome />} />
       </Routes>
     );
@@ -42,7 +62,11 @@ function App() {
         path="/"
         element={
           <RequireRole role="STUDENT" session={session}>
-            <StudentLayout session={session} />
+            <StudentLayout
+              key={session.accessToken}
+              onSessionChange={setSession}
+              session={session}
+            />
           </RequireRole>
         }
       >
@@ -55,7 +79,7 @@ function App() {
         path="/admin"
         element={
           <RequireRole role="ADMIN" session={session}>
-            <AdminLayout session={session} />
+            <AdminLayout onSessionChange={setSession} session={session} />
           </RequireRole>
         }
       >

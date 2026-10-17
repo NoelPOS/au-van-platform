@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLiffSession } from "./services/liffService";
-import { renderApp } from "./test/renderApp";
+import { openInsideLine, renderApp } from "./test/renderApp";
 
 vi.mock("./services/liffService", () => ({
   createLiffSession: vi.fn(),
@@ -10,11 +10,14 @@ vi.mock("./services/liffService", () => ({
 }));
 
 describe("App", () => {
+  beforeEach(openInsideLine);
+
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("shows that the API is available when the health check succeeds", async () => {
