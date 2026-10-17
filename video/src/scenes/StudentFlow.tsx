@@ -2,13 +2,20 @@ import type { ComponentType } from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { PhoneFrame, Screenshot } from "../components/Devices";
 import { progress, rise } from "../motion";
-import { PassScreen } from "../screens/PassScreen";
+import { LineMessage, PassScreen } from "../screens/PassScreen";
+import { StatusBar } from "../screens/AppChrome";
 import { PayScreen } from "../screens/PayScreen";
-import { SeatScreen } from "../screens/SeatScreen";
-import { TripsScreen } from "../screens/TripsScreen";
+import { HoldOverlay, SeatScreen } from "../screens/SeatScreen";
+import { TapOverlay, TripsScreen } from "../screens/TripsScreen";
 import { color, font } from "../theme";
 
-type Step = { title: string; detail: string; shot: string | null; Mock: ComponentType };
+type Step = {
+  title: string;
+  detail: string;
+  shot: string | null;
+  Mock: ComponentType;
+  Overlay?: ComponentType;
+};
 
 const steps: Step[] = [
   {
@@ -16,12 +23,14 @@ const steps: Step[] = [
     detail: "Today’s vans and the seats left, right inside LINE.",
     shot: "student-trips.webp",
     Mock: TripsScreen,
+    Overlay: TapOverlay,
   },
   {
     title: "Hold a seat.",
     detail: "It stays yours for five minutes while you pay.",
     shot: "seat-picker.webp",
     Mock: SeatScreen,
+    Overlay: HoldOverlay,
   },
   {
     title: "Pay by PromptPay.",
@@ -34,10 +43,15 @@ const steps: Step[] = [
     detail: "Staff approve the slip and the boarding pass arrives in LINE.",
     shot: "boarding-pass.webp",
     Mock: PassScreen,
+    Overlay: ArrivedInLine,
   },
 ];
 
 const stepFrames = 112;
+
+function ArrivedInLine() {
+  return <LineMessage at={30} />;
+}
 const slideFrames = 14;
 
 function PhoneScreen({ step, last, screenshots }: { step: Step; last: boolean; screenshots: boolean }) {
@@ -48,7 +62,17 @@ function PhoneScreen({ step, last, screenshots }: { step: Step; last: boolean; s
     <AbsoluteFill
       style={{ background: color.paper, transform: `translateX(${(1 - enter) * 100 - leave * 35}%)` }}
     >
-      {screenshots && step.shot ? <Screenshot file={step.shot} /> : <step.Mock />}
+      {screenshots && step.shot ? (
+        <>
+          <StatusBar />
+          <div style={{ position: "absolute", inset: "50px 0 0" }}>
+            <Screenshot file={step.shot} fit="contain" />
+            {step.Overlay && <step.Overlay />}
+          </div>
+        </>
+      ) : (
+        <step.Mock />
+      )}
     </AbsoluteFill>
   );
 }

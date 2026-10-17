@@ -81,42 +81,59 @@ function Van({ frame }: { frame: number }) {
   );
 }
 
+function HoldBanner({ frame }: { frame: number }) {
+  const held = progress(frame, holdAt, 14);
+  return (
+    <div
+      style={{
+        padding: "14px 18px",
+        borderRadius: 18,
+        border: "1px solid rgba(217,154,43,0.4)",
+        background: color.warningSoft,
+        opacity: held,
+        transform: `translateY(${(1 - held) * 16}px)`,
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 17 }}>
+        Seat B2 held for{" "}
+        <span style={{ fontFamily: font.mono, fontWeight: 600 }}>{countdown(frame)}</span>
+      </p>
+      <div style={{ marginTop: 9, height: 5, borderRadius: 3, background: "rgba(217,154,43,0.2)" }}>
+        <div
+          style={{
+            width: `${100 - Math.max(0, frame - holdAt) / 90}%`,
+            height: "100%",
+            borderRadius: 3,
+            background: color.amber,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function HoldOverlay() {
+  const frame = useCurrentFrame();
+  if (frame < holdAt) return null;
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 82, padding: "8px 16px", background: color.card, borderTop: `1px solid ${color.line}` }}>
+      <HoldBanner frame={frame} />
+    </div>
+  );
+}
+
 export function SeatScreen() {
   const frame = useCurrentFrame();
-  const held = progress(frame, holdAt, 14);
   const pressed = frame >= holdAt - 4 && frame < holdAt;
   return (
     <AppScreen tabs={false}>
-      <p style={kicker}>07:30 · Tue 20 Oct</p>
+      <p style={kicker}>09:00 · Sun 18 Oct</p>
       <p style={{ margin: "6px 0 18px", fontFamily: font.display, fontSize: 34, color: color.navy }}>
-        Mega Bangna
+        Siam Paragon
       </p>
       <Van frame={frame} />
-      <div
-        style={{
-          marginTop: 20,
-          padding: "14px 18px",
-          borderRadius: 18,
-          border: "1px solid rgba(217,154,43,0.4)",
-          background: color.warningSoft,
-          opacity: held,
-          transform: `translateY(${(1 - held) * 16}px)`,
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 17 }}>
-          Seat B2 held for{" "}
-          <span style={{ fontFamily: font.mono, fontWeight: 600 }}>{countdown(frame)}</span>
-        </p>
-        <div style={{ marginTop: 9, height: 5, borderRadius: 3, background: "rgba(217,154,43,0.2)" }}>
-          <div
-            style={{
-              width: `${100 - Math.max(0, frame - holdAt) / 90}%`,
-              height: "100%",
-              borderRadius: 3,
-              background: color.amber,
-            }}
-          />
-        </div>
+      <div style={{ marginTop: 20 }}>
+        <HoldBanner frame={frame} />
       </div>
       <div
         style={{

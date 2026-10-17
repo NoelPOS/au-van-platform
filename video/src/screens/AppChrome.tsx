@@ -10,22 +10,29 @@ export const kicker = {
   color: color.muted,
 };
 
+export function StatusBar() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "20px 34px 0",
+        fontFamily: font.mono,
+        fontSize: 15,
+        fontWeight: 600,
+        color: color.ink,
+      }}
+    >
+      <span>13:52</span>
+      <span>5G</span>
+    </div>
+  );
+}
+
 export function AppScreen({ children, tabs = true }: { children: ReactNode; tabs?: boolean }) {
   return (
     <div style={{ position: "absolute", inset: 0, fontFamily: font.sans, color: color.ink }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "20px 34px 0",
-          fontFamily: font.mono,
-          fontSize: 15,
-          fontWeight: 600,
-        }}
-      >
-        <span>07:12</span>
-        <span>5G</span>
-      </div>
+      <StatusBar />
       <div
         style={{
           display: "flex",
