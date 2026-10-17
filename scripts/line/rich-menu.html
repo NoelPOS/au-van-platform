@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @font-face {
+        font-family: Fraunces;
+        src: url(../../web/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2);
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url(../../web/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      body {
+        width: 2500px;
+        height: 1686px;
+        display: grid;
+        grid-template-columns: repeat(4, 625px);
+        grid-template-rows: 900px 786px;
+        background: #f6f3ec;
+        color: #14172b;
+        font-family: Fraunces;
+        overflow: hidden;
+      }
+
+      .tile {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        padding: 84px 72px 80px;
+        border-left: 4px dashed #e2ddd1;
+        border-top: 4px dashed #e2ddd1;
+      }
+
+      .number {
+        position: absolute;
+        top: 84px;
+        right: 72px;
+        font: 500 40px "JetBrains Mono";
+        letter-spacing: 0.08em;
+        color: #9a9cad;
+      }
+
+      .icon {
+        width: 150px;
+        height: 150px;
+        fill: none;
+        stroke: #1b2566;
+        stroke-width: 4.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .label {
+        margin-top: auto;
+        font-size: 104px;
+        font-weight: 420;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: #1b2566;
+      }
+
+      .caption {
+        margin-top: 30px;
+        font: 500 38px "JetBrains Mono";
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #5e6178;
+      }
+
+      .book {
+        grid-column: span 3;
+        border: 0;
+        padding: 96px 110px 100px;
+        background: #1b2566;
+        color: #f6f3ec;
+      }
+
+      .book .number {
+        top: 96px;
+        right: 110px;
+        color: #d99a2b;
+      }
+
+      .book .caption {
+        margin: 0;
+        color: rgba(246, 243, 236, 0.62);
+      }
+
+      .book h1 {
+        margin-top: 70px;
+        font-size: 260px;
+        font-weight: 380;
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+      }
+
+      .book h1 span {
+        color: #d99a2b;
+      }
+
+      .seats {
+        display: flex;
+        gap: 26px;
+        margin-top: auto;
+      }
+
+      .seat {
+        display: grid;
+        place-items: center;
+        width: 132px;
+        height: 132px;
+        border: 5px solid rgba(246, 243, 236, 0.35);
+        border-radius: 28px;
+        font: 600 40px "JetBrains Mono";
+        color: rgba(246, 243, 236, 0.62);
+      }
+
+      .seat.taken {
+        border-color: transparent;
+        background: rgba(246, 243, 236, 0.12);
+        color: transparent;
+      }
+
+      .seat.yours {
+        border-color: #d99a2b;
+        background: #d99a2b;
+        color: #1b2566;
+      }
+
+      .tickets {
+        border-top: 0;
+        background: #fffdf8;
+      }
+
+      .stamp {
+        position: absolute;
+        top: 300px;
+        right: 64px;
+        padding: 16px 24px;
+        border: 6px solid #2e7a57;
+        border-radius: 14px;
+        outline: 3px solid #2e7a57;
+        outline-offset: 7px;
+        font: 700 38px "JetBrains Mono";
+        letter-spacing: 0.16em;
+        color: #2e7a57;
+        transform: rotate(-8deg);
+      }
+
+      .about img {
+        width: 150px;
+        height: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="tile book">
+      <p class="caption">Timetable &amp; seats</p>
+      <span class="number">01</span>
+      <h1>Book a seat<span>.</span></h1>
+      <div class="seats">
+        <span class="seat">1A</span>
+        <span class="seat taken">1B</span>
+        <span class="seat yours">1C</span>
+        <span class="seat">2A</span>
+        <span class="seat taken">2B</span>
+        <span class="seat">2C</span>
+      </div>
+    </section>
+
+    <section class="tile tickets">
+      <span class="number">02</span>
+      <svg class="icon" viewBox="0 0 64 64">
+        <path d="M10 16h44a4 4 0 0 1 4 4v7a5 5 0 0 0 0 10v7a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4v-7a5 5 0 0 0 0-10v-7a4 4 0 0 1 4-4z" />
+        <path d="M42 21v4m0 7v0m0 7v4" />
+      </svg>
+      <span class="stamp">PAID</span>
+      <p class="label">My<br />tickets</p>
+      <p class="caption">Boarding passes</p>
+    </section>
+
+    <section class="tile">
+      <span class="number">03</span>
+      <svg class="icon" viewBox="0 0 64 64">
+        <rect x="8" y="8" width="18" height="18" rx="3" />
+        <rect x="38" y="8" width="18" height="18" rx="3" />
+        <rect x="8" y="38" width="18" height="18" rx="3" />
+        <path d="M40 40h4v4h-4zM50 40h4v4h-4zM40 50h4v4h-4zM50 50h4v4h-4z" fill="#1b2566" stroke-width="2" />
+      </svg>
+      <p class="label">How to<br />pay</p>
+      <p class="caption">PromptPay QR</p>
+    </section>
+
+    <section class="tile">
+      <span class="number">04</span>
+      <svg class="icon" viewBox="0 0 64 64">
+        <circle cx="30" cy="34" r="22" />
+        <path d="M30 22v12l8 6" />
+        <circle cx="52" cy="12" r="5" fill="#d99a2b" stroke="none" />
+      </svg>
+      <p class="label">Trip<br />updates</p>
+      <p class="caption">Times &amp; changes</p>
+    </section>
+
+    <section class="tile">
+      <span class="number">05</span>
+      <svg class="icon" viewBox="0 0 64 64">
+        <path d="M14 12h36a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H30l-12 10V44h-4a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z" />
+        <path d="M22 28v0M32 28v0M42 28v0" />
+      </svg>
+      <p class="label">Contact<br />staff</p>
+      <p class="caption">Chat with us</p>
+    </section>
+
+    <section class="tile about">
+      <span class="number">06</span>
+      <img src="../../brand/logo.svg" alt="" />
+      <p class="label">About<br />AU-Van</p>
+      <p class="caption">Our website</p>
+    </section>
+  </body>
+</html>
