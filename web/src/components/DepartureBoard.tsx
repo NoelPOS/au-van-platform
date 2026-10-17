@@ -1,28 +1,24 @@
 import { ChevronRight } from "lucide-react";
 import { Button } from "./ui/Button";
-import { RouteRule } from "./ui/RouteLine";
 import { useNow } from "../hooks/useNow";
 import type { AvailableTrip, WaitlistEntry } from "../types/booking";
 import { formatTime } from "../utils/days";
-import { formatBaht } from "../utils/format";
 
 const columns = "grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-center gap-3";
 const badge =
   "rounded-md border border-line px-2 py-0.5 font-mono text-[11px] tracking-[0.14em] text-muted uppercase";
 
-function Route({ trip }: { trip: AvailableTrip }) {
+function Arrival({ trip }: { trip: AvailableTrip }) {
+  const arrivesAt = new Date(
+    Date.parse(trip.departureAt) + trip.durationMinutes * 60_000,
+  ).toISOString();
   return (
     <span className="min-w-0">
       <span className="block truncate font-medium text-ink">
-        <span className="sr-only">To </span>
-        {trip.destination}
-      </span>
-      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted">
-        <RouteRule className="w-3" />
-        <span className="truncate">{`from ${trip.origin}`}</span>
+        {`Arrives ${formatTime(arrivesAt)}`}
       </span>
       <span className="mt-0.5 block font-mono text-[12px] text-muted">
-        {`${trip.durationMinutes} min · ${formatBaht(trip.fare)}`}
+        {`${trip.durationMinutes} min ride`}
       </span>
     </span>
   );
@@ -55,7 +51,7 @@ function ClosedRow({ trip }: { trip: AvailableTrip }) {
         {formatTime(trip.departureAt)}
       </span>
       <span className="opacity-70">
-        <Route trip={trip} />
+        <Arrival trip={trip} />
       </span>
       <span className={badge}>
         Closed
@@ -75,7 +71,7 @@ function OpenRow({ trip, onSelect }: { trip: AvailableTrip; onSelect: () => void
       <span className="font-mono text-[22px] font-medium tracking-tight text-ink tabular-nums">
         {formatTime(trip.departureAt)}
       </span>
-      <Route trip={trip} />
+      <Arrival trip={trip} />
       <SeatsLeft count={trip.availableSeats} />
     </button>
   );
@@ -100,7 +96,7 @@ function FullRow({
         <span className="font-mono text-[22px] font-medium tracking-tight text-muted tabular-nums">
           {formatTime(trip.departureAt)}
         </span>
-        <Route trip={trip} />
+        <Arrival trip={trip} />
         <span className={badge}>
           Full
         </span>
@@ -169,7 +165,7 @@ export function DepartureBoard({
         className={`${columns} border-b border-line px-4 py-2.5 font-mono text-[10px] tracking-[0.16em] text-muted uppercase`}
       >
         <span>Time</span>
-        <span>Destination</span>
+        <span>Ride</span>
         <span>Seats</span>
       </div>
       <ol className="divide-y divide-dashed divide-line">
