@@ -43,6 +43,7 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/actuator/health", "/api/v1/auth/line/exchange").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/demo/student", "/api/v1/auth/demo/staff").permitAll()
                         // SECURITY CONTROL: the stream checks its own short-lived ticket.
                         .requestMatchers(HttpMethod.GET, "/api/v1/events").permitAll()
                         // The only ADMIN check: every admin mapping must sit under /api/v1/admin/**.

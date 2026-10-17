@@ -12,6 +12,10 @@ public final class Problems {
         return of(HttpStatus.BAD_REQUEST, code, detail, null);
     }
 
+    public static ResponseStatusException unauthorized(String code, String detail) {
+        return of(HttpStatus.UNAUTHORIZED, code, detail, null);
+    }
+
     public static ResponseStatusException notFound(String code, String detail) {
         return of(HttpStatus.NOT_FOUND, code, detail, null);
     }
