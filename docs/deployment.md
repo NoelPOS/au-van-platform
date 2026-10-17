@@ -545,7 +545,11 @@ Then:
 
 2. In the LINE Developers console, set the LIFF app's endpoint URL to
    `https://$PUBLIC_HOST`. It changes only if `PUBLIC_HOST` does.
-3. Run the smoke test above against `https://$PUBLIC_HOST`.
+3. Replace the Official Account's rich menu with `scripts/line/rich-menu.mjs`,
+   as `scripts/line/README.md` describes. It links to the LIFF app and to
+   `https://auvan.duckdns.org`, and deletes the legacy menu once the new one is
+   the default.
+4. Run the smoke test above against `https://$PUBLIC_HOST`.
 
 ### Change the host name
 
@@ -558,6 +562,8 @@ Then:
    continuous deployment step 3, printed again now that `PUBLIC_HOST` has
    changed. The pin names the host, so the old line no longer matches.
 4. Set the LIFF app's endpoint URL to the new `https://$PUBLIC_HOST`.
+5. Run `scripts/line/rich-menu.mjs` again with `SITE_URL=https://$PUBLIC_HOST`,
+   so the rich menu's "About AU-Van" tile follows the new name.
 
 ### Rollback
 
