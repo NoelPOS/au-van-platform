@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="brand/logo.svg" width="88" alt="">
+
 # AU-Van
 
 **Seat booking and payment review for Assumption University's van services, used from inside LINE.**
@@ -43,8 +45,12 @@ and a Spring Boot modular monolith on PostgreSQL.
   ([health](https://auvan.duckdns.org/actuator/health))
 - **In LINE:** <https://liff.line.me/2009602829-rdEqBUZ5>
 
-Every page needs a LINE sign-in, so a visitor without an account sees only the
-sign-in page. The [screenshots](#screenshots) show the signed-in admin portal.
+Visitors outside LINE land on a short page about the project. **Try the
+student app** signs you in as a demo student, no LINE account needed, so you can
+hold a seat, book it and upload a slip. The staff portal opens with LINE, or
+with a demo passcode the owner shares for reviews. Demo users never receive LINE
+messages, and payments are samples
+([ADR-020](docs/adr/020-demo-sign-in.md)).
 
 ## Features
 
@@ -79,6 +85,20 @@ sign-in page. The [screenshots](#screenshots) show the signed-in admin portal.
   waitlist, and a timeline.
 
 ## Screenshots
+
+### How a booking works
+
+| 1. Pick a departure | 2. Hold a seat | 3. Pay, then get the pass |
+|---|---|---|
+| ![Today's departures from Assumption University, with seats left on each van](web/public/landing/student-trips.webp) | ![Seat picker with seat B2 selected on the 09:00 van to Siam Paragon](web/public/landing/seat-picker.webp) | ![Boarding pass for seat B2 with a confirmed stamp and the booking history](web/public/landing/boarding-pass.webp) |
+| The student opens AU-Van in LINE and sees each van with the seats left. | Tapping seats holds them for five minutes while the student adds passenger details. | After the PromptPay slip is approved, the ticket turns into a confirmed boarding pass and LINE sends a message. |
+
+| 4. Staff check the slip | 5. Staff plan the week |
+|---|---|
+| ![Payment review with the student's slip beside the Approve payment button](web/public/landing/admin-payments.webp) | ![Trip calendar for October with five departures a day](web/public/landing/admin-trips.webp) |
+| Staff see each slip next to the booking and approve it or send it back with a reason. The student's ticket updates live. | A day template lays a whole week of departures onto the calendar in one step. |
+
+### More of the staff portal
 
 | Admin overview | Seat layout builder |
 |---|---|
