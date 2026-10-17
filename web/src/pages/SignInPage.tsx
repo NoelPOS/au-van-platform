@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { E2eSignIn } from "../components/E2eSignIn";
 import { Button } from "../components/ui/Button";
 import { FailurePanel } from "../components/ui/FailurePanel";
@@ -21,8 +21,10 @@ function asError(failure: unknown): Error {
 
 export function SignInPage({
   onSignedIn,
+  children,
 }: {
   onSignedIn: (session: AuthSession) => void;
+  children?: ReactNode;
 }) {
   const liffId = configuredLiffId();
   const [healthState, setHealthState] = useState<HealthState>("checking");
@@ -107,6 +109,11 @@ export function SignInPage({
         </div>
         {/* Dropped from any build without VITE_E2E_AUTH=true; CI greps the bundle for it. */}
         {e2eAuthEnabled && <E2eSignIn onSignedIn={onSignedIn} />}
+        {children && (
+          <div className="mt-10 border-t border-dashed border-line pt-6">
+            {children}
+          </div>
+        )}
       </div>
       <p
         className="flex items-center gap-2 text-xs text-muted"
