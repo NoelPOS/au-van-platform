@@ -554,11 +554,15 @@ Then:
 
 2. In the LINE Developers console, set the LIFF app's endpoint URL to
    `https://$PUBLIC_HOST`. It changes only if `PUBLIC_HOST` does.
-3. Replace the Official Account's rich menu with `scripts/line/rich-menu.mjs`,
-   as `scripts/line/README.md` describes. It links to the LIFF app and to
-   `https://auvan.duckdns.org`, and deletes the legacy menu once the new one is
-   the default.
-4. Run the smoke test above against `https://$PUBLIC_HOST`.
+3. Set the Messaging API channel's webhook URL to
+   `https://$PUBLIC_HOST/api/line/webhook`. The API answers `200` and ignores
+   what LINE sends, so it does not check the signature yet; "Contact staff"
+   messages land in the Official Account's chat inbox.
+4. Nothing to do for the rich menu: the API installs it on startup with
+   `LINE_CHANNEL_ACCESS_TOKEN` and `LINE_LIFF_URL`, links "About AU-Van" to
+   `https://$PUBLIC_HOST`, and deletes the old menu once the new one is the
+   default. `scripts/line/README.md` says how to change it.
+5. Run the smoke test above against `https://$PUBLIC_HOST`.
 
 ### Change the host name
 
@@ -571,8 +575,9 @@ Then:
    continuous deployment step 3, printed again now that `PUBLIC_HOST` has
    changed. The pin names the host, so the old line no longer matches.
 4. Set the LIFF app's endpoint URL to the new `https://$PUBLIC_HOST`.
-5. Run `scripts/line/rich-menu.mjs` again with `SITE_URL=https://$PUBLIC_HOST`,
-   so the rich menu's "About AU-Van" tile follows the new name.
+5. Set the webhook URL to the new `https://$PUBLIC_HOST/api/line/webhook`, and
+   bump `MENU_NAME` in `RichMenuSync.java` so the next deploy reinstalls the
+   rich menu with the new "About AU-Van" link.
 
 ### Rollback
 
