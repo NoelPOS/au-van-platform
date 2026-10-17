@@ -13,7 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+// Empty, as a .env copied from .env.example leaves it; it must start the API and mean off.
+@SpringBootTest(properties = "auth.demo.enabled=")
 @AutoConfigureMockMvc
 class DemoSignInSwitchedOffIntegrationTests extends AuthenticationTestSupport {
     @Autowired
