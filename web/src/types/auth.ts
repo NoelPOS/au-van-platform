@@ -10,4 +10,5 @@ export type AuthSession = {
   accessToken: string;
   expiresIn: number;
   user: AuthenticatedUser;
+  demo?: boolean;
 };
