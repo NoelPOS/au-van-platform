@@ -1,5 +1,6 @@
 package com.auvan.api.outbox;
 
+import com.auvan.api.auth.entity.AppUser;
 import com.auvan.api.booking.dto.CreateBookingRequest;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.SeatClaim;
@@ -25,7 +26,7 @@ import static org.mockito.Mockito.doThrow;
 class OutboxRecordingIntegrationTests extends OutboxTestSupport {
     @Test
     void aCommittedBookingCreationLeavesExactlyOnePendingOutboxRowForTheStudent() {
-        UUID bookingId = createBooking("key-created");
+        UUID bookingId = createBooking(student, "key-created");
 
         assertThat(events.findAll()).singleElement().satisfies(event -> {
             assertThat(event.getEventType()).isEqualTo(OutboxEventType.BOOKING_CREATED);
@@ -44,7 +45,7 @@ class OutboxRecordingIntegrationTests extends OutboxTestSupport {
 
     @Test
     void aBookingWriteThatFailsAfterRecordingLeavesNoOutboxRowAndNoBooking() {
-        UUID holdId = holdOn(trip.getSeats().getFirst());
+        UUID holdId = holdOn(student, trip.getSeats().getFirst());
         doThrow(new IllegalStateException("The idempotency record could not be written."))
                 .when(idempotency).record(any(), any(), any(), any(), anyInt(), any(), any());
 
@@ -58,7 +59,7 @@ class OutboxRecordingIntegrationTests extends OutboxTestSupport {
 
     @Test
     void cancellingABookingLeavesItsOutboxRowDespiteTheClaimDeleteClearingThePersistenceContext() {
-        UUID bookingId = createBooking("key-cancel");
+        UUID bookingId = createBooking(student, "key-cancel");
 
         assertThat(bookingService.cancel(student, bookingId).status()).isEqualTo(BookingStatus.CANCELLED);
 
@@ -71,7 +72,7 @@ class OutboxRecordingIntegrationTests extends OutboxTestSupport {
 
     @Test
     void aSubmissionAndTheDecisionOnItEachRecordOneRowAddressedToTheStudent() {
-        UUID bookingId = createBooking("key-proof");
+        UUID bookingId = createBooking(student, "key-proof");
 
         paymentProofs.submit(student, bookingId, jpeg("the-slip"));
         UUID proofId = proofs.findAll().getFirst().getId();
@@ -87,7 +88,7 @@ class OutboxRecordingIntegrationTests extends OutboxTestSupport {
 
     @Test
     void aRejectionRecordsItsOwnRowCarryingTheReasonTheStudentHasToAct() {
-        UUID bookingId = createBooking("key-reject");
+        UUID bookingId = createBooking(student, "key-reject");
         paymentProofs.submit(student, bookingId, jpeg("the-slip"));
         UUID proofId = proofs.findAll().getFirst().getId();
 
@@ -100,15 +101,27 @@ class OutboxRecordingIntegrationTests extends OutboxTestSupport {
         });
     }
 
-    private UUID createBooking(String idempotencyKey) {
-        UUID holdId = holdOn(trip.getSeats().getFirst());
-        bookingService.create(student, idempotencyKey, new CreateBookingRequest(holdId, "Somchai P.", "0812345678"));
+    @Test
+    void aDemoStudentsBookingRecordsNoOutboxRowBecauseThereIsNoLineAccountToPush() {
+        UUID demoStudent = users.save(new AppUser("demo-student:" + UUID.randomUUID(), "Demo student 4821")).getId();
+        UUID bookingId = createBooking(demoStudent, "key-demo");
+
+        paymentProofs.submit(demoStudent, bookingId, jpeg("the-slip"));
+        review.approve(administrator, proofs.findAll().getFirst().getId(), "Received in full.");
+
+        assertThat(bookings.findById(bookingId).orElseThrow().getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(events.count()).isZero();
+    }
+
+    private UUID createBooking(UUID userId, String idempotencyKey) {
+        UUID holdId = holdOn(userId, trip.getSeats().getFirst());
+        bookingService.create(userId, idempotencyKey, new CreateBookingRequest(holdId, "Somchai P.", "0812345678"));
         return bookings.findAll().getFirst().getId();
     }
 
-    private UUID holdOn(TripSeat seat) {
+    private UUID holdOn(UUID userId, TripSeat seat) {
         UUID holdId = UUID.randomUUID();
-        claims.save(new SeatClaim(seat, student, holdId, OffsetDateTime.now().plus(Duration.ofMinutes(10))));
+        claims.save(new SeatClaim(seat, userId, holdId, OffsetDateTime.now().plus(Duration.ofMinutes(10))));
         return holdId;
     }
 

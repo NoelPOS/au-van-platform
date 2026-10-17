@@ -97,7 +97,7 @@ abstract class OutboxTestSupport extends AuthenticationTestSupport {
     private JdbcTemplate jdbc;
 
     @Autowired
-    private AppUserRepository users;
+    AppUserRepository users;
 
     @Autowired
     BookingRepository bookings;
