@@ -48,6 +48,7 @@ auth:
     # SECURITY CONTROL: lets anyone sign in without LINE; only the demo host turns it on (ADR-020).
     enabled: ${DEMO_LOGIN_ENABLED:false}
     staff-passcode: ${DEMO_STAFF_PASSCODE:}
+    staff-token-ttl: ${DEMO_STAFF_TOKEN_TTL:PT2H}
 
 booking:
   hold-ttl: PT5M

@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -38,7 +39,7 @@ public class DemoSignInService {
                 .flatMap(users::findById)
                 .filter(user -> user.isDemo() && user.getRole() == ApplicationRole.STUDENT)
                 .orElseGet(this::newStudent);
-        return signedIn(student);
+        return signedIn(student, properties.jwt().accessTokenTtl());
     }
 
     @Transactional
@@ -52,7 +53,7 @@ public class DemoSignInService {
             throw Problems.unauthorized("invalid_passcode", "The staff passcode is not correct.");
         }
         AppUser staff = users.findByLineSubject(STAFF_SUBJECT).orElseGet(this::newStaff);
-        return signedIn(staff);
+        return signedIn(staff, properties.demo().staffTokenTtl());
     }
 
     private AppUser newStudent() {
@@ -66,11 +67,8 @@ public class DemoSignInService {
         return users.save(staff);
     }
 
-    private AuthResponse signedIn(AppUser user) {
-        return new AuthResponse(
-                jwtService.issue(user),
-                properties.jwt().accessTokenTtl().toSeconds(),
-                UserResponse.from(user));
+    private AuthResponse signedIn(AppUser user, Duration lifetime) {
+        return new AuthResponse(jwtService.issue(user, lifetime), lifetime.toSeconds(), UserResponse.from(user));
     }
 
     private static byte[] bytes(String value) {
