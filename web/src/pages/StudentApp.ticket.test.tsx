@@ -6,9 +6,11 @@ import {
   rejectedBooking,
   json,
 } from "../test/bookingFixtures";
-import { stubApi, renderPage } from "../test/renderStudentApp";
+import { stubApi, renderPage, tick } from "../test/renderStudentApp";
 import { deadlinePhrase } from "../utils/days";
 
+const slipNotice =
+  "Payment slip received. Staff confirm the booking once they have checked it.";
 const slip = new File(["slip-bytes"], "slip.jpg", { type: "image/jpeg" });
 
 function chooseSlip(file: File) {
@@ -41,11 +43,7 @@ describe("Student ticket", () => {
     expect(screen.getByRole("img", { name: "Your payment slip" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send slip" }));
 
-    expect(
-      await screen.findByText(
-        "Payment slip received. Staff confirm the booking once they have checked it.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(slipNotice)).toBeInTheDocument();
     const call = fetcher.mock.calls.find(([url]) =>
       String(url).endsWith("/payment-proof"),
     );
@@ -60,6 +58,31 @@ describe("Student ticket", () => {
       await screen.findByRole("heading", { name: "Slip received" }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Payment slip image")).not.toBeInTheDocument();
+  });
+
+  it("drops the slip notice once staff confirm the booking", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let status = "PENDING_PAYMENT";
+    stubApi({
+      bookings: () => json([{ ...booking, status }]),
+      paymentProof: () => {
+        status = "PAYMENT_UNDER_REVIEW";
+        return json({ ...booking, status });
+      },
+    });
+
+    renderPage("/tickets/booking-1");
+    await screen.findByRole("heading", { name: "Pay to keep your seats" });
+    chooseSlip(slip);
+    fireEvent.click(screen.getByRole("button", { name: "Send slip" }));
+    await screen.findByRole("heading", { name: "Slip received" });
+    expect(await screen.findByText(slipNotice)).toBeInTheDocument();
+
+    status = "CONFIRMED";
+    await tick(15_000);
+
+    expect(screen.getByRole("heading", { name: "You’re all set" })).toBeInTheDocument();
+    expect(screen.queryByText(slipNotice)).not.toBeInTheDocument();
   });
 
   it("refuses a file that is not an image before uploading anything", async () => {
