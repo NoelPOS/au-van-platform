@@ -99,6 +99,8 @@ notification:
     api-base-url: ${LINE_MESSAGING_API_BASE_URL:https://api.line.me}
     channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
     liff-url: ${LINE_LIFF_URL:}
+    data-api-base-url: ${LINE_MESSAGING_DATA_API_BASE_URL:https://api-data.line.me}
+    site-url: ${PUBLIC_SITE_URL:https://auvan.duckdns.org}
 
 payment-proof:
   bucket: ${PAYMENT_PROOF_BUCKET:au-van-payment-proofs}

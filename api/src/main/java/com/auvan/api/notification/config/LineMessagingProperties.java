@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "notification.line")
 public record LineMessagingProperties(String channelAccessToken, String apiBaseUrl, boolean enabled,
-                                      String liffUrl) {
+                                      String liffUrl, String dataApiBaseUrl, String siteUrl) {
     public boolean hasChannelAccessToken() {
         return channelAccessToken != null && !channelAccessToken.isBlank();
     }

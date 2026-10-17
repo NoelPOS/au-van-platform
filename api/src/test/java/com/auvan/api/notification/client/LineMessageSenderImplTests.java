@@ -33,7 +33,7 @@ class LineMessageSenderImplTests {
         RestClient.Builder builder = RestClient.builder();
         line = MockRestServiceServer.bindTo(builder).build();
         sender = new LineMessageSenderImpl(
-                new LineMessagingProperties(token, "https://api.line.me", true, ""), builder);
+                new LineMessagingProperties(token, "https://api.line.me", true, "", "", ""), builder);
     }
 
     private static LinePushMessage message() {

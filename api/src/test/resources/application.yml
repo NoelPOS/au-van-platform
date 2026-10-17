@@ -87,6 +87,8 @@ notification:
     enabled: false
     api-base-url: https://api.line.me
     channel-access-token:
+    data-api-base-url: https://api-data.line.me
+    site-url: https://auvan.duckdns.org
 
 payment-proof:
   bucket: test-payment-proofs

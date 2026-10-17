@@ -22,7 +22,7 @@ public final class FlexCards {
     private FlexCards() { }
 
     public static FlexMessageFactory factory(String liffUrl) {
-        return new FlexMessageFactory(new LineMessagingProperties("", "https://api.line.me", true, liffUrl));
+        return new FlexMessageFactory(new LineMessagingProperties("", "https://api.line.me", true, liffUrl, "", ""));
     }
 
     public static boolean isWaitlist(OutboxEventType type) {
