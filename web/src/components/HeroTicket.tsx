@@ -3,17 +3,17 @@ import type { Booking } from "../types/booking";
 
 const sampleBooking: Booking = {
   id: "sample",
-  reference: "AUV-261020-7KQ2M4XR",
+  reference: "AUV-261017-WXNBNM9M",
   status: "CONFIRMED",
   trip: {
     id: "sample-trip",
     origin: "Assumption University",
-    destination: "Mega Bangna",
-    departureAt: "2026-10-20T00:30:00Z",
+    destination: "Siam Paragon",
+    departureAt: "2026-10-18T02:00:00Z",
   },
   passengerName: "Ploy S.",
   passengerPhone: "",
-  totalFare: 35,
+  totalFare: 90,
   seats: [{ seatId: "sample-seat", label: "B2" }],
   events: [],
   paymentDeadlineAt: null,
@@ -21,7 +21,7 @@ const sampleBooking: Booking = {
   refundStatus: "NONE",
   refundedAt: null,
   refundNote: null,
-  createdAt: "2026-10-19T09:12:00Z",
+  createdAt: "2026-10-17T06:50:00Z",
 };
 
 export function HeroTicket() {
