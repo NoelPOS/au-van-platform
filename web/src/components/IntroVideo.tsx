@@ -25,7 +25,7 @@ export function IntroVideo() {
       kicker="Walk-through"
       title="Watch a booking go through"
     >
-      <BrowserFrame address="auvan.duckdns.org">
+      <BrowserFrame address="auvan.duckdns.org" aspect="aspect-video">
         {exists.data ? (
           <video
             className="size-full bg-ink"
