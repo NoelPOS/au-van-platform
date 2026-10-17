@@ -25,6 +25,8 @@ The student endpoint is open to anyone. It creates an ordinary `app_users` row w
 
 The staff endpoint signs in one fixed administrator, LINE subject `demo-staff`, created on first use. It requires the passcode in `auth.demo.staff-passcode` (`DEMO_STAFF_PASSCODE`), held only by the owner in the host's ignored `.env`, compared with `MessageDigest.isEqual` so the comparison takes the same time however much of the guess is right. A wrong passcode answers `401` with code `invalid_passcode`. With no passcode configured the staff endpoint answers `404` while the student endpoint keeps working.
 
+A demo staff token lasts two hours (`auth.demo.staff-token-ttl`, `DEMO_STAFF_TOKEN_TTL`) instead of the usual 15 minutes, because an interview demo runs longer than that. Staff cannot renew silently the way demo students do, since that would mean storing the passcode in the browser. Demo student and LINE tokens keep the 15-minute lifetime.
+
 No LINE message is recorded for a demo user: `OutboxRecorder` writes no outbox row when the recipient's LINE subject starts with `demo-`. Such a push could only fail and be retried five times. Live updates on the page are unaffected.
 
 ## Consequences

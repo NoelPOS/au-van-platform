@@ -476,6 +476,9 @@ Generate every secret on the server, not on a laptop:
   ([ADR-020](adr/020-demo-sign-in.md)), and its length is the only protection
   against guessing, so never shorten it. Leave it empty and staff demo sign-in
   answers `404`.
+- `DEMO_STAFF_TOKEN_TTL`: how long a demo staff sign-in lasts, as an ISO-8601
+  duration. Leave it as `PT2H` or remove the line; an empty value breaks staff
+  demo sign-in.
 - `DEMO_LOGIN_ENABLED`: leave it empty. `compose.prod.yaml` turns demo sign-in
   on for this host when it is empty; set it to `false` to turn both demo
   endpoints off.
