@@ -54,6 +54,11 @@ ENV VITE_PROMPTPAY_ID=$VITE_PROMPTPAY_ID
 ARG VITE_PROMPTPAY_NAME=""
 ENV VITE_PROMPTPAY_NAME=$VITE_PROMPTPAY_NAME
 
+# "true" shows the landing page's demo sign-in buttons. The API still decides
+# whether demo sign-in is on, so this only hides buttons that would fail.
+ARG VITE_DEMO_LOGIN=""
+ENV VITE_DEMO_LOGIN=$VITE_DEMO_LOGIN
+
 # The Playwright suite's sign-in control, and the only build argument here that
 # must never be set for a real image (ADR-013). compose.e2e.yaml sets it to
 # "true"; nothing else does. The default is an empty string rather than absent

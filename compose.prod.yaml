@@ -45,6 +45,7 @@ services:
         VITE_LINE_OA_ID: ${VITE_LINE_OA_ID:-}
         VITE_PROMPTPAY_ID: ${VITE_PROMPTPAY_ID:-}
         VITE_PROMPTPAY_NAME: ${VITE_PROMPTPAY_NAME:-}
+        VITE_DEMO_LOGIN: ${VITE_DEMO_LOGIN:-true}
     ports: !reset []
     mem_limit: 128m
 
