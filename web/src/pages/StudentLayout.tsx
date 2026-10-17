@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation, useMatch } from "react-router";
 import { BookingNotice } from "../components/BookingNotice";
 import { DemoBadge } from "../components/DemoBadge";
@@ -54,15 +54,16 @@ export function StudentLayout({
   // Keyed to the screen it was raised on, so a message never outlives its screen.
   const [raised, setRaised] = useState<{ key: string; notice: Notice | null } | null>(null);
   const notice = raised?.key === location.key ? raised.notice : carried;
+  const setNotice = useCallback(
+    (next: Notice | null) => setRaised({ key: location.key, notice: next }),
+    [location.key],
+  );
 
   if (expired && session.demo)
     return <DemoRenewal onLeave={demo.leave} renew={demo.renew} />;
   if (expired) return <SignInAgain />;
 
-  const context: StudentContext = {
-    session,
-    setNotice: (next) => setRaised({ key: location.key, notice: next }),
-  };
+  const context: StudentContext = { session, setNotice };
   const firstName = session.user.displayName?.split(" ")[0];
 
   return (

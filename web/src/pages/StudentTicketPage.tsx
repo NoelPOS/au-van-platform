@@ -1,4 +1,5 @@
 import { ArrowLeft } from "lucide-react";
+import { useEffect } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import { BoardingPass } from "../components/BoardingPass";
 import { CancelBooking } from "../components/CancelBooking";
@@ -67,6 +68,11 @@ export function StudentTicketPage() {
   const booking =
     bookings.data?.find((candidate) => candidate.id === bookingId) ??
     (carried?.id === bookingId ? carried : undefined);
+  const status = booking?.status;
+
+  useEffect(() => {
+    if (status !== "PAYMENT_UNDER_REVIEW") setNotice(null);
+  }, [status, setNotice]);
 
   if (!booking && bookings.isPending) return <Skeleton className="h-96" />;
   if (!booking)
