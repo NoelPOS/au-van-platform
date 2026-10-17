@@ -49,6 +49,10 @@ public class AppUser {
     public String getDisplayName() { return displayName; }
     public ApplicationRole getRole() { return role; }
 
+    public boolean isDemo() {
+        return lineSubject.startsWith("demo-");
+    }
+
     public void updateDisplayName(String displayName) {
         this.displayName = displayName;
         this.updatedAt = Instant.now();
