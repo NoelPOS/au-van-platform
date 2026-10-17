@@ -41,7 +41,7 @@ export function Screenshots() {
         {phoneShots.map((shot, index) => (
           <figure className="w-[15rem] shrink-0 snap-start sm:w-auto" key={shot.src}>
             <PhoneFrame>
-              <ShotImage alt={shot.caption} src={shot.src} />
+              <ShotImage alt={shot.caption} fit="contain" src={shot.src} />
             </PhoneFrame>
             <Caption number={index + 1} text={shot.caption} />
           </figure>
