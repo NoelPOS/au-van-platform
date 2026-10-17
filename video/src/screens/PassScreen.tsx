@@ -7,9 +7,9 @@ import { AppScreen, kicker } from "./AppChrome";
 
 function Timeline({ confirmed }: { confirmed: boolean }) {
   const events = [
-    ["07:12", "Seat B2 held"],
-    ["07:14", "Slip sent"],
-    ["07:16", confirmed ? "Payment approved" : "Waiting for staff"],
+    ["13:50", "Booked"],
+    ["13:56", "Payment slip sent"],
+    ["13:57", confirmed ? "Payment approved" : "Waiting for staff"],
   ];
   return (
     <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -24,37 +24,44 @@ function Timeline({ confirmed }: { confirmed: boolean }) {
   );
 }
 
+export function LineMessage({ at }: { at: number }) {
+  const shown = progress(useCurrentFrame(), at, 16);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 100,
+        left: 14,
+        right: 14,
+        zIndex: 5,
+        padding: "11px 15px",
+        borderRadius: 20,
+        background: "rgba(255,253,248,0.97)",
+        border: `1px solid ${color.line}`,
+        boxShadow: "0 18px 30px -18px rgba(20,23,43,0.45)",
+        fontFamily: font.sans,
+        color: color.ink,
+        opacity: shown,
+        transform: `translateY(${(1 - shown) * 40}px)`,
+      }}
+    >
+      <p style={{ margin: 0, display: "flex", justifyContent: "space-between", fontSize: 13, color: color.muted }}>
+        <span style={{ fontWeight: 600, color: color.success }}>LINE · AU-Van</span>
+        <span>now</span>
+      </p>
+      <p style={{ margin: "4px 0 0", fontSize: 15, lineHeight: 1.3 }}>
+        Your payment is approved and your booking is confirmed.
+      </p>
+    </div>
+  );
+}
+
 export function PassScreen({ confirmAt = 26 }: { confirmAt?: number }) {
   const frame = useCurrentFrame();
-  const messageAt = confirmAt + 28;
-  const message = progress(frame, messageAt, 16);
   const shake = frame >= confirmAt + 2 && frame < confirmAt + 8 ? Math.sin(frame * 3) * 3 : 0;
   return (
     <AppScreen>
-      <div
-        style={{
-          position: "absolute",
-          bottom: 100,
-          left: 14,
-          right: 14,
-          zIndex: 5,
-          padding: "11px 15px",
-          borderRadius: 20,
-          background: "rgba(255,253,248,0.97)",
-          border: `1px solid ${color.line}`,
-          boxShadow: "0 18px 30px -18px rgba(20,23,43,0.45)",
-          opacity: message,
-          transform: `translateY(${(1 - message) * 40}px)`,
-        }}
-      >
-        <p style={{ margin: 0, display: "flex", justifyContent: "space-between", fontSize: 13, color: color.muted }}>
-          <span style={{ fontWeight: 600, color: color.success }}>LINE · AU-Van</span>
-          <span>now</span>
-        </p>
-        <p style={{ margin: "4px 0 0", fontSize: 15, lineHeight: 1.3 }}>
-          Your payment is approved and your booking is confirmed.
-        </p>
-      </div>
+      <LineMessage at={confirmAt + 28} />
       <p style={kicker}>Tickets</p>
       <p style={{ margin: "6px 0 20px", fontFamily: font.display, fontSize: 34, color: color.navy }}>
         Your next ride

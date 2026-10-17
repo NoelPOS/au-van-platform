@@ -98,14 +98,14 @@ export function BrowserFrame({
   );
 }
 
-export function Screenshot({ file }: { file: string }) {
+export function Screenshot({ file, fit = "cover" }: { file: string; fit?: "cover" | "contain" }) {
   return (
     <Img
       src={staticFile(file)}
       style={{
         width: "100%",
         height: "100%",
-        objectFit: "cover",
+        objectFit: fit,
         objectPosition: "top",
       }}
     />

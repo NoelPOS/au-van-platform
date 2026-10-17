@@ -42,11 +42,11 @@ export function Intro() {
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition {...slideCut("from-right")} />
       <TransitionSeries.Sequence durationInFrames={scene.student}>
-        <StudentFlow screenshots={false} />
+        <StudentFlow screenshots />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition {...slideCut("from-right")} />
       <TransitionSeries.Sequence durationInFrames={scene.staff}>
-        <StaffReview screenshots={false} />
+        <StaffReview screenshots />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition {...slideCut("from-bottom")} />
       <TransitionSeries.Sequence durationInFrames={scene.hood}>
