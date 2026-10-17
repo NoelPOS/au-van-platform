@@ -28,6 +28,7 @@ services:
     mem_limit: 2g
     environment:
       CORS_ALLOWED_ORIGINS: https://${PUBLIC_HOST:?set PUBLIC_HOST in .env}
+      PUBLIC_SITE_URL: https://${PUBLIC_HOST:?set PUBLIC_HOST in .env}
       DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-true}
       DEMO_STAFF_PASSCODE: ${DEMO_STAFF_PASSCODE:-}
     depends_on: !override
