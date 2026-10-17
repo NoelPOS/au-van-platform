@@ -4,18 +4,18 @@ import { color, font } from "../theme";
 import { AppScreen, kicker } from "./AppChrome";
 
 const days = [
-  ["Today", "20", "Oct"],
+  ["Tomorrow", "18", "Oct"],
+  ["Mon", "19", "Oct"],
+  ["Tue", "20", "Oct"],
   ["Wed", "21", "Oct"],
-  ["Thu", "22", "Oct"],
-  ["Fri", "23", "Oct"],
 ];
 
 const trips = [
-  { time: "07:30", place: "Mega Bangna", detail: "35 min · ฿35", left: 3 },
-  { time: "09:00", place: "Siam Paragon", detail: "50 min · ฿60", left: 9 },
-  { time: "13:15", place: "BTS Udom Suk", detail: "25 min · ฿30", left: 6 },
-  { time: "15:00", place: "Mega Bangna", detail: "35 min · ฿35", left: 0 },
-  { time: "17:45", place: "Future Park", detail: "60 min · ฿70", left: 11 },
+  { time: "07:30", place: "Mega Bangna", detail: "40 min · ฿80", left: 0 },
+  { time: "09:00", place: "Siam Paragon", detail: "55 min · ฿90", left: 3 },
+  { time: "09:00", place: "Mega Bangna", detail: "40 min · ฿80", left: 7 },
+  { time: "12:00", place: "BTS Udom Suk", detail: "30 min · ฿50", left: 6 },
+  { time: "16:30", place: "Future Park Rangsit", detail: "60 min · ฿120", left: 10 },
 ];
 
 export function TripsScreen() {
@@ -28,7 +28,7 @@ export function TripsScreen() {
         Catch the next van
       </p>
       <p style={{ margin: "4px 0 0", fontFamily: font.display, fontStyle: "italic", fontSize: 19, color: color.muted }}>
-        Tuesday 20 October
+        Sunday 18 October
       </p>
       <div style={{ display: "flex", gap: 9, marginTop: 20 }}>
         {days.map(([name, day, month], index) => (
@@ -55,7 +55,7 @@ export function TripsScreen() {
       <div style={{ marginTop: 20, overflow: "hidden", borderRadius: 20, border: `1px solid ${color.line}`, background: color.card }}>
         {trips.map((trip, index) => (
           <div
-            key={trip.time}
+            key={`${trip.time}-${trip.place}`}
             style={{
               position: "relative",
               display: "grid",
@@ -63,7 +63,7 @@ export function TripsScreen() {
               alignItems: "center",
               padding: "17px 18px",
               borderTop: index ? `1px dashed ${color.line}` : "none",
-              background: index === 0 && tap > 0 ? `rgba(227,231,248,${0.7 * tap})` : "transparent",
+              background: index === 1 && tap > 0 ? `rgba(227,231,248,${0.7 * tap})` : "transparent",
             }}
           >
             <span style={{ fontFamily: font.mono, fontSize: 24, fontWeight: 500 }}>{trip.time}</span>
@@ -85,7 +85,7 @@ export function TripsScreen() {
                 Full
               </span>
             )}
-            {index === 0 && tap > 0 && tap < 1 && (
+            {index === 1 && tap > 0 && tap < 1 && (
               <span
                 style={{
                   position: "absolute",
@@ -104,5 +104,23 @@ export function TripsScreen() {
         ))}
       </div>
     </AppScreen>
+  );
+}
+
+export function TapOverlay() {
+  const tap = progress(useCurrentFrame(), 58, 16);
+  if (tap === 0 || tap === 1) return null;
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: 224 - 70 * tap,
+        top: 533 - 70 * tap,
+        width: 140 * tap,
+        height: 140 * tap,
+        borderRadius: "50%",
+        background: `rgba(48,65,161,${0.3 * (1 - tap)})`,
+      }}
+    />
   );
 }

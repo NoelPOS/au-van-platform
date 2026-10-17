@@ -3,14 +3,15 @@ import { SplitFlap } from "../components/SplitFlap";
 import { rise } from "../motion";
 import { color, font } from "../theme";
 
-const tile = 60;
+const tile = 52;
+const placeLength = 19;
 const countdownStart = 50;
 
 const rows = [
   { time: "07:30", place: "MEGA BANGNA", seats: 4, every: 14 },
   { time: "09:00", place: "SIAM PARAGON", seats: 7, every: 10 },
-  { time: "13:15", place: "BTS UDOM SUK", seats: 2, every: 22 },
-  { time: "17:45", place: "FUTURE PARK", seats: 5, every: 15 },
+  { time: "12:00", place: "BTS UDOM SUK", seats: 2, every: 22 },
+  { time: "16:30", place: "FUTURE PARK RANGSIT", seats: 5, every: 15 },
 ];
 
 function seatsAt(row: (typeof rows)[number], frame: number, appear: number) {
@@ -29,7 +30,7 @@ const label = {
 
 const columns = {
   display: "grid",
-  gridTemplateColumns: `${5 * tile * 0.9}px ${12 * tile * 0.9}px ${4 * tile * 0.9}px`,
+  gridTemplateColumns: `${5 * tile * 0.9}px ${placeLength * tile * 0.9}px ${4 * tile * 0.9}px`,
   columnGap: 64,
   alignItems: "center",
 };
@@ -38,7 +39,7 @@ export function Board() {
   const frame = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: color.navy, alignItems: "center", paddingTop: 140 }}>
-      <div style={{ width: 1262 }}>
+      <div style={{ width: (5 + placeLength + 4) * tile * 0.9 + 2 * 64 }}>
         <div
           style={{
             ...rise(frame, 4),
@@ -84,7 +85,7 @@ export function Board() {
                 <SplitFlap from={appear} size={tile} text={row.time} />
               </span>
               <span style={{ opacity: full ? 0.5 : 1 }}>
-                <SplitFlap from={appear + 4} size={tile} text={row.place.padEnd(12)} />
+                <SplitFlap from={appear + 4} size={tile} text={row.place.padEnd(placeLength)} />
               </span>
               <SplitFlap
                 from={changedAt}
