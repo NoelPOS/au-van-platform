@@ -46,15 +46,29 @@ export async function startDemoStaff(passcode: string): Promise<AuthSession> {
   return keep(await signInAsDemoStaff(passcode));
 }
 
-export function savedDemoSession(): AuthSession | null {
+function saved(): SavedSession | null {
   try {
-    const saved = JSON.parse(
+    return JSON.parse(
       read(() => sessionStorage, sessionKey) ?? "null",
     ) as SavedSession | null;
-    return saved && saved.expiresAt > Date.now() ? saved.session : null;
   } catch {
     return null;
   }
+}
+
+export function savedDemoSession(): AuthSession | null {
+  const session = saved();
+  return session && session.expiresAt > Date.now() ? session.session : null;
+}
+
+export function canResumeDemoStudent(): boolean {
+  const session = saved();
+  return (
+    session !== null &&
+    session.expiresAt <= Date.now() &&
+    session.session.user.role === "STUDENT" &&
+    read(() => localStorage, studentKey) !== null
+  );
 }
 
 export function forgetDemo() {

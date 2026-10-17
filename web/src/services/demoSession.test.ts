@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  canResumeDemoStudent,
   forgetDemo,
   savedDemoSession,
   startDemoStaff,
@@ -61,6 +62,39 @@ describe("demo session", () => {
     vi.setSystemTime(Date.now() + 900_000);
 
     expect(savedDemoSession()).toBeNull();
+  });
+
+  it("resumes a demo student only once the token has run out", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.stubGlobal("fetch", answering({ id: "demo-1", role: "STUDENT" }));
+    await startDemoStudent();
+
+    expect(canResumeDemoStudent()).toBe(false);
+    vi.setSystemTime(Date.now() + 900_000);
+    expect(canResumeDemoStudent()).toBe(true);
+  });
+
+  it("never resumes a demo staff session", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.stubGlobal("fetch", answering({ id: "demo-1", role: "STUDENT" }));
+    await startDemoStudent();
+    vi.stubGlobal("fetch", answering({ id: "staff-1", role: "ADMIN" }));
+    await startDemoStaff("open-sesame");
+
+    vi.setSystemTime(Date.now() + 900_000);
+
+    expect(canResumeDemoStudent()).toBe(false);
+  });
+
+  it("does not resume a student whose demo id is gone", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.stubGlobal("fetch", answering({ id: "demo-1", role: "STUDENT" }));
+    await startDemoStudent();
+    localStorage.clear();
+
+    vi.setSystemTime(Date.now() + 900_000);
+
+    expect(canResumeDemoStudent()).toBe(false);
   });
 
   it("keeps a staff demo session without claiming a demo student", async () => {
