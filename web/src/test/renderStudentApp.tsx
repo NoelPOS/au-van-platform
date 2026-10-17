@@ -77,7 +77,7 @@ export function renderPage(path = "/") {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route element={<StudentLayout session={session} />} path="/">
+          <Route element={<StudentLayout onSessionChange={vi.fn()} session={session} />} path="/">
             <Route element={<StudentTripsPage />} index />
             <Route element={<StudentBookTripPage />} path="trips/:tripId" />
             <Route element={<StudentTicketsPage />} path="tickets" />

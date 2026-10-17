@@ -12,9 +12,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { useDemoSession, type SessionChange } from "../hooks/useDemoSession";
 import { useLiveUpdates } from "../hooks/useLiveUpdates";
 import { useRefundsDue } from "../hooks/useRefundQueries";
 import type { AuthSession } from "../types/auth";
+import { DemoBadge } from "./DemoBadge";
 import { Drawer } from "./ui/Drawer";
 import { ToastProvider } from "./ui/Toast";
 
@@ -73,19 +75,30 @@ function Wordmark() {
   );
 }
 
-export function AdminLayout({ session }: { session: AuthSession }) {
+export function AdminLayout({
+  session,
+  onSessionChange,
+}: {
+  session: AuthSession;
+  onSessionChange: SessionChange;
+}) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { pathname } = useLocation();
   const name = session.user.displayName ?? "Administrator";
   const inTucked = tucked.some((entry) => pathname.startsWith(entry.path));
   const refundsDue = useRefundsDue(session).data?.length ?? 0;
+  const demo = useDemoSession(onSessionChange);
   useLiveUpdates(session);
 
   return (
     <ToastProvider>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-brand-900 px-5 text-paper lg:hidden">
         <Wordmark />
-        <span className="max-w-40 truncate text-sm text-brand-100">{name}</span>
+        {session.demo ? (
+          <DemoBadge dark onLeave={demo.leave} />
+        ) : (
+          <span className="max-w-40 truncate text-sm text-brand-100">{name}</span>
+        )}
       </header>
       <aside className="fixed inset-x-0 bottom-0 z-30 bg-brand-900 text-paper lg:inset-y-0 lg:right-auto lg:flex lg:w-64 lg:flex-col lg:px-5 lg:py-8">
         <div className="hidden px-3 lg:block">
@@ -131,6 +144,7 @@ export function AdminLayout({ session }: { session: AuthSession }) {
             Signed in
           </p>
           <p className="mt-1 truncate text-sm text-paper">{name}</p>
+          {session.demo && <DemoBadge dark onLeave={demo.leave} />}
         </div>
       </aside>
       <Drawer onClose={() => setMoreOpen(false)} open={moreOpen} title="More">

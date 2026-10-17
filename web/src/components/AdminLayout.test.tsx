@@ -21,7 +21,7 @@ describe("AdminLayout refunds badge", () => {
       "GET /refunds": () => json([{ id: "booking-1" }, { id: "booking-2" }]),
     });
 
-    renderAdminPage(<AdminLayout session={adminSession} />);
+    renderAdminPage(<AdminLayout onSessionChange={vi.fn()} session={adminSession} />);
 
     expect(await screen.findByRole("link", { name: "Refunds, 2 refunds due" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More, 2 refunds due" })).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe("AdminLayout refunds badge", () => {
       "GET /refunds": () => json([]),
     });
 
-    renderAdminPage(<AdminLayout session={adminSession} />);
+    renderAdminPage(<AdminLayout onSessionChange={vi.fn()} session={adminSession} />);
 
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalledWith("/api/v1/admin/refunds", expect.anything()));
     expect(screen.getByRole("link", { name: "Refunds" })).toBeInTheDocument();

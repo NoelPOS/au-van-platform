@@ -2,10 +2,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, useMatch } from "react-router";
 import { BookingNotice } from "../components/BookingNotice";
+import { DemoBadge } from "../components/DemoBadge";
+import { DemoRenewal } from "../components/DemoRenewal";
 import { LineFriendBanner } from "../components/LineFriendBanner";
 import { SignInAgain } from "../components/SignInAgain";
 import { StudentTabBar } from "../components/StudentTabBar";
 import { useMyBookings } from "../hooks/useBookingQueries";
+import { useDemoSession, type SessionChange } from "../hooks/useDemoSession";
 import { useLiveUpdates } from "../hooks/useLiveUpdates";
 import type { StudentContext } from "../hooks/useStudent";
 import type { AuthSession } from "../types/auth";
@@ -34,17 +37,26 @@ function useSignInExpired(): boolean {
   return expired;
 }
 
-export function StudentLayout({ session }: { session: AuthSession }) {
+export function StudentLayout({
+  session,
+  onSessionChange,
+}: {
+  session: AuthSession;
+  onSessionChange: SessionChange;
+}) {
   const location = useLocation();
   const booking = useMatch("/trips/:tripId");
   const bookings = useMyBookings(session);
   const expired = useSignInExpired();
+  const demo = useDemoSession(onSessionChange);
   useLiveUpdates(session);
   const carried = (location.state as { notice?: Notice } | null)?.notice ?? null;
   // Keyed to the screen it was raised on, so a message never outlives its screen.
   const [raised, setRaised] = useState<{ key: string; notice: Notice | null } | null>(null);
   const notice = raised?.key === location.key ? raised.notice : carried;
 
+  if (expired && session.demo)
+    return <DemoRenewal onLeave={demo.leave} renew={demo.renew} />;
   if (expired) return <SignInAgain />;
 
   const context: StudentContext = {
@@ -59,10 +71,14 @@ export function StudentLayout({ session }: { session: AuthSession }) {
         <p className="font-display text-xl tracking-tight text-brand-900">
           AU<span className="text-accent">·</span>Van
         </p>
-        {firstName && <p className="text-sm text-muted">{firstName}</p>}
+        {session.demo ? (
+          <DemoBadge onLeave={demo.leave} />
+        ) : (
+          firstName && <p className="text-sm text-muted">{firstName}</p>
+        )}
       </header>
       <main className="mx-auto flex max-w-xl flex-col gap-5 px-5 pt-5">
-        <LineFriendBanner />
+        {!session.demo && <LineFriendBanner />}
         <BookingNotice notice={notice} />
         <Outlet context={context} />
       </main>
