@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { AdminLayout } from "./components/AdminLayout";
+import { DemoRenewal } from "./components/DemoRenewal";
 import { DemoStaffSignIn } from "./components/DemoStaffSignIn";
 import { RedirectHome, RequireRole } from "./components/RouteGuards";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
@@ -18,7 +25,11 @@ import { StudentLayout } from "./pages/StudentLayout";
 import { StudentTicketPage } from "./pages/StudentTicketPage";
 import { StudentTicketsPage } from "./pages/StudentTicketsPage";
 import { StudentTripsPage } from "./pages/StudentTripsPage";
-import { savedDemoSession } from "./services/demoSession";
+import {
+  canResumeDemoStudent,
+  savedDemoSession,
+  startDemoStudent,
+} from "./services/demoSession";
 import {
   demoLoginEnabled,
   e2eAuthEnabled,
@@ -29,7 +40,25 @@ import type { AuthSession } from "./types/auth";
 
 function App() {
   const [session, setSession] = useState<AuthSession | null>(savedDemoSession);
+  const [resuming, setResuming] = useState(canResumeDemoStudent);
   const { search } = useLocation();
+  const navigate = useNavigate();
+
+  async function resumeDemoStudent() {
+    const resumed = await startDemoStudent().catch(() => null);
+    setSession(resumed);
+    setResuming(false);
+    if (!resumed) navigate("/", { replace: true });
+  }
+
+  if (resuming) {
+    return (
+      <DemoRenewal
+        onLeave={() => setResuming(false)}
+        renew={resumeDemoStudent}
+      />
+    );
+  }
 
   if (!session) {
     const signIn = <SignInPage onSignedIn={setSession} />;
