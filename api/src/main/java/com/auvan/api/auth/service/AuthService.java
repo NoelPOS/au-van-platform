@@ -33,9 +33,7 @@ public class AuthService {
                 })
                 .orElseGet(() -> users.save(new AppUser(identity.subject(), identity.displayName())));
 
-        return new AuthResponse(
-                jwtService.issue(user),
-                properties.jwt().accessTokenTtl().toSeconds(),
-                UserResponse.from(user));
+        var lifetime = properties.jwt().accessTokenTtl();
+        return new AuthResponse(jwtService.issue(user, lifetime), lifetime.toSeconds(), UserResponse.from(user));
     }
 }

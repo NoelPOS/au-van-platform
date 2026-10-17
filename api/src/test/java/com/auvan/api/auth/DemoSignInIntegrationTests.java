@@ -10,9 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +34,9 @@ class DemoSignInIntegrationTests extends AuthenticationTestSupport {
 
     @Autowired
     private AppUserRepository users;
+
+    @Autowired
+    private JwtDecoder jwtDecoder;
 
     @BeforeEach
     void clearUsers() {
@@ -110,6 +116,17 @@ class DemoSignInIntegrationTests extends AuthenticationTestSupport {
         mockMvc.perform(get("/api/v1/admin/access-check")
                         .header("Authorization", "Bearer " + JsonPath.read(body, "$.accessToken")))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void aDemoStaffTokenLastsTwoHours() throws Exception {
+        String body = signInStaff("correct-horse-battery")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expiresIn").value(7200))
+                .andReturn().getResponse().getContentAsString();
+
+        Jwt token = jwtDecoder.decode(JsonPath.read(body, "$.accessToken"));
+        assertThat(Duration.between(token.getIssuedAt(), token.getExpiresAt())).isEqualTo(Duration.ofHours(2));
     }
 
     @Test

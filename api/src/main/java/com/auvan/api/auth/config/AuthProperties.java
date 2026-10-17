@@ -12,5 +12,5 @@ public record AuthProperties(Jwt jwt, Line line, AdminBootstrap adminBootstrap, 
 
     public record AdminBootstrap(String lineSubject) { }
 
-    public record Demo(String staffPasscode) { }
+    public record Demo(String staffPasscode, Duration staffTokenTtl) { }
 }

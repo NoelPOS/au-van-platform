@@ -42,6 +42,7 @@ auth:
   demo:
     enabled: false
     staff-passcode:
+    staff-token-ttl: PT2H
 
 booking:
   hold-ttl: PT5M

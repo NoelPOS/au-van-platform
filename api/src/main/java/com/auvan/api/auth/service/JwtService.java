@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Service
@@ -21,14 +22,14 @@ class JwtService {
         this.properties = properties;
     }
 
-    String issue(AppUser user) {
+    String issue(AppUser user, Duration lifetime) {
         Instant issuedAt = Instant.now();
         var claims = JwtClaimsSet.builder()
                 .issuer(properties.jwt().issuer())
                 .audience(java.util.List.of(properties.jwt().audience()))
                 .subject(user.getId().toString())
                 .issuedAt(issuedAt)
-                .expiresAt(issuedAt.plus(properties.jwt().accessTokenTtl()))
+                .expiresAt(issuedAt.plus(lifetime))
                 .claim("role", user.getRole().name())
                 .claim("displayName", user.getDisplayName())
                 .build();
