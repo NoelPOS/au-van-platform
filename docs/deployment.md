@@ -470,6 +470,14 @@ Generate every secret on the server, not on a laptop:
   each. They are the object store's root credential, not an AWS key.
 - `LINE_CHANNEL_ID`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_LIFF_URL` and
   `VITE_LIFF_ID`, as in the secrets contract above.
+- `DEMO_STAFF_PASSCODE`: `openssl rand -base64 24`. It signs in the demo
+  administrator through `POST /api/v1/auth/demo/staff`
+  ([ADR-020](adr/020-demo-sign-in.md)), and its length is the only protection
+  against guessing, so never shorten it. Leave it empty and staff demo sign-in
+  answers `404`.
+- `DEMO_LOGIN_ENABLED`: leave it empty. `compose.prod.yaml` turns demo sign-in
+  on for this host when it is empty; set it to `false` to turn both demo
+  endpoints off.
 
 Leave `CORS_ALLOWED_ORIGINS` and `PAYMENT_PROOF_ENDPOINT` as they are:
 `compose.prod.yaml` sets the first to `https://$PUBLIC_HOST` and `compose.yaml`

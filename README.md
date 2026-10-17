@@ -112,6 +112,12 @@ sign-in page. The [screenshots](#screenshots) show the signed-in admin portal.
 - **Identity is checked server-side.** The API verifies each LINE ID token
   with LINE and issues its own short-lived JWT.
   [ADR-005](docs/adr/005-line-identity-exchange-and-short-lived-jwt.md)
+- **Demo sign-in without LINE, on the live demo only.**
+  `POST /api/v1/auth/demo/student` signs anyone in as a throwaway demo student,
+  and `POST /api/v1/auth/demo/staff` signs in a demo administrator with a
+  passcode only the owner holds. Both answer `404` unless `DEMO_LOGIN_ENABLED`
+  is `true`, and demo users are never sent a LINE message.
+  [ADR-020](docs/adr/020-demo-sign-in.md)
 - **Tests at three levels.** Features carry success- and failure-path tests. A
   Testcontainers suite on real PostgreSQL 17 re-proves the seat-hold race, the
   booking row lock and the outbox claim. Playwright drives both critical
@@ -162,7 +168,7 @@ The backend is one Spring Boot application split into modules:
 
 | Module | Responsibility |
 |---|---|
-| `auth` | LINE token exchange and JWTs |
+| `auth` | LINE token exchange, demo sign-in, and JWTs |
 | `inventory` | Routes, layouts, vans, trips |
 | `booking` | Holds, bookings, payment proofs, expiry, waitlist |
 | `outbox` | Recording and dispatching notifications |
