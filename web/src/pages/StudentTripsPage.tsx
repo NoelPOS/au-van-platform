@@ -100,15 +100,16 @@ export function StudentTripsPage() {
       )}
       {route && selected && (
         <>
-          {routes.length > 1 && (
-            <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-sm text-muted">
-                {"To "}
-                <span className="font-semibold text-ink">
-                  {route.destination}
-                </span>
-                {` · ${formatBaht(route.fare)}`}
-              </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 text-sm">
+              <span className="block truncate font-semibold text-ink">
+                {`To ${route.destination}`}
+              </span>
+              <span className="block truncate text-muted">
+                {`from ${route.origin} · ${formatBaht(route.fare)}`}
+              </span>
+            </p>
+            {routes.length > 1 && (
               <button
                 className="-mr-1 inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
                 onClick={() => show({})}
@@ -117,8 +118,8 @@ export function StudentTripsPage() {
                 <ArrowLeft aria-hidden className="size-4" />
                 Change route
               </button>
-            </div>
-          )}
+            )}
+          </div>
           <DayStrip
             counts={new Map(keys.map((key) => [key, byDay.get(key)?.length ?? 0]))}
             days={keys.map((key) => dayOf(key))}

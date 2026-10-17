@@ -48,6 +48,9 @@ describe("Student picks a route first", () => {
 
     const board = screen.getByRole("region", { name: "Departures" });
     expect(within(board).getAllByRole("button")).toHaveLength(2);
+    expect(within(board).getAllByText(/^Arrives \d\d:\d\d$/)).toHaveLength(2);
+    expect(within(board).queryByText("Mega Bangna")).not.toBeInTheDocument();
+    expect(screen.getByText("To Mega Bangna")).toBeInTheDocument();
     expect(
       within(board).queryByRole("button", { name: /Siam Paragon/ }),
     ).not.toBeInTheDocument();
