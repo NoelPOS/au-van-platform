@@ -1,10 +1,10 @@
 import { color, font } from "../theme";
 
 const proofs = [
-  { fare: 35, reference: "AUV-261020-7KQ2M4XR", name: "Ploy S.", to: "Mega Bangna", time: "07:30", sent: "just now" },
-  { fare: 60, reference: "AUV-261020-3HD8P2WQ", name: "Nattapong K.", to: "Siam Paragon", time: "09:00", sent: "2 min ago" },
-  { fare: 30, reference: "AUV-261020-9TR4X6LB", name: "Mina T.", to: "BTS Udom Suk", time: "13:15", sent: "4 min ago" },
-  { fare: 70, reference: "AUV-261020-5MW7C3NJ", name: "Arthit P.", to: "Future Park", time: "17:45", sent: "9 min ago" },
+  { fare: 90, reference: "AUV-261017-WXNBNM9M", name: "Ploy S.", to: "Siam Paragon", time: "09:00", sent: "just now" },
+  { fare: 80, reference: "AUV-261017-3HD8P2WQ", name: "Nattapong K.", to: "Mega Bangna", time: "07:30", sent: "2 min ago" },
+  { fare: 50, reference: "AUV-261017-9TR4X6LB", name: "Mina T.", to: "BTS Udom Suk", time: "12:00", sent: "4 min ago" },
+  { fare: 120, reference: "AUV-261017-5MW7C3NJ", name: "Arthit P.", to: "Future Park Rangsit", time: "16:30", sent: "9 min ago" },
 ];
 
 function Notch({ edge }: { edge: "top" | "bottom" }) {
@@ -65,7 +65,7 @@ export function PaymentQueue({ approved }: { approved: number }) {
                 {`Assumption University → ${proof.to}`}
               </p>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: color.muted }}>
-                {`20 Oct ${proof.time} · Sent ${proof.sent}`}
+                {`Sun 18 Oct ${proof.time} · Sent ${proof.sent}`}
               </p>
             </div>
           </div>

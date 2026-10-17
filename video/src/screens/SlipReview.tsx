@@ -18,10 +18,10 @@ function Slip({ children }: { children: ReactNode }) {
         Transfer successful
       </div>
       <div style={{ padding: "16px 18px 20px" }}>
-        <p style={{ margin: 0, fontFamily: font.display, fontSize: 36, color: color.ink }}>฿35.00</p>
+        <p style={{ margin: 0, fontFamily: font.display, fontSize: 36, color: color.ink }}>฿90.00</p>
         <Row label="To" value="AU-Van" />
         <Row label="From" value="x-1234" />
-        <Row label="Date" value="20 Oct 06:58" />
+        <Row label="Date" value="17 Oct 13:56" />
       </div>
       {children}
     </div>
@@ -42,11 +42,11 @@ export function SlipReview({ pressed, approvedAt }: { pressed: boolean; approved
         <p style={{ margin: 0, fontFamily: font.mono, fontSize: 13, letterSpacing: "0.16em", color: color.muted }}>
           PAYMENT SLIP
         </p>
-        <p style={{ margin: "8px 0 0", fontFamily: font.mono, fontSize: 15, color: color.navyMid }}>AUV-261020-7KQ2M4XR</p>
+        <p style={{ margin: "8px 0 0", fontFamily: font.mono, fontSize: 15, color: color.navyMid }}>AUV-261017-WXNBNM9M</p>
         <p style={{ margin: "6px 0 0", fontSize: 22, fontWeight: 500 }}>Ploy S. · Seat B2</p>
         <div style={{ marginTop: 14 }}>
-          <Row label="Fare" value="฿35" />
-          <Row label="Departs" value="20 Oct 07:30" />
+          <Row label="Fare" value="฿90" />
+          <Row label="Departs" value="18 Oct 09:00" />
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
           <span style={{ flex: 1, height: 50, borderRadius: 25, display: "grid", placeItems: "center", border: `1px solid ${color.line}`, fontSize: 16, fontWeight: 600 }}>

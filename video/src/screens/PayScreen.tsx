@@ -12,7 +12,7 @@ export function PayScreen() {
   const sent = progress(frame, uploadAt, 14);
   return (
     <AppScreen tabs={false}>
-      <p style={kicker}>Seat B2 · 07:30 Mega Bangna</p>
+      <p style={kicker}>Seat B2 · 09:00 Siam Paragon</p>
       <p style={{ margin: "6px 0 18px", fontFamily: font.display, fontSize: 34, color: color.navy }}>
         Pay for your seat
       </p>
@@ -26,7 +26,7 @@ export function PayScreen() {
             <QrMock size={200} />
           </div>
           <span style={{ marginTop: 14, fontFamily: font.display, fontSize: 42, lineHeight: 1, color: color.navy }}>
-            ฿35
+            ฿90
           </span>
           <span style={{ marginTop: 4, fontSize: 15, color: color.muted }}>to AU-Van</span>
         </div>

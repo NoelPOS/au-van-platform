@@ -35,7 +35,7 @@ export function BoardingPass({ stamp }: { stamp: ReactNode }) {
       <div style={{ padding: "22px 22px 0" }}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <p style={{ ...small, letterSpacing: "0.2em" }}>Boarding pass</p>
-          <p style={{ ...small, letterSpacing: 0, fontSize: 12 }}>AUV-261020-7KQ2M4XR</p>
+          <p style={{ ...small, letterSpacing: 0, fontSize: 12 }}>AUV-261017-WXNBNM9M</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "14px 1fr", columnGap: 14, marginTop: 18 }}>
           <span style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0 20px" }}>
@@ -48,14 +48,14 @@ export function BoardingPass({ stamp }: { stamp: ReactNode }) {
             <p style={{ margin: "3px 0 0", fontSize: 20 }}>Assumption University</p>
             <p style={{ ...small, marginTop: 18 }}>To</p>
             <p style={{ margin: "3px 0 0", fontFamily: font.display, fontSize: 34, lineHeight: 1.1, color: color.navy }}>
-              Mega Bangna
+              Siam Paragon
             </p>
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "22px 0 18px" }}>
-          <Detail label="Date" value="Tue 20 Oct" />
-          <Detail label="Departs" value="07:30" />
-          <Detail label="Fare" value="฿35" />
+          <Detail label="Date" value="Sun 18 Oct" />
+          <Detail label="Departs" value="09:00" />
+          <Detail label="Fare" value="฿90" />
         </div>
       </div>
       <Perforation background={color.paper} notch={26} />
