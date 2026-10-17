@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resumeLiffSession } from "./services/liffService";
-import { renderApp } from "./test/renderApp";
+import { openInsideLine, renderApp } from "./test/renderApp";
 import type { ApplicationRole } from "./types/auth";
 
 vi.mock("./services/liffService", () => ({
@@ -38,6 +38,7 @@ async function expectLocation(router: TestRouter, path: string) {
 
 describe("App routing", () => {
   beforeEach(() => {
+    openInsideLine();
     vi.stubEnv("VITE_LIFF_ID", "1234567890-abcdefgh");
     vi.mocked(resumeLiffSession).mockResolvedValue(null);
     vi.stubGlobal(
@@ -57,6 +58,7 @@ describe("App routing", () => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("sends an administrator at the old /admin/inventory address on to trips", async () => {

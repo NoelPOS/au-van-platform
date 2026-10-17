@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
+import { vi } from "vitest";
 import App from "../App";
 
 export function renderApp(path = "/") {
@@ -16,4 +17,10 @@ export function renderApp(path = "/") {
     </QueryClientProvider>,
   );
   return router;
+}
+
+export function openInsideLine() {
+  vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+    "Mozilla/5.0 (iPhone) Mobile/15E148 Safari Line/14.2.0",
+  );
 }
