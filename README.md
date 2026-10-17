@@ -410,6 +410,10 @@ one button that opens the LIFF app; set `LINE_LIFF_URL` in the ignored root
 `.env` to `https://liff.line.me/<your LIFF id>`. Left empty, every card is sent
 without a button.
 
+With the token and `LINE_LIFF_URL` set, the API also installs the Official
+Account's rich menu on startup (see `scripts/line/README.md`). LINE's webhook
+URL is `POST /api/line/webhook`, which answers `200` and ignores the events.
+
 Neither `./gradlew test` nor CI needs the token. The tests substitute a
 recording implementation of the send port, or drive the real one against a
 mocked HTTP server, so the suite runs with no channel and no credential — the
