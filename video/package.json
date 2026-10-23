@@ -6,7 +6,7 @@
     "studio": "remotion studio src/index.ts",
     "assets": "mkdir -p public && cp ../web/public/landing/*.webp public/",
     "render": "remotion render src/index.ts Intro out/intro.mp4 --codec=h264 --crf=23 --muted --concurrency=1 --timeout=120000",
-    "poster": "remotion still src/index.ts Intro out/video-poster.webp --frame=849 --timeout=120000",
+    "poster": "remotion still src/index.ts Intro out/video-poster.webp --frame=861 --timeout=120000",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

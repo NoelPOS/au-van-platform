@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useCurrentFrame } from "remotion";
+import { progress } from "../motion";
 import { color, font } from "../theme";
 
 export const kicker = {
@@ -26,6 +28,45 @@ export function StatusBar() {
       <span>13:52</span>
       <span>5G</span>
     </div>
+  );
+}
+
+export function Chevron({ turn = 0 }: { turn?: number }) {
+  return (
+    <svg height={16} style={{ flexShrink: 0, transform: `rotate(${turn}deg)` }} viewBox="0 0 24 24" width={16}>
+      <path d="m9 18 6-6-6-6" fill="none" stroke={color.muted} strokeLinecap="round" strokeWidth={2} />
+    </svg>
+  );
+}
+
+export function RouteRule() {
+  return (
+    <span style={{ display: "flex", alignItems: "center" }}>
+      <span style={{ width: 6, height: 6, borderRadius: 3, background: color.brandBright }} />
+      <span style={{ width: 12, borderTop: "1px dashed rgba(63,83,201,0.6)" }} />
+      <span style={{ width: 6, height: 6, borderRadius: 3, border: `1px solid ${color.brandBright}` }} />
+    </span>
+  );
+}
+
+export function TapRipple({ at, left, top }: { at: number; left: number; top: number | string }) {
+  const tap = progress(useCurrentFrame(), at, 16);
+  if (tap === 0 || tap === 1) return null;
+  const size = 140 * tap;
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: size,
+        height: size,
+        marginLeft: -size / 2,
+        marginTop: -size / 2,
+        borderRadius: "50%",
+        background: `rgba(48,65,161,${0.3 * (1 - tap)})`,
+      }}
+    />
   );
 }
 
