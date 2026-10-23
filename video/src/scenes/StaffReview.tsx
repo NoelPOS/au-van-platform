@@ -40,7 +40,7 @@ function ShotApproval() {
         style={{
           position: "absolute",
           left: 591,
-          top: 456,
+          top: 490,
           width: 160,
           height: 24,
           borderRadius: 12,
@@ -48,10 +48,10 @@ function ShotApproval() {
           opacity: pressed ? 1 : 0,
         }}
       />
-      <div style={{ position: "absolute", left: 418, top: 420, width: 160, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 418, top: 432, width: 160, textAlign: "center" }}>
         {frame >= approveAt && <Stamp from={approveAt} label="Approved" size={18} tone={color.success} />}
       </div>
-      <Cursor from={[780, 600]} to={[716, 470]} />
+      <Cursor from={[780, 600]} to={[716, 503]} />
     </>
   );
 }
