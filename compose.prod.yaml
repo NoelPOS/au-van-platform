@@ -31,6 +31,7 @@ services:
       PUBLIC_SITE_URL: https://${PUBLIC_HOST:?set PUBLIC_HOST in .env}
       DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-true}
       DEMO_STAFF_PASSCODE: ${DEMO_STAFF_PASSCODE:-}
+      ROLLING_SCHEDULE_ENABLED: ${ROLLING_SCHEDULE_ENABLED:-true}
     depends_on: !override
       postgres:
         condition: service_healthy
