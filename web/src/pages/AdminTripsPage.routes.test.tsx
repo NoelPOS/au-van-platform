@@ -65,14 +65,38 @@ describe("AdminTripsPage routes", () => {
     vi.unstubAllGlobals();
   });
 
-  it("counts each day's departures by route, folding a crowded day into more", async () => {
+  it("counts each day's departures by place, both directions together", async () => {
     await renderTrips();
 
-    expect(day("Monday 5 January")).toHaveTextContent(
-      "to Mega Bangna2from Mega Bangna1",
-    );
+    expect(day("Monday 5 January")).toHaveTextContent("Mega Bangna3");
     expect(day("Tuesday 6 January")).toHaveTextContent(
-      "to Mega Bangna1from Mega Bangna1+2 more",
+      "Mega Bangna2Siam Paragon2",
+    );
+  });
+
+  it("folds a day with more than four places into more", async () => {
+    const places = ["Asok", "Bang Na", "Mega Bangna", "Rangsit", "Siam Paragon"];
+    const routes = places.map((place, index) => ({
+      ...route,
+      id: `place-${index}`,
+      destination: place,
+    }));
+    stubAdminApi({
+      "GET /routes": () => json(routes),
+      "GET /vehicles": () => json([van]),
+      "GET /seat-layouts": () => json([layout]),
+      "GET /trips": () =>
+        json(
+          routes.map((entry, index) =>
+            tripAt(`2026-01-05T0${index}:00:00Z`, { routeId: entry.id }),
+          ),
+        ),
+    });
+    renderAdminPage(<AdminTripsPage session={adminSession} />, "/admin/trips");
+    await screen.findByRole("group", { name: "Routes" });
+
+    expect(day("Monday 5 January")).toHaveTextContent(
+      "Asok1Bang Na1Mega Bangna1+2 more",
     );
   });
 
@@ -130,14 +154,14 @@ describe("AdminTripsPage routes", () => {
       "aria-pressed",
       "true",
     );
-    expect(day("Monday 5 January")).toHaveTextContent("from Mega Bangna1");
-    expect(day("Monday 5 January")).not.toHaveTextContent("to Mega Bangna");
+    expect(day("Monday 5 January")).toHaveTextContent("Mega Bangna1");
+    expect(day("Monday 5 January")).not.toHaveTextContent("Mega Bangna3");
 
     fireEvent.click(legend().getByRole("button", { name: "AU → Siam Paragon" }));
     expect(screen.getByTestId("route-search")).toHaveTextContent("route-2,route-3");
 
     fireEvent.click(legend().getByRole("button", { name: "All routes" }));
     expect(screen.getByTestId("route-search")).toHaveTextContent("all");
-    expect(day("Monday 5 January")).toHaveTextContent("to Mega Bangna2");
+    expect(day("Monday 5 January")).toHaveTextContent("Mega Bangna3");
   });
 });

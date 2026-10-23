@@ -55,12 +55,12 @@ describe("AdminTripsPage calendar", () => {
     const monday = calendar().getByRole("button", {
       name: "Monday 5 January, 2 departures",
     });
-    expect(monday).toHaveTextContent("to Mega Bangna2");
+    expect(monday).toHaveTextContent("Mega Bangna2");
     expect(
       calendar().getByRole("button", {
         name: "Tuesday 6 January, 1 departure",
       }),
-    ).toHaveTextContent("to Mega Bangna1");
+    ).toHaveTextContent("Mega Bangna1");
     expect(
       calendar().getByRole("button", {
         name: "Sunday 4 January, 0 departures",
