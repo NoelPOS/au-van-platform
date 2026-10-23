@@ -2,7 +2,7 @@ import { BrowserFrame, PhoneFrame, ShotImage } from "./DeviceFrames";
 import { LandingSection } from "./LandingSection";
 
 const phoneShots = [
-  { src: "/landing/student-trips.webp", caption: "Today’s departures" },
+  { src: "/landing/student-trips.webp", caption: "Picking a route" },
   { src: "/landing/seat-picker.webp", caption: "Choosing a seat" },
   { src: "/landing/boarding-pass.webp", caption: "The boarding pass" },
 ];
@@ -15,7 +15,7 @@ const browserShots = [
   },
   {
     src: "/landing/admin-trips.webp",
-    caption: "The trip calendar",
+    caption: "Trips by route",
     address: "auvan.duckdns.org/admin/trips",
   },
 ];
