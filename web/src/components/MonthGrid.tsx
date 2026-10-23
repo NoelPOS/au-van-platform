@@ -7,7 +7,7 @@ import {
   type RouteIdentity,
 } from "../utils/routeIdentity";
 import { plural } from "../utils/schedule";
-import { RouteDot, RouteName } from "./ui/RouteMark";
+import { RouteDot } from "./ui/RouteMark";
 
 const weekdays = [
   ["Mon", "Monday"],
@@ -39,6 +39,20 @@ function cellTone(day: string, today: string, chosen: boolean) {
   if (chosen) return "bg-brand-50 ring-2 ring-brand-600 ring-inset";
   if (day < today) return "bg-card text-muted hover:bg-brand-50/60";
   return "bg-card hover:bg-brand-50/60";
+}
+
+function byPlace(runs: ReturnType<typeof tripsByRoute>) {
+  const places: typeof runs = [];
+  for (const run of runs) {
+    const same = places.find(
+      (place) =>
+        place.route.short === run.route.short &&
+        place.route.colour === run.route.colour,
+    );
+    if (same) same.trips = [...same.trips, ...run.trips];
+    else places.push({ route: run.route, trips: run.trips });
+  }
+  return places;
 }
 
 export function MonthGrid({
@@ -94,8 +108,8 @@ export function MonthGrid({
           if (!day) return <span className="bg-paper" key={`blank-${index}`} />;
           const trips = days.get(day) ?? [];
           const chosen = selecting && selected.includes(day);
-          const runs = tripsByRoute(trips, routes);
-          const shown = runs.length > 3 ? runs.slice(0, 2) : runs;
+          const places = byPlace(tripsByRoute(trips, routes));
+          const shown = places.length > 4 ? places.slice(0, 3) : places;
           return (
             <button
               aria-label={`${longDay(day)}, ${plural(trips.length, "departure")}`}
@@ -127,21 +141,21 @@ export function MonthGrid({
                 ))}
               </span>
               <span className="hidden w-full flex-col gap-0.5 sm:flex">
-                {shown.map((run) => (
+                {shown.map((place) => (
                   <span
-                    className={`flex min-w-0 items-center gap-1.5 text-[11.5px] leading-tight ${runTone(run.trips, day < today)}`}
-                    key={run.route.routeId}
+                    className={`flex min-w-0 items-center gap-1.5 text-[11.5px] leading-tight ${runTone(place.trips, day < today)}`}
+                    key={place.route.routeId}
                   >
-                    <RouteDot route={run.route} />
-                    <RouteName route={run.route} />
+                    <RouteDot route={place.route} />
+                    <span className="truncate">{place.route.short}</span>
                     <span className="ml-auto pl-1 font-mono tabular-nums">
-                      {run.trips.length}
+                      {place.trips.length}
                     </span>
                   </span>
                 ))}
-                {runs.length > shown.length && (
+                {places.length > shown.length && (
                   <span className="text-[11px] text-brand-500">
-                    +{runs.length - shown.length} more
+                    +{places.length - shown.length} more
                   </span>
                 )}
               </span>

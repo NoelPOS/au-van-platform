@@ -1,5 +1,5 @@
 import type { RouteIdentity } from "../utils/routeIdentity";
-import { RouteDot } from "./ui/RouteMark";
+import { RouteDot, RouteName } from "./ui/RouteMark";
 
 const chip =
   "inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 ease-out";
@@ -50,6 +50,7 @@ export function RouteFilter({
         const pressed = chosen.includes(route.routeId);
         return (
           <button
+            aria-label={route.full}
             aria-pressed={pressed}
             className={`${chip} ${chipTone(pressed, !all)}`}
             key={route.routeId}
@@ -60,7 +61,7 @@ export function RouteFilter({
               className={!all && !pressed ? "opacity-40" : undefined}
               route={route}
             />
-            {route.full}
+            <RouteName route={route} />
           </button>
         );
       })}
