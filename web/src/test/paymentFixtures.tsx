@@ -31,6 +31,8 @@ export const proof = slip("proof-1", "AUV-260921-7KQ2M4XR");
 
 type Routes = {
   queue?: () => Response;
+  routes?: () => Response;
+  trips?: () => Response;
   image?: () => Response;
   decision?: (init: RequestInit) => Response;
 };
@@ -49,6 +51,8 @@ export function stubApi(routes: Routes = {}) {
       if (url.includes("/approve") || url.includes("/reject"))
         return routes.decision?.(init ?? {}) ?? json({ id: "booking-1" });
       if (url.endsWith("/payment-proofs")) return routes.queue?.() ?? json([proof]);
+      if (url.endsWith("/admin/routes")) return routes.routes?.() ?? json([]);
+      if (url.endsWith("/admin/trips")) return routes.trips?.() ?? json([]);
       throw new Error(`unexpected request: ${url}`);
     },
   );
