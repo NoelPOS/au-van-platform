@@ -55,6 +55,12 @@ A student who cannot book a full trip can now queue for it, and a seat that come
 - **One chance per promotion.** A student who does nothing before the window runs out ends `EXPIRED`, an outbox row tells them, and the seat goes to the next in line. The same sweep marks an entry `FULFILLED` when it finds the seats it offered have been booked; the booking path itself knows nothing about the waitlist.
 - Both `WAITLIST_PROMOTED` and `WAITLIST_PROMOTION_EXPIRED` are recorded in the promoting transaction and carry **no `dedupe_key`** — that column is unique table-wide and is what marks a row as a reminder, so a waitlist notification with one could be killed by an unrelated cancellation. Their `aggregate_id` is a waitlist entry rather than a booking, which is what that column now means.
 
+Administrators read revenue and demand at `GET /api/v1/admin/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`, shown on the web at `/admin/insights`.
+
+- Both dates are inclusive Bangkok calendar days and select trips by **departure** day, not booking day. A reversed period is refused with `insights_range_reversed`, and one longer than 366 days with `insights_range_too_long`.
+- `totals` holds revenue (fares of `CONFIRMED` bookings), fares awaiting payment, refunds owed (`DUE`) and sent (`REFUNDED`), non-cancelled bookings, seats sold and offered, occupancy, and running and cancelled trip counts. `byRoute` covers running trips only, highest revenue first. `byDay` has one row for every day in the period, zero days included.
+- One query reads a row per trip with its figures as correlated aggregates; the service groups those rows by route and by Bangkok day. It is read-only.
+
 ## Boundaries
 
 - React does not contain booking, payment, or authorization rules.
