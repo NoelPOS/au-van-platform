@@ -111,9 +111,9 @@ describe("AdminTripsPage shuttle generator", () => {
     expect(
       preview.getAllByRole("listitem").map((item) => item.textContent),
     ).toEqual([
-      "07:00AU→Mega BangnaVAN-01",
-      "08:00Mega Bangna→AUVAN-01",
-      "08:45AU→Mega BangnaVAN-01",
+      "07:00AU to Mega BangnaVAN-01",
+      "08:00Mega Bangna to AUVAN-01",
+      "08:45AU to Mega BangnaVAN-01",
     ]);
 
     fireEvent.click(shuttle().getByRole("button", { name: "Add to template" }));
@@ -163,7 +163,7 @@ describe("AdminTripsPage shuttle generator", () => {
       within(shuttle().getByRole("region", { name: "Shuttle preview" }))
         .getAllByRole("listitem")
         .map((item) => item.textContent),
-    ).toEqual(["07:00AU→Siam ParagonVAN-02", "09:15AU→Siam ParagonVAN-02"]);
+    ).toEqual(["07:00AU to Siam ParagonVAN-02", "09:15AU to Siam ParagonVAN-02"]);
   });
 
   it("explains a shuttle it cannot build and adds nothing", async () => {

@@ -1,7 +1,6 @@
 import type { VanRoute, Vehicle } from "../types/inventory";
 import type { DepartureLine } from "../types/schedule";
 import { plural } from "../utils/schedule";
-import { RouteRule } from "./ui/RouteLine";
 
 export function ShuttlePreview({
   lines,
@@ -28,11 +27,10 @@ export function ShuttlePreview({
               <span className="font-mono text-[15px] font-medium tabular-nums text-ink">
                 {line.time}
               </span>
-              <span className="flex min-w-0 items-center gap-1.5 text-sm text-ink">
-                <span className="truncate">{route?.origin}</span>
-                <RouteRule className="w-3" />
-                <span className="sr-only">→</span>
-                <span className="truncate">{route?.destination}</span>
+              <span className="truncate text-sm text-ink">
+                <span className="sr-only">{`${route?.origin} `}</span>
+                <span className="text-muted">to </span>
+                {route?.destination}
               </span>
               <span className="font-mono text-[12px] text-muted">
                 {vans.find((van) => van.id === line.vehicleId)?.code}
