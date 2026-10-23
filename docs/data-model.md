@@ -32,8 +32,8 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | `reminder_jobs` | dropped | Scheduled reminders; ADR-010 made one a future-dated `outbox_events` row |
 | `waitlist_entries` | `V9` | One student's place in the queue for a trip whose seats are all claimed |
 | `booking_cooldown_clears` | `V11` | Who lifted a student's booking pause, and when |
-| `day_templates` | `V13` | A named, reusable plan for one service day, such as "Weekday" or "Exam week" |
-| `day_template_departures` | `V13` | One line of a day template: a Bangkok wall-clock time, a route, and a van |
+| `day_templates` | `V14` | A named, reusable plan for one service day, such as "Weekday" or "Exam week" |
+| `day_template_departures` | `V14` | One line of a day template: a Bangkok wall-clock time, a route, and a van |
 | `audit_logs` | planned | Staff actions and sensitive state changes |
 
 ## Seat claims
@@ -110,7 +110,7 @@ A trip change that can reach a passenger is one transaction behind the trip's ro
 
 ## The waitlist
 
-A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. A seat that comes free is offered to whoever has waited longest. ADR-011 records the decision. Joining, leaving, reading a place, the promotion sweep, and the administrator's read-only view of the queue in `OperationsViewService` are all implemented.
+A student who cannot book a full trip joins its queue instead, sees where they stand, and can leave. A seat that comes free is offered to whoever has waited longest. ADR-011 records the decision. Joining, leaving, reading a place, the promotion sweep, and the administrator's read-only view of the queue in `OperationsViewService`, shown on a departure's Passengers tab on the Trips page, are all implemented.
 
 - One row per `(trip_id, user_id)`, enforced by a plain `waitlist_entries_trip_user_unique`. Not a partial index on the active statuses: ADR-006 rejected partial indexes because H2 does not support them, so the suite would stop exercising the one constraint this shape rests on.
 - `status` is `WAITING`, `PROMOTED`, `FULFILLED`, `WITHDRAWN`, `EXPIRED`, or `CANCELLED`. The first two are the queued states — the only ones that occupy a place — and the other four are terminal. `WAITING` and `WITHDRAWN` are the student's own doing; the promotion sweep writes `PROMOTED`, `FULFILLED` and `EXPIRED`, and a trip cancellation writes `CANCELLED`, each from behind the entry's row lock.
@@ -171,6 +171,7 @@ An administrator plans many departures at once: a day template's lines, or one d
 - A planned departure is skipped, and reported with its reason, when it has passed, when its route or van is inactive, or when its van is already out on another run: an active trip whose departure-to-arrival window overlaps, a cancelled trip at the exact same time (it still holds `trips_vehicle_departure_unique`), or an earlier line in the same plan.
 - Applying commits every remaining departure in one transaction, only when the plan still matches its preview's `planHash`, and stores its response under the request's `Idempotency-Key` in `idempotency_keys`. `trips_vehicle_departure_unique` is what stops two concurrent applies from both creating the same departure.
 - Clearing a day deletes only that day's departures still ahead that have no `bookings`, `seat_claims`, or `waitlist_entries` row. A departure anyone has touched is kept, and its foreign keys stop a hold that lands mid-clear.
+- With the rolling schedule on (ADR-021), a job plans one named template across the next seven days through the same planner and inserts what it may create in one transaction. It writes ordinary `trips` rows with no marker of where they came from, and relies on the planner's skips and `trips_vehicle_departure_unique` for idempotency rather than on `idempotency_keys`. A cleared departure is deleted, so the next run adds it again; a cancelled one still holds its slot, so it is not.
 
 ## Critical constraints to design
 
