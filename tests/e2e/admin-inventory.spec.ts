@@ -2,14 +2,14 @@ import { expect, test } from "@playwright/test";
 import {
   adminSubject,
   createTrip,
-  goToOperations,
+  goToOverview,
   signIn,
   signInAsAdmin,
   studentSubject,
 } from "./helpers";
 
 test.describe("the administrator journey", () => {
-  test("builds a route, a seat layout, a van and a departure, and reads the trip back in operations", async ({
+  test("builds a route, a seat layout, a van and a departure, and reads its passengers back", async ({
     page,
   }) => {
     await signInAsAdmin(page);
@@ -21,14 +21,15 @@ test.describe("the administrator journey", () => {
       .getByRole("row", { name: new RegExp(trip.vehicleCode) });
     await expect(row).toContainText("4");
 
-    await goToOperations(page);
-    await page.getByRole("button", { name: trip.routeLabel }).click();
-    await expect(
-      page.getByRole("heading", { name: new RegExp(trip.routeLabel) }),
-    ).toBeVisible();
-    await expect(page.getByText("0 of 4 seats claimed")).toBeVisible();
-    await expect(page.getByText("Nobody is waiting")).toBeVisible();
+    await row.getByRole("button", { name: /^Open trip on/ }).click();
+    const drawer = page.getByRole("dialog");
+    await expect(drawer.getByText(trip.routeLabel)).toBeVisible();
+    await expect(drawer.getByRole("radio", { name: "Passengers" })).toBeChecked();
+    await expect(drawer.getByText("0 of 4 seats claimed")).toBeVisible();
+    await expect(drawer.getByText("Nobody is waiting")).toBeVisible();
+    await drawer.getByRole("button", { name: "Close" }).click();
 
+    await goToOverview(page);
     // Empty only because the e2e overlay sets LINE_MESSAGING_ENABLED=false.
     await expect(page.getByText("Nothing was given up on")).toBeVisible();
   });
@@ -40,23 +41,25 @@ test.describe("the administrator journey", () => {
     await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/payments$/);
 
-    await goToOperations(page);
-    await expect(page).toHaveURL(/\/admin\/operations$/);
+    await goToOverview(page);
+    await expect(page).toHaveURL(/\/admin$/);
     await page.goBack();
     await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/payments$/);
   });
 
-  test("sends an old inventory link on to the trips page", async ({ page }) => {
-    await signIn(page, adminSubject, "/admin/inventory");
-    await expect(page.getByRole("heading", { name: "Trips", level: 1 })).toBeVisible();
-    await expect(page).toHaveURL(/\/admin\/trips$/);
-  });
+  for (const address of ["inventory", "operations"]) {
+    test(`sends an old ${address} link on to the trips page`, async ({ page }) => {
+      await signIn(page, adminSubject, `/admin/${address}`);
+      await expect(page.getByRole("heading", { name: "Trips", level: 1 })).toBeVisible();
+      await expect(page).toHaveURL(/\/admin\/trips$/);
+    });
+  }
 
   test("sends a student who opens an administration address to the booking page", async ({
     page,
   }) => {
-    await signIn(page, studentSubject(), "/admin/operations");
+    await signIn(page, studentSubject(), "/admin/trips");
     await expect(page.getByRole("heading", { name: "Catch the next van" })).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
     await expect(
