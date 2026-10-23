@@ -17,6 +17,25 @@ const siam = {
   fare: 90,
   departureAt: "2030-10-01T02:00:00Z",
 };
+const siamHome = {
+  ...trip,
+  id: "home-1",
+  routeId: "route-3",
+  origin: "Siam Paragon",
+  destination: "AU",
+  departureAt: "2030-10-01T09:00:00Z",
+};
+
+function routeNames() {
+  return within(screen.getByRole("region", { name: "Routes" }))
+    .getAllByRole("button")
+    .map((button) => button.textContent);
+}
+
+function choose(trigger: string, option: string) {
+  fireEvent.click(screen.getByRole("button", { name: trigger }));
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
 
 describe("Student picks a route first", () => {
   afterEach(() => {
@@ -85,5 +104,77 @@ describe("Student picks a route first", () => {
     expect(
       screen.queryByRole("button", { name: "Change route" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("narrows routes and origins to the chosen destination", async () => {
+    stubApi({ trips: () => json([megaMorning, siam, siamHome]) });
+
+    renderPage();
+
+    await screen.findByRole("region", { name: "Routes" });
+    expect(routeNames()).toHaveLength(3);
+
+    choose("To Any", "Siam Paragon");
+
+    expect(routeNames()).toEqual([expect.stringMatching(/^To Siam Paragon/)]);
+    fireEvent.click(screen.getByRole("button", { name: "From Any" }));
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Any", "AU"]);
+  });
+
+  it("offers only destinations reachable from the chosen origin", async () => {
+    stubApi({ trips: () => json([megaMorning, siam, siamHome]) });
+
+    renderPage();
+
+    await screen.findByRole("region", { name: "Routes" });
+    choose("From Any", "Siam Paragon");
+    fireEvent.click(screen.getByRole("button", { name: "To Any" }));
+
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Any", "AU"]);
+    expect(routeNames()).toEqual([expect.stringMatching(/^To AU/)]);
+  });
+
+  it("returns to the filtered routes from Change route", async () => {
+    stubApi({ trips: () => json([megaMorning, siam, siamHome]) });
+
+    renderPage("/?from=AU");
+
+    await screen.findByRole("region", { name: "Routes" });
+    expect(routeNames()).toHaveLength(2);
+    fireEvent.click(
+      within(screen.getByRole("region", { name: "Routes" })).getByRole(
+        "button",
+        { name: /Siam Paragon/ },
+      ),
+    );
+    expect(screen.getByRole("region", { name: "Departures" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change route" }));
+
+    expect(screen.getByRole("button", { name: "From AU" })).toBeInTheDocument();
+    expect(routeNames()).toEqual([
+      expect.stringMatching(/^To Mega Bangna/),
+      expect.stringMatching(/^To Siam Paragon/),
+    ]);
+  });
+
+  it("clears filters that match no route", async () => {
+    stubApi({ trips: () => json([megaMorning, siam, siamHome]) });
+
+    renderPage("/?from=AU&to=Nowhere");
+
+    expect(await screen.findByText("No matching routes")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Routes" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(routeNames()).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "From Any" })).toBeInTheDocument();
   });
 });

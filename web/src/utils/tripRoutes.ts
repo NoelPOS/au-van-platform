@@ -9,6 +9,18 @@ export type RouteDepartures = {
   trips: AvailableTrip[];
 };
 
+export type RouteFilter = { from: string; to: string };
+
+export function matchesFilter(
+  route: RouteDepartures,
+  filter: RouteFilter,
+): boolean {
+  return (
+    (!filter.from || route.origin === filter.from) &&
+    (!filter.to || route.destination === filter.to)
+  );
+}
+
 export function groupByRoute(trips: AvailableTrip[]): RouteDepartures[] {
   const routes = new Map<string, RouteDepartures>();
   for (const trip of trips) {
