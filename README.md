@@ -28,12 +28,13 @@
 
 ## About
 
-A student opens the app from LINE, holds seats on a trip, books them, and
-uploads a payment slip. An administrator builds seat layouts, routes, vans and
-trips, reviews each slip, and watches every departure's seat plan. Students hear
-back through LINE notifications and departure reminders. When a trip is full,
-students can join its waitlist, and the longest-waiting student is promoted
-when a seat comes free.
+A student opens the app from LINE, picks a route and a departure, holds seats,
+books them, and uploads a payment slip. An administrator builds seat layouts,
+routes and vans, plans the week's departures from day templates, reviews each
+slip, and checks who is on every departure. Students hear back through LINE
+notifications and departure reminders. When a trip is full, students can join
+its waitlist, and the longest-waiting student is promoted when a seat comes
+free.
 
 This repository rebuilds a legacy Next.js application. It keeps the business
 rules the legacy app had validated and replaces its runtime with a React app
@@ -50,15 +51,21 @@ student app** signs you in as a demo student, no LINE account needed, so you can
 hold a seat, book it and upload a slip. The staff portal opens with LINE, or
 with a demo passcode the owner shares for reviews. Demo users never receive LINE
 messages, and payments are samples
-([ADR-020](docs/adr/020-demo-sign-in.md)).
+([ADR-020](docs/adr/020-demo-sign-in.md)). Every night the demo fills the next
+seven days from its "Weekday" day template, so there is always a departure to
+book ([ADR-021](docs/adr/021-rolling-schedule-from-a-day-template.md)).
 
 ## Features
 
 **Students (LINE LIFF app)**
 - Sign in with LINE. The API verifies the LINE ID token with LINE and issues
   its own 15-minute JWT.
-- Browse upcoming trips with live free-seat counts. The seat map refreshes
-  every 10 seconds and marks each seat as available, held, held by you, or booked.
+- Pick a route first. Each route shows its fare, travel time and next open
+  departure. Routes are grouped by where they leave from when there is more
+  than one starting point, and From and To filters narrow the list. Then pick a day and a
+  departure; each one shows its arrival time and live free-seat count.
+- The seat map refreshes every 10 seconds and marks each seat as available,
+  held, held by you, or booked.
 - Hold up to 4 seats for 5 minutes, with a countdown, then book with passenger
   details. Each booking gets a reference such as `AUV-261004-6HA6XGGN`.
 - Upload a payment slip (JPEG, PNG or WebP, up to 5 MB) before the booking's
@@ -66,6 +73,8 @@ messages, and payments are samples
   reviewer's note.
 - Join the waitlist of a full trip and see your position. When a seat frees up,
   you get a 30-minute hold on it.
+- Cancel a booking up to 2 hours before departure. A confirmed booking is
+  marked for a refund.
 - LINE Flex Message cards for 10 events:
   - booking created, cancelled or expired
   - slip submitted, approved or rejected
@@ -75,23 +84,35 @@ messages, and payments are samples
 **Administrators (web portal, `/admin`)**
 - **Overview:** next departures, slips waiting for review, and the list of
   notifications that failed for good (dead letters).
-- **Seat layouts:** a visual grid builder for each van model.
-- **Routes and vans:** fares, durations, and active or inactive status.
-- **Trips:** schedule one route, van and time across several days at once. The
-  database refuses to put one van on two trips at the same departure time.
-  Opening a departure shows its passengers: the live seat plan, bookings by
-  status and the waitlist.
-- **Payments:** review queue. Slip images are streamed through the API, never
-  from a public URL. Approve, or reject with a note.
+- **Insights:** revenue, seats sold, occupancy and refunds owed over the last
+  7 or 30 days or this month, by route and by day.
+- **Seat layouts:** a visual grid builder for each van model. A layout a van
+  uses cannot be deleted.
+- **Routes and vans:** fares, durations, and active or inactive status. A route
+  or van with upcoming trips cannot be made inactive.
+- **Trips:** a month, week or list calendar. Each route has its own colour and
+  short label, shared by both directions, and route chips filter the view.
+  Schedule one departure across several days, or apply a day template to any
+  set of dates after a preview that flags clashes. The template editor can
+  generate a shuttle: a van running out and back between a first and last
+  departure, with a wait at each end. Opening a departure shows its
+  **Passengers** (the live seat plan, bookings by status and the waitlist) and
+  an **Edit** tab to move or cancel it. Cancelling a departure cancels its
+  bookings and tells each student.
+- **Payments:** review queue, filterable by route. The nav badge and the
+  browser tab title count the slips waiting. Slip images are streamed through
+  the API, never from a public URL. Approve, or reject with a note.
+- **Refunds:** bookings owed a refund after a cancellation, marked refunded
+  with a note.
 
 ## Screenshots
 
 ### How a booking works
 
-| 1. Pick a departure | 2. Hold a seat | 3. Pay, then get the pass |
+| 1. Pick a route and a departure | 2. Hold a seat | 3. Pay, then get the pass |
 |---|---|---|
 | ![Today's departures from Assumption University, with seats left on each van](web/public/landing/student-trips.webp) | ![Seat picker with seat B2 selected on the 09:00 van to Siam Paragon](web/public/landing/seat-picker.webp) | ![Boarding pass for seat B2 with a confirmed stamp and the booking history](web/public/landing/boarding-pass.webp) |
-| The student opens AU-Van in LINE and sees each van with the seats left. | Tapping seats holds them for five minutes while the student adds passenger details. | After the PromptPay slip is approved, the ticket turns into a confirmed boarding pass and LINE sends a message. |
+| The student opens AU-Van in LINE, picks a route, and sees each van on it with the seats left. | Tapping seats holds them for five minutes while the student adds passenger details. | After the PromptPay slip is approved, the ticket turns into a confirmed boarding pass and LINE sends a message. |
 
 | 4. Staff check the slip | 5. Staff plan the week |
 |---|---|
@@ -103,8 +124,8 @@ messages, and payments are samples
 | Admin overview | Seat layout builder |
 |---|---|
 | ![Admin overview: next departures, slips waiting for review, notifications given up on](docs/evidence/app-admin-overview.webp) | ![Seat layout builder with a 13-seat Toyota Commuter layout](docs/evidence/app-seat-layout-builder.webp) |
-| **Operations seat plan** | **Payment review** |
-| ![Operations page: a departure's seat plan with A1 booked, and bookings by status](docs/evidence/app-operations-seat-plan.webp) | ![Payment review after approving booking AUV-261004-6HA6XGGN](docs/evidence/app-payment-approved.webp) |
+| **Trip passengers** | **Payment review** |
+| ![Trips: a departure's Passengers tab with the seat plan and bookings by status](docs/evidence/app-trip-passengers.webp) | ![Payment review after approving booking AUV-261004-6HA6XGGN](docs/evidence/app-payment-approved.webp) |
 
 ## How it's built
 
@@ -132,6 +153,12 @@ messages, and payments are samples
 - **A payment deadline on every unpaid booking.** The deadline is 2 hours
   after booking, but never later than 1 hour before departure. An indexed sweep
   expires unpaid bookings, deciding from a locked row each time.
+- **Batch scheduling through one planner.** Applying a day template is
+  previewed first, skips past and clashing departures, and commits exactly the
+  previewed set once. On the live demo a nightly job runs the same planner
+  over the next seven days, so a rerun creates nothing new.
+  [ADR-019](docs/adr/019-day-templates-and-batch-scheduling.md),
+  [ADR-021](docs/adr/021-rolling-schedule-from-a-day-template.md)
 - **Payment slips stay private.** The API brokers every read and write to the
   bucket, and no URL or credential reaches a browser.
   [ADR-009](docs/adr/009-payment-proof-storage-and-review-gate.md)
@@ -278,7 +305,7 @@ Screenshots have the account id cropped or blacked out, and
 | The service scales on CPU | `cli-evidence.txt`, "Autoscaling": target tracking on average CPU at 60%. The session pinned the task count to 2, so [CloudWatch](docs/evidence/aws-cloudwatch-alarms.webp) shows its scale-in alarm firing with nowhere to scale to |
 | CloudFront splits API and static traffic | [CloudFront behaviours](docs/evidence/aws-cloudfront-behaviours.webp): `/api/*` and `/actuator/*` to the load balancer, `/assets/*` and the default to the web bucket |
 | Failure signals and spend are tracked | [CloudWatch alarms](docs/evidence/aws-cloudwatch-alarms.webp) on 5xx responses, unhealthy hosts and database free storage; a [$20 monthly budget](docs/evidence/aws-budget.webp) on the account |
-| The whole flow works on AWS | An admin built a layout, route, van and trip; a student booked seat A1 and sent a slip; the admin [approved it](docs/evidence/app-payment-approved.webp) and the [seat plan](docs/evidence/app-operations-seat-plan.webp) shows A1 booked. The LINE Flex cards that followed reached the phone; they are not pictured |
+| The whole flow works on AWS | An admin built a layout, route, van and trip; a student booked seat A1 and sent a slip; the admin [approved it](docs/evidence/app-payment-approved.webp) and the [seat plan](docs/evidence/app-operations-seat-plan.webp) shows A1 booked. That screenshot is of the Operations page, which has since been folded into the Trips page's Passengers tab. The LINE Flex cards that followed reached the phone; they are not pictured |
 | The deploy workflow ships `main` to the live EC2 host | Deploy runs [37192159826](https://github.com/NoelPOS/au-van-platform/actions/runs/37192159826) and [37193086476](https://github.com/NoelPOS/au-van-platform/actions/runs/37193086476), both started by hand on `main`, the second after the move to `auvan.duckdns.org`: in each, the SSH deploy and the health check through the public host succeeded |
 
 ## Repository layout
@@ -559,10 +586,9 @@ The booking, payment review, waitlist and notification flows are built, tested
 and running on the live demo. The current milestone is tracked in
 [project status](docs/project-status.md). Not built yet:
 
-- a cancel button for students (the API endpoint exists)
-- rescheduling
+- moving a student's booking to another departure (staff can move a whole
+  departure)
 - admin tools to manage individual bookings and users
-- cancelling a trip does not yet cancel and notify its bookings
 - dead letters can be viewed but not retried from the portal
 
 ## Documentation
