@@ -38,8 +38,10 @@ export function groupByRoute(trips: AvailableTrip[]): RouteDepartures[] {
       });
     }
   }
-  return [...routes.values()].sort((left, right) =>
-    left.destination.localeCompare(right.destination),
+  return [...routes.values()].sort(
+    (left, right) =>
+      left.origin.localeCompare(right.origin) ||
+      left.destination.localeCompare(right.destination),
   );
 }
 
