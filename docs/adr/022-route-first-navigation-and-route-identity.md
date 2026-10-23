@@ -37,7 +37,7 @@ Students and staff ask different questions. A student asks "when is the next van
 
 ## Decision
 
-**Students.** `/` lists the routes that have upcoming departures for the student, built from the available-trips response (`utils/tripRoutes.ts`). Each row shows the destination, the next departure with an open seat, the fare and the travel time. With more than one origin the list is grouped under "From <origin>". From and To selects narrow it. Picking a route shows that route's day strip and departure board, and each departure shows its arrival time rather than repeating the destination. The choice is kept in the URL as `?route=`, `?from=`, `?to=` and `?day=`, so Back from the seat page returns to the same place. With only one route the list is skipped.
+**Students.** `/` lists the routes that have upcoming departures for the student, built from the available-trips response (`utils/tripRoutes.ts`). Each row shows the destination, the next departure with an open seat, the fare and the travel time. When routes leave from more than one place, the list is grouped by origin. From and To selects narrow it. Picking a route shows that route's day strip and departure board, and each departure shows its arrival time rather than repeating the destination. The choice is kept in the URL as `?route=`, `?from=`, `?to=` and `?day=`, so Back from the seat page returns to the same place. With only one route the list is skipped.
 
 **Staff.** `utils/routeIdentity.ts` derives each route's identity from the admin route list:
 
