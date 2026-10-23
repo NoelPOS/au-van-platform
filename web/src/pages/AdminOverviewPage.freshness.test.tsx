@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useTripOperations } from "../hooks/useOperationsQueries";
 import { usePaymentProofs } from "../hooks/usePaymentQueries";
@@ -24,13 +24,14 @@ function renderFromOverview() {
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/admin"]}>
+        <Link to="/admin/trips">Trips</Link>
         <Routes>
           <Route
             path="/admin"
             element={<AdminOverviewPage session={adminSession} />}
           />
           <Route path="/admin/payments" element={<ReviewQueue />} />
-          <Route path="/admin/operations" element={<TripSeats />} />
+          <Route path="/admin/trips" element={<TripSeats />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -64,7 +65,7 @@ describe("AdminOverviewPage freshness", () => {
     expect(await screen.findByText("Queue: 1")).toBeInTheDocument();
   });
 
-  it("leaves operations to fetch a trip's seats after the overview showed them", async () => {
+  it("leaves the trip drawer to fetch a trip's seats after the overview showed them", async () => {
     let claimed = 0;
     stubAdminApi({
       "GET /trips": () => json([trip]),
@@ -75,7 +76,7 @@ describe("AdminOverviewPage freshness", () => {
     renderFromOverview();
     await screen.findByText("0 of 4 seats claimed");
     claimed = 3;
-    fireEvent.click(screen.getByRole("link", { name: "Open operations" }));
+    fireEvent.click(screen.getByRole("link", { name: "Trips" }));
 
     expect(await screen.findByText("Claimed: 3")).toBeInTheDocument();
   });

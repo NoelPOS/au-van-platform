@@ -38,7 +38,11 @@ export function DeadLettersTable({
   error: Error | null;
 }) {
   return (
-    <section aria-labelledby="dead-letters-heading" className="mt-14">
+    <section
+      aria-labelledby="dead-letters-heading"
+      className="mt-14 scroll-mt-24"
+      id="notifications"
+    >
       <div className="mb-5">
         <p className="text-[11px] font-semibold tracking-[0.14em] text-brand-500 uppercase">
           Notifications

@@ -6,6 +6,7 @@ import {
   renderAdminPage,
   stubAdminApi,
 } from "../test/renderAdminPage";
+import { deadLetter } from "../test/operationsFixtures";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 
 const hour = 3_600_000;
@@ -105,8 +106,43 @@ describe("AdminOverviewPage", () => {
     );
     expect(await letters.findByText("1")).toBeInTheDocument();
     expect(
-      letters.getByRole("link", { name: "Open operations" }),
-    ).toHaveAttribute("href", "/admin/operations");
+      letters.getByRole("link", { name: "See notifications" }),
+    ).toHaveAttribute("href", "#notifications");
+  });
+
+  it("lists the notifications given up on below the board, where the counter points", async () => {
+    stubAdminApi({ "GET /operations/dead-letters": () => json([deadLetter]) });
+
+    renderPage();
+
+    const table = within(
+      await screen.findByRole("table", { name: "Dead letters" }),
+    );
+    expect(table.getByText("BOOKING_CANCELLED")).toBeInTheDocument();
+    expect(
+      table.getByText("LINE refused the push: 400 invalid recipient."),
+    ).toBeInTheDocument();
+    expect(table.getByText("5")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Dead letters" }),
+    ).toHaveAttribute("id", "notifications");
+  });
+
+  it("says why the notifications given up on could not be read", async () => {
+    stubAdminApi({
+      "GET /operations/dead-letters": () =>
+        json({ detail: "Access denied." }, 403),
+    });
+
+    renderPage();
+
+    const notifications = within(
+      screen.getByRole("region", { name: "Dead letters" }),
+    );
+    expect(
+      await notifications.findByText("Could not load dead letters"),
+    ).toBeInTheDocument();
+    expect(notifications.getByRole("alert")).toHaveTextContent("Access denied.");
   });
 
   it("reads as a clear board when nothing is scheduled and nothing is waiting", async () => {
@@ -124,6 +160,7 @@ describe("AdminOverviewPage", () => {
     expect(
       await screen.findByText("Every notification went out."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Nothing was given up on")).toBeInTheDocument();
   });
 
   it("shows a failed count where it belongs and keeps the rest of the board", async () => {

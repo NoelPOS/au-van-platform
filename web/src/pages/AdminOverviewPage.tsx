@@ -1,3 +1,4 @@
+import { DeadLettersTable } from "../components/DeadLettersTable";
 import { NextDepartures } from "../components/NextDepartures";
 import { OverviewCounter } from "../components/OverviewCounter";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -62,15 +63,20 @@ export function AdminOverviewPage({ session }: { session: AuthSession }) {
             waiting="Students are waiting on a decision."
           />
           <OverviewCounter
-            action="Open operations"
+            action="See notifications"
             query={deadLetters}
             settled="Every notification went out."
             title="Notifications given up on"
-            to="/admin/operations"
+            to="#notifications"
             waiting="These never reached the student."
           />
         </div>
       </div>
+      <DeadLettersTable
+        error={deadLetters.error}
+        letters={deadLetters.data}
+        loading={deadLetters.isPending}
+      />
     </main>
   );
 }
