@@ -15,6 +15,7 @@ import {
   vanOption,
 } from "../utils/tripDetails";
 import { DayPicker } from "./DayPicker";
+import { DaySummary } from "./DaySummary";
 import { ErrorMessage } from "./ErrorMessage";
 import { FormActions } from "./FormActions";
 import { NotReadyToSchedule } from "./NotReadyToSchedule";
@@ -53,6 +54,7 @@ export function TripForm({
   const [days, setDays] = useState(
     initial ? [initial.date] : startDay ? [startDay] : [],
   );
+  const [pickingDays, setPickingDays] = useState(startDay === undefined);
   const [time, setTime] = useState(initial?.time ?? "");
   const [submitted, setSubmitted] = useState(false);
   const now = useNow();
@@ -136,16 +138,20 @@ export function TripForm({
         <legend className="mb-4 text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
           Departure · Bangkok time
         </legend>
-        <DayPicker
-          error={
-            submitted && days.length === 0
-              ? "Choose at least one day."
-              : undefined
-          }
-          multiple={!trip}
-          onChange={setDays}
-          selected={days}
-        />
+        {pickingDays ? (
+          <DayPicker
+            error={
+              submitted && days.length === 0
+                ? "Choose at least one day."
+                : undefined
+            }
+            multiple={!trip}
+            onChange={setDays}
+            selected={days}
+          />
+        ) : (
+          <DaySummary day={days[0]} onChange={() => setPickingDays(true)} />
+        )}
         <TimeField
           error={timeError}
           onChange={setTime}
