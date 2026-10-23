@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { session } from "../test/bookingFixtures";
 import { useLiveUpdates } from "./useLiveUpdates";
+import { insightsKeys } from "./useInsightsQueries";
 import { refundKeys } from "./useRefundQueries";
 
 class FakeEventSource {
@@ -50,6 +51,7 @@ const known: QueryKey[] = [
   ["payments", "proofs"],
   refundKeys.due,
   ["overview", "payment-proofs"],
+  insightsKeys.period({ from: "2026-10-17", to: "2026-10-23" }),
 ];
 
 function invalidated(): string[] {
@@ -120,6 +122,7 @@ describe("useLiveUpdates", () => {
       "booking/seat-map/trip-1",
       "booking/trips",
       "overview/payment-proofs",
+      "insights/2026-10-17/2026-10-23",
     ]);
   });
 
