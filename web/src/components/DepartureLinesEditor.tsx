@@ -1,4 +1,5 @@
 import { Plus, X } from "lucide-react";
+import type { ReactNode } from "react";
 import type { VanRoute, Vehicle } from "../types/inventory";
 import { addMinutes, parseClock } from "../utils/dates";
 import { draftLine, type DraftLine } from "../utils/schedule";
@@ -11,12 +12,14 @@ export function DepartureLinesEditor({
   routes,
   vans,
   showErrors,
+  actions,
   onChange,
 }: {
   lines: DraftLine[];
   routes: VanRoute[];
   vans: Vehicle[];
   showErrors: boolean;
+  actions?: ReactNode;
   onChange: (lines: DraftLine[]) => void;
 }) {
   const routeOptions = routes.map((route) => ({
@@ -109,10 +112,13 @@ export function DepartureLinesEditor({
           );
         })}
       </ol>
-      <Button className="self-start" onClick={add} type="button" variant="text">
-        <Plus aria-hidden className="size-4" />
-        Add departure
-      </Button>
+      <div className="flex flex-wrap gap-x-5">
+        <Button onClick={add} type="button" variant="text">
+          <Plus aria-hidden className="size-4" />
+          Add departure
+        </Button>
+        {actions}
+      </div>
     </div>
   );
 }

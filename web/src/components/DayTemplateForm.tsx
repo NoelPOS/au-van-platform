@@ -1,3 +1,4 @@
+import { ArrowLeftRight } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import {
   useDeleteDayTemplate,
@@ -9,9 +10,11 @@ import type { VanRoute, Vehicle } from "../types/inventory";
 import type { DayTemplate, DepartureLine } from "../types/schedule";
 import { parseClock } from "../utils/dates";
 import { draftLine, type DraftLine } from "../utils/schedule";
+import { DeleteTemplate } from "./DeleteTemplate";
 import { DepartureLinesEditor } from "./DepartureLinesEditor";
 import { ErrorMessage } from "./ErrorMessage";
 import { FormActions } from "./FormActions";
+import { ShuttleForm } from "./ShuttleForm";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 
@@ -24,52 +27,6 @@ function doubleBooked(lines: DraftLine[]): string | null {
     seen.add(slot);
   }
   return null;
-}
-
-function DeleteTemplate({
-  name,
-  busy,
-  onDelete,
-}: {
-  name: string;
-  busy: boolean;
-  onDelete: () => void;
-}) {
-  const [asking, setAsking] = useState(false);
-  if (!asking)
-    return (
-      <button
-        className="min-h-11 justify-self-start text-sm font-semibold text-danger underline decoration-1 underline-offset-4 hover:decoration-2"
-        onClick={() => setAsking(true)}
-        type="button"
-      >
-        Delete template
-      </button>
-    );
-  return (
-    <div
-      aria-label="Delete template"
-      className="rounded-xl border border-danger/25 bg-danger-soft p-4"
-      role="group"
-    >
-      <p className="text-sm text-danger">
-        Delete “{name}”? Trips already made from it stay as they are.
-      </p>
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          autoFocus
-          onClick={() => setAsking(false)}
-          type="button"
-          variant="secondary"
-        >
-          Keep it
-        </Button>
-        <Button disabled={busy} onClick={onDelete} type="button" variant="danger">
-          Delete
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 export function DayTemplateForm({
@@ -101,7 +58,16 @@ export function DayTemplateForm({
     return (start.length ? start : [blank]).map(draftLine);
   });
   const [submitted, setSubmitted] = useState(false);
+  const [shuttling, setShuttling] = useState(false);
   const clash = doubleBooked(lines);
+
+  function addShuttle(added: DepartureLine[]) {
+    setLines([
+      ...lines.filter((line) => line.time.trim()),
+      ...added.map(draftLine),
+    ]);
+    setShuttling(false);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,12 +109,33 @@ export function DayTemplateForm({
           Departures · Bangkok time
         </legend>
         <DepartureLinesEditor
+          actions={
+            !shuttling && (
+              <Button
+                onClick={() => setShuttling(true)}
+                type="button"
+                variant="text"
+              >
+                <ArrowLeftRight aria-hidden className="size-4" />
+                Add shuttle
+              </Button>
+            )
+          }
           lines={lines}
           onChange={setLines}
           routes={routes}
           showErrors={submitted}
           vans={vans}
         />
+        {shuttling && (
+          <ShuttleForm
+            existing={lines}
+            onAdd={addShuttle}
+            onCancel={() => setShuttling(false)}
+            routes={routes}
+            vans={vans}
+          />
+        )}
         {clash && <p className="text-sm text-danger">{clash}</p>}
       </fieldset>
       <ErrorMessage error={save.error ?? remove.error} />
