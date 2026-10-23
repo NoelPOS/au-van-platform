@@ -51,6 +51,7 @@ const known: QueryKey[] = [
   ["payments", "proofs"],
   refundKeys.due,
   ["overview", "payment-proofs"],
+  ["operations", "trip", "trip-1"],
   insightsKeys.period({ from: "2026-10-17", to: "2026-10-23" }),
 ];
 
@@ -113,7 +114,7 @@ describe("useLiveUpdates", () => {
     expect(invalidated()).toEqual(known.map((key) => key.join("/")));
   });
 
-  it("refreshes the trip list and only that trip's seat map on a trip signal", async () => {
+  it("refreshes the trip list, that trip's seat map and its passengers on a trip signal", async () => {
     await mount();
 
     latest()?.signal("trip", "trip-1");
@@ -122,6 +123,7 @@ describe("useLiveUpdates", () => {
       "booking/seat-map/trip-1",
       "booking/trips",
       "overview/payment-proofs",
+      "operations/trip/trip-1",
       "insights/2026-10-17/2026-10-23",
     ]);
   });

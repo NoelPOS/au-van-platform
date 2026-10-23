@@ -11,7 +11,6 @@ import { DemoRenewal } from "./components/DemoRenewal";
 import { DemoStaffSignIn } from "./components/DemoStaffSignIn";
 import { RedirectHome, RequireRole } from "./components/RouteGuards";
 import { AdminInsightsPage } from "./pages/AdminInsightsPage";
-import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminOverviewPage } from "./pages/AdminOverviewPage";
 import { AdminPaymentReviewPage } from "./pages/AdminPaymentReviewPage";
 import { AdminRefundsPage } from "./pages/AdminRefundsPage";
@@ -132,7 +131,7 @@ function App() {
         <Route path="refunds" element={<AdminRefundsPage session={session} />} />
         <Route
           path="operations"
-          element={<AdminOperationsPage session={session} />}
+          element={<Navigate replace to="/admin/trips" />}
         />
         <Route
           path="inventory"

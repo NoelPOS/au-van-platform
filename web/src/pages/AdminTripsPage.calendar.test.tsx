@@ -9,6 +9,7 @@ import {
 import {
   drawer,
   freezeBangkokTime,
+  openTrip,
   layout,
   route,
   tripAt,
@@ -88,11 +89,9 @@ describe("AdminTripsPage calendar", () => {
     expect(
       drawer().getByText("2 departures · 07:30 – 16:00"),
     ).toBeInTheDocument();
-    fireEvent.click(
-      drawer().getByRole("button", { name: "Edit the 16:00 to Mega Bangna" }),
-    );
+    await openTrip("Open the 16:00 to Mega Bangna", "Edit");
     expect(
-      drawer().getByRole("heading", { name: "Edit trip" }),
+      drawer().getByRole("heading", { name: "Mon 5 Jan · 16:00" }),
     ).toBeInTheDocument();
     expect(drawer().getByLabelText("Time")).toHaveValue("16:00");
   });

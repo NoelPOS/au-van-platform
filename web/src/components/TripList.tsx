@@ -42,13 +42,13 @@ export function TripList({
   routes,
   vans,
   today,
-  onEdit,
+  onOpen,
 }: {
   trips: Trip[];
   routes: RouteIdentity[];
   vans: Vehicle[];
   today: string;
-  onEdit: (trip: Trip) => void;
+  onOpen: (trip: Trip) => void;
 }) {
   const [filter, setFilter] = useState<TripFilter>("upcoming");
   const [now] = useState(Date.now);
@@ -91,11 +91,11 @@ export function TripList({
       align: "end",
       render: (trip) => (
         <Button
-          aria-label={`${trip.status === "CANCELLED" ? "See cancelled" : "Edit"} trip on ${bangkokDateTime(trip.departureAt)}`}
-          onClick={() => onEdit(trip)}
+          aria-label={`Open ${trip.status === "CANCELLED" ? "cancelled " : ""}trip on ${bangkokDateTime(trip.departureAt)}`}
+          onClick={() => onOpen(trip)}
           variant="text"
         >
-          {trip.status === "CANCELLED" ? "See" : "Edit"}
+          Open
         </Button>
       ),
     },

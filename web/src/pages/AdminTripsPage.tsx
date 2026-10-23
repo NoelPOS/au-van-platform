@@ -129,7 +129,7 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
       />
       {view === "list" ? (
         <TripList
-          onEdit={(trip) => setPanel({ kind: "trip", trip })}
+          onOpen={(trip) => setPanel({ kind: "trip", trip })}
           routes={identities}
           today={today}
           trips={shownTrips}

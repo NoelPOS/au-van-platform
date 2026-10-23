@@ -21,7 +21,7 @@ export function DayDepartures({
   trips,
   routes,
   vans,
-  onEdit,
+  onOpen,
   onAdd,
   onCopy,
   onSaveAsTemplate,
@@ -32,7 +32,7 @@ export function DayDepartures({
   trips: Trip[];
   routes: VanRoute[];
   vans: Vehicle[];
-  onEdit: (trip: Trip) => void;
+  onOpen: (trip: Trip) => void;
   onAdd: () => void;
   onCopy: () => void;
   onSaveAsTemplate: () => void;
@@ -63,9 +63,9 @@ export function DayDepartures({
               return (
                 <li key={trip.id}>
                   <button
-                    aria-label={`${cancelled ? "See the cancelled" : "Edit the"} ${bangkokTime(trip.departureAt)} to ${route?.destination ?? "an unknown route"}`}
+                    aria-label={`Open the ${cancelled ? "cancelled " : ""}${bangkokTime(trip.departureAt)} to ${route?.destination ?? "an unknown route"}`}
                     className={`${columns} ${edge} w-full px-4 py-3.5 text-left transition-colors duration-150 hover:bg-paper/70`}
-                    onClick={() => onEdit(trip)}
+                    onClick={() => onOpen(trip)}
                     type="button"
                   >
                     <span

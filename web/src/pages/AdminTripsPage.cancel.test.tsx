@@ -10,6 +10,7 @@ import {
 import {
   drawer,
   freezeBangkokTime,
+  openTrip,
   route,
   showList,
   tripAt,
@@ -33,7 +34,7 @@ function stub(cancel = () => json({ ...trip, status: "CANCELLED" })) {
 async function openCancel() {
   renderAdminPage(<AdminTripsPage session={adminSession} />);
   await showList();
-  fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Mon 5 Jan · 16:00" }));
+  await openTrip("Open trip on Mon 5 Jan · 16:00", "Edit");
   fireEvent.click(drawer().getByRole("button", { name: "Cancel this trip…" }));
   await drawer().findByRole("region", { name: "Who this affects" });
 }
@@ -121,7 +122,7 @@ describe("AdminTripsPage cancelling a trip", () => {
     fireEvent.click(await screen.findByRole("radio", { name: "Cancelled" }));
 
     expect(
-      await screen.findByRole("button", { name: "See cancelled trip on Mon 5 Jan · 16:00" }),
+      await screen.findByRole("button", { name: "Open cancelled trip on Mon 5 Jan · 16:00" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Driver unwell")).toBeInTheDocument();
   });
@@ -132,7 +133,8 @@ describe("AdminTripsPage cancelling a trip", () => {
     await openCancel();
     fireEvent.click(drawer().getByRole("button", { name: "Keep trip" }));
 
-    expect(drawer().getByRole("heading", { name: "Edit trip" })).toBeInTheDocument();
+    expect(drawer().getByRole("radio", { name: "Edit" })).toBeChecked();
+    expect(drawer().getByRole("button", { name: "Save trip" })).toBeInTheDocument();
     expect(sentTo(fetcher, "POST /trips/trip-1/cancel")).toEqual([]);
   });
 
@@ -160,7 +162,7 @@ describe("AdminTripsPage cancelling a trip", () => {
 
     renderAdminPage(<AdminTripsPage session={adminSession} />);
     await showList();
-    fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Mon 5 Jan · 16:00" }));
+    await openTrip("Open trip on Mon 5 Jan · 16:00", "Edit");
     fireEvent.click(drawer().getByRole("button", { name: "Cancel this trip…" }));
 
     expect(
@@ -177,7 +179,7 @@ describe("AdminTripsPage cancelling a trip", () => {
 
     renderAdminPage(<AdminTripsPage session={adminSession} />);
     await showList();
-    fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Mon 5 Jan · 16:00" }));
+    await openTrip("Open trip on Mon 5 Jan · 16:00", "Edit");
     fireEvent.click(drawer().getByRole("button", { name: "Cancel this trip…" }));
 
     expect(await drawer().findByRole("alert")).toHaveTextContent("Could not count who is booked on this trip.");
@@ -192,7 +194,7 @@ describe("AdminTripsPage cancelling a trip", () => {
     renderAdminPage(<AdminTripsPage session={adminSession} />);
     await showList();
     fireEvent.click(await screen.findByRole("radio", { name: "Past" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Sun 4 Jan · 08:00" }));
+    await openTrip("Open trip on Sun 4 Jan · 08:00", "Edit");
 
     expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Cancel this trip…" })).toBeNull();
   });
