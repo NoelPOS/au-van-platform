@@ -3,22 +3,28 @@ package com.auvan.api.inventory.service;
 import com.auvan.api.inventory.dto.CreateRouteRequest;
 import com.auvan.api.inventory.dto.RouteResponse;
 import com.auvan.api.inventory.dto.UpdateRouteRequest;
+import com.auvan.api.inventory.entity.RouteStatus;
+import com.auvan.api.inventory.entity.TripStatus;
 import com.auvan.api.inventory.entity.VanRoute;
+import com.auvan.api.inventory.repository.TripRepository;
 import com.auvan.api.inventory.repository.VanRouteRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 public class RouteService {
     private final VanRouteRepository routes;
+    private final TripRepository trips;
 
-    public RouteService(VanRouteRepository routes) {
+    public RouteService(VanRouteRepository routes, TripRepository trips) {
         this.routes = routes;
+        this.trips = trips;
     }
 
     @Transactional(readOnly = true)
@@ -39,11 +45,24 @@ public class RouteService {
         String origin = request.origin() == null ? route.getOrigin() : request.origin().trim();
         String destination = request.destination() == null ? route.getDestination() : request.destination().trim();
         validateEndpoints(origin, destination);
+        if (route.getStatus() == RouteStatus.ACTIVE && request.status() == RouteStatus.INACTIVE) {
+            assertNoUpcomingTrips(route);
+        }
         route.update(origin, destination,
                 request.fare() == null ? route.getFare() : request.fare(),
                 request.durationMinutes() == null ? route.getDurationMinutes() : request.durationMinutes(),
                 request.status() == null ? route.getStatus() : request.status());
         return RouteResponse.from(route);
+    }
+
+    private void assertNoUpcomingTrips(VanRoute route) {
+        long upcoming = trips.countByRouteIdAndStatusAndDepartureAtAfter(
+                route.getId(), TripStatus.ACTIVE, OffsetDateTime.now());
+        if (upcoming > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, route.getOrigin() + " → " + route.getDestination()
+                    + " still has " + upcoming + (upcoming == 1 ? " upcoming trip" : " upcoming trips")
+                    + ". Cancel them before marking it inactive.");
+        }
     }
 
     private VanRoute find(UUID id) {
