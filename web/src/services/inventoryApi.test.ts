@@ -29,6 +29,7 @@ describe("inventory API client", () => {
       name: "Hiace",
       seats: [{ label: "A1", rowNumber: 1, columnNumber: 1 }],
     });
+    await inventoryApi.deleteSeatLayout(session, "layout-1");
     await inventoryApi.createVehicle(session, {
       code: "VAN-01",
       name: "White van",
@@ -56,6 +57,7 @@ describe("inventory API client", () => {
     ).toEqual([
       ["/api/v1/admin/seat-layouts", "POST"],
       ["/api/v1/admin/seat-layouts/layout-1", "PUT"],
+      ["/api/v1/admin/seat-layouts/layout-1", "DELETE"],
       ["/api/v1/admin/vehicles", "POST"],
       ["/api/v1/admin/vehicles/vehicle-1", "PUT"],
       ["/api/v1/admin/trips", "POST"],

@@ -79,6 +79,12 @@ export function useUpdateSeatLayout(session: AuthSession) {
   );
 }
 
+export function useDeleteSeatLayout(session: AuthSession) {
+  return useInventoryMutation<string>(inventoryKeys.seatLayouts, (id) =>
+    inventoryApi.deleteSeatLayout(session, id),
+  );
+}
+
 export function useCreateVehicle(session: AuthSession) {
   return useInventoryMutation<Pick<Vehicle, "code" | "name" | "seatLayoutId">>(
     inventoryKeys.vehicles,

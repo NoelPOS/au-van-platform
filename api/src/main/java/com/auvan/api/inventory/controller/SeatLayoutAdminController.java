@@ -6,6 +6,7 @@ import com.auvan.api.inventory.dto.UpdateSeatLayoutRequest;
 import com.auvan.api.inventory.service.SeatLayoutService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,5 +42,11 @@ public class SeatLayoutAdminController {
     @PutMapping("/{id}")
     public SeatLayoutResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateSeatLayoutRequest request) {
         return seatLayoutService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable UUID id) {
+        seatLayoutService.delete(id);
     }
 }

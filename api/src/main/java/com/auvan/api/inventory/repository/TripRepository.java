@@ -17,6 +17,7 @@ import java.util.UUID;
 public interface TripRepository extends JpaRepository<Trip, UUID> {
     boolean existsByVehicleIdAndDepartureAt(UUID vehicleId, OffsetDateTime departureAt);
     boolean existsByVehicleIdAndDepartureAtAndIdNot(UUID vehicleId, OffsetDateTime departureAt, UUID id);
+    long countByVehicleIdAndStatusAndDepartureAtAfter(UUID vehicleId, TripStatus status, OffsetDateTime after);
 
     // No fetch join: PostgreSQL refuses FOR UPDATE on the nullable side of an outer join.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
