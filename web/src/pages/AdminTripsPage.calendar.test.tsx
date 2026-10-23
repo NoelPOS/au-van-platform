@@ -46,7 +46,7 @@ describe("AdminTripsPage calendar", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens on this month with each day's departures in Bangkok time", async () => {
+  it("opens on this month with each day's departures counted by route", async () => {
     await renderCalendar();
 
     expect(
@@ -55,12 +55,12 @@ describe("AdminTripsPage calendar", () => {
     const monday = calendar().getByRole("button", {
       name: "Monday 5 January, 2 departures",
     });
-    expect(monday).toHaveTextContent("07:30Mega Bangna16:00Mega Bangna");
+    expect(monday).toHaveTextContent("to Mega Bangna2");
     expect(
       calendar().getByRole("button", {
         name: "Tuesday 6 January, 1 departure",
       }),
-    ).toHaveTextContent("08:00");
+    ).toHaveTextContent("to Mega Bangna1");
     expect(
       calendar().getByRole("button", {
         name: "Sunday 4 January, 0 departures",

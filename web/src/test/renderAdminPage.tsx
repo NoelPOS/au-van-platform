@@ -45,13 +45,13 @@ export function sentTo(fetcher: ReturnType<typeof stubAdminApi>, key: string) {
     .map(([, init]) => JSON.parse(String(init?.body)) as unknown);
 }
 
-export function renderAdminPage(page: ReactNode) {
+export function renderAdminPage(page: ReactNode, path = "/") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <ToastProvider>{page}</ToastProvider>
       </MemoryRouter>
     </QueryClientProvider>,

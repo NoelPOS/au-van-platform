@@ -1,10 +1,11 @@
 import { Check } from "lucide-react";
-import type { Trip, VanRoute, Vehicle } from "../types/inventory";
+import type { Trip, Vehicle } from "../types/inventory";
 import { addDays, longDay } from "../utils/calendar";
 import { bangkokTime } from "../utils/dates";
+import { identityOf, type RouteIdentity } from "../utils/routeIdentity";
 import { plural } from "../utils/schedule";
 import type { CalendarProps } from "./MonthGrid";
-import { RouteRule } from "./ui/RouteLine";
+import { RouteName } from "./ui/RouteMark";
 
 const weekday = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
@@ -22,12 +23,14 @@ function WeekTrip({
   van,
 }: {
   trip: Trip;
-  route: VanRoute | undefined;
+  route: RouteIdentity;
   van: Vehicle | undefined;
 }) {
   const cancelled = trip.status === "CANCELLED";
   return (
-    <li className="px-3 py-2">
+    <li
+      className={`px-3 py-2 ${route.colour.edge} ${cancelled ? "" : route.colour.tint}`}
+    >
       <span
         className={`flex items-baseline justify-between gap-2 ${cancelled ? "line-through" : ""}`}
       >
@@ -39,10 +42,9 @@ function WeekTrip({
         <span className="font-mono text-[11px] text-muted">{van?.code}</span>
       </span>
       <span
-        className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted ${cancelled ? "line-through" : ""}`}
+        className={`mt-0.5 flex min-w-0 text-[13px] ${cancelled ? "text-muted line-through" : "text-ink/80"}`}
       >
-        <RouteRule className="w-2.5" />
-        <span className="truncate">{route?.destination}</span>
+        <RouteName route={route} />
       </span>
       {cancelled && trip.cancellationReason && (
         <span className="mt-1 block text-[12px] leading-snug text-danger italic">
@@ -113,7 +115,7 @@ export function WeekGrid({
                 {trips.map((trip) => (
                   <WeekTrip
                     key={trip.id}
-                    route={routes.find((route) => route.id === trip.routeId)}
+                    route={identityOf(routes, trip.routeId)}
                     trip={trip}
                     van={vans.find((van) => van.id === trip.vehicleId)}
                   />

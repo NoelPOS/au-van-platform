@@ -1,8 +1,13 @@
 import { Check } from "lucide-react";
-import type { Trip, VanRoute } from "../types/inventory";
+import type { Trip } from "../types/inventory";
 import { longDay, monthGrid, monthTitle } from "../utils/calendar";
-import { bangkokTime } from "../utils/dates";
+import {
+  identityOf,
+  tripsByRoute,
+  type RouteIdentity,
+} from "../utils/routeIdentity";
 import { plural } from "../utils/schedule";
+import { RouteDot, RouteName } from "./ui/RouteMark";
 
 const weekdays = [
   ["Mon", "Monday"],
@@ -16,7 +21,7 @@ const weekdays = [
 
 export type CalendarProps = {
   days: Map<string, Trip[]>;
-  routes: VanRoute[];
+  routes: RouteIdentity[];
   today: string;
   selecting: boolean;
   selected: string[];
@@ -24,8 +29,9 @@ export type CalendarProps = {
   onToggle: (days: string[]) => void;
 };
 
-function tripTone(trip: Trip, past: boolean) {
-  if (trip.status === "CANCELLED") return "text-muted line-through";
+function runTone(trips: Trip[], past: boolean) {
+  if (trips.every((trip) => trip.status === "CANCELLED"))
+    return "text-muted line-through";
   return past ? "text-muted" : "text-ink";
 }
 
@@ -88,7 +94,8 @@ export function MonthGrid({
           if (!day) return <span className="bg-paper" key={`blank-${index}`} />;
           const trips = days.get(day) ?? [];
           const chosen = selecting && selected.includes(day);
-          const shown = trips.slice(0, 3);
+          const runs = tripsByRoute(trips, routes);
+          const shown = runs.length > 3 ? runs.slice(0, 2) : runs;
           return (
             <button
               aria-label={`${longDay(day)}, ${plural(trips.length, "departure")}`}
@@ -114,28 +121,27 @@ export function MonthGrid({
               <span aria-hidden className="mt-auto flex gap-0.5 sm:hidden">
                 {trips.slice(0, 5).map((trip) => (
                   <span
-                    className={`size-1.5 rounded-full ${trip.status === "CANCELLED" ? "border border-brand-500/60" : "bg-brand-500/60"}`}
+                    className={`size-1.5 rounded-full ${trip.status === "CANCELLED" ? "border border-muted/60" : identityOf(routes, trip.routeId).colour.dot}`}
                     key={trip.id}
                   />
                 ))}
               </span>
               <span className="hidden w-full flex-col gap-0.5 sm:flex">
-                {shown.map((trip) => (
+                {shown.map((run) => (
                   <span
-                    className={`flex min-w-0 gap-1.5 font-mono text-[11.5px] leading-tight ${tripTone(trip, day < today)}`}
-                    key={trip.id}
-                    title={trip.cancellationReason ?? undefined}
+                    className={`flex min-w-0 items-center gap-1.5 text-[11.5px] leading-tight ${runTone(run.trips, day < today)}`}
+                    key={run.route.routeId}
                   >
-                    {bangkokTime(trip.departureAt)}
-                    <span className="truncate font-sans text-muted">
-                      {routes.find((route) => route.id === trip.routeId)
-                        ?.destination ?? ""}
+                    <RouteDot route={run.route} />
+                    <RouteName route={run.route} />
+                    <span className="ml-auto pl-1 font-mono tabular-nums">
+                      {run.trips.length}
                     </span>
                   </span>
                 ))}
-                {trips.length > shown.length && (
+                {runs.length > shown.length && (
                   <span className="text-[11px] text-brand-500">
-                    +{trips.length - shown.length} more
+                    +{runs.length - shown.length} more
                   </span>
                 )}
               </span>

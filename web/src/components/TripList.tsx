@@ -1,11 +1,13 @@
 import { useState } from "react";
-import type { Trip, VanRoute, Vehicle } from "../types/inventory";
+import type { Trip, Vehicle } from "../types/inventory";
 import { dayHeading, shortDay } from "../utils/calendar";
 import { bangkokDateTime, bangkokTime } from "../utils/dates";
+import { tripsByRoute, type RouteIdentity } from "../utils/routeIdentity";
+import { plural } from "../utils/schedule";
 import { filterTrips, groupByDay, type TripFilter } from "../utils/tripFilters";
 import { Button } from "./ui/Button";
 import { EmptyState } from "./ui/EmptyState";
-import { RouteLine } from "./ui/RouteLine";
+import { RouteDot } from "./ui/RouteMark";
 import { SegmentedControl } from "./ui/SegmentedControl";
 import { StatusBadge } from "./ui/StatusBadge";
 import { Table, type Column } from "./ui/Table";
@@ -43,7 +45,7 @@ export function TripList({
   onEdit,
 }: {
   trips: Trip[];
-  routes: VanRoute[];
+  routes: RouteIdentity[];
   vans: Vehicle[];
   today: string;
   onEdit: (trip: Trip) => void;
@@ -60,17 +62,6 @@ export function TripList({
           {bangkokTime(trip.departureAt)}
         </span>
       ),
-    },
-    {
-      label: "Route",
-      render: (trip) => {
-        const route = routes.find((entry) => entry.id === trip.routeId);
-        return route ? (
-          <RouteLine destination={route.destination} origin={route.origin} />
-        ) : (
-          "Unknown route"
-        );
-      },
     },
     {
       label: "Van",
@@ -131,18 +122,29 @@ export function TripList({
             <h2 className="mb-3 flex items-baseline justify-between gap-4 font-display text-xl text-brand-900">
               {dayHeading(group.day, today)}
               <span className="font-sans text-[13px] text-muted">
-                {group.trips.length === 1
-                  ? "1 departure"
-                  : `${group.trips.length} departures`}
+                {plural(group.trips.length, "departure")}
               </span>
             </h2>
-            <Table
-              columns={columns}
-              empty={null}
-              label={`Trips on ${shortDay(group.day)}`}
-              rowKey={(trip) => trip.id}
-              rows={group.trips}
-            />
+            <div className="flex flex-col gap-5">
+              {tripsByRoute(group.trips, routes).map(({ route, trips: run }) => (
+                <section key={route.routeId}>
+                  <h3 className="mb-2 flex items-center gap-2 px-1 text-sm font-medium text-ink">
+                    <RouteDot route={route} />
+                    {route.full}
+                    <span className="ml-auto font-mono text-[12px] font-normal text-muted tabular-nums">
+                      {run.length}
+                    </span>
+                  </h3>
+                  <Table
+                    columns={columns}
+                    empty={null}
+                    label={`${route.full} on ${shortDay(group.day)}`}
+                    rowKey={(trip) => trip.id}
+                    rows={run}
+                  />
+                </section>
+              ))}
+            </div>
           </section>
         ))
       )}

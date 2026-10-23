@@ -3,6 +3,7 @@ import { useNow } from "../hooks/useNow";
 import type { AuthSession } from "../types/auth";
 import type { Trip, VanRoute, Vehicle } from "../types/inventory";
 import { bangkokTime } from "../utils/dates";
+import { identityOf, routeIdentities } from "../utils/routeIdentity";
 import { plural, timeSpan, linesOf } from "../utils/schedule";
 import { ClearDay } from "./ClearDay";
 import { Button } from "./ui/Button";
@@ -37,6 +38,7 @@ export function DayDepartures({
   onSaveAsTemplate: () => void;
 }) {
   const lines = linesOf(trips);
+  const identities = routeIdentities(routes);
   const now = useNow();
   const ahead = trips.filter((trip) => Date.parse(trip.departureAt) > now);
 
@@ -57,11 +59,12 @@ export function DayDepartures({
               const route = routes.find((entry) => entry.id === trip.routeId);
               const van = vans.find((entry) => entry.id === trip.vehicleId);
               const cancelled = trip.status === "CANCELLED";
+              const edge = identityOf(identities, trip.routeId).colour.edge;
               return (
                 <li key={trip.id}>
                   <button
                     aria-label={`${cancelled ? "See the cancelled" : "Edit the"} ${bangkokTime(trip.departureAt)} to ${route?.destination ?? "an unknown route"}`}
-                    className={`${columns} w-full px-4 py-3.5 text-left transition-colors duration-150 hover:bg-paper/70`}
+                    className={`${columns} ${edge} w-full px-4 py-3.5 text-left transition-colors duration-150 hover:bg-paper/70`}
                     onClick={() => onEdit(trip)}
                     type="button"
                   >
