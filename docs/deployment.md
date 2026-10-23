@@ -263,9 +263,11 @@ To deploy a later commit, build and push the new tag first, set
 - [ ] `curl -i "$DEMO_URL/actuator/health"` answers `200` with `"status":"UP"`.
 - [ ] On a phone, open `https://liff.line.me/<your LIFF id>` from LINE and sign
       in.
-- [ ] As the administrator, create a route, a seat layout, a van and a
-      departure under `/admin/inventory`.
-- [ ] As a student (a second LINE account), book a seat on that departure.
+- [ ] As the administrator, create a seat layout, a route, a van and a
+      departure under `/admin/seat-layouts`, `/admin/routes`, `/admin/vans`
+      and `/admin/trips`.
+- [ ] As a student (a second LINE account), pick that route and book a seat on
+      that departure.
 - [ ] Upload a payment slip for the booking.
 - [ ] As the administrator, approve it under `/admin/payments`.
 - [ ] The student's phone receives "Your payment is approved and your booking is
