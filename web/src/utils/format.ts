@@ -16,5 +16,10 @@ export function seatCount(seats: number): string {
 }
 
 export function formatBaht(amount: number): string {
-  return `฿${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+  const digits = Number.isInteger(amount) ? 0 : 2;
+  return `฿${amount.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+}
+
+export function formatPercent(ratio: number): string {
+  return `${Math.round(ratio * 100)}%`;
 }
