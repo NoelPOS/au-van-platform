@@ -25,6 +25,13 @@
   --color-danger: #b23b2e;
   --color-danger-soft: #fbefed;
 
+  --color-route-1: #2d7f8e;
+  --color-route-2: #c25e30;
+  --color-route-3: #7b58a8;
+  --color-route-4: #6a8a2c;
+  --color-route-5: #b8466e;
+  --color-route-6: #a8801c;
+
   --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
