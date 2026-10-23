@@ -16,8 +16,9 @@ test.describe("the administrator journey", () => {
 
     const trip = await createTrip(page, ["A1", "A2", "A3", "A4"]);
 
-    const row = page.getByRole("row", { name: new RegExp(trip.vehicleCode) });
-    await expect(row).toContainText(trip.routeLabel);
+    const row = page
+      .getByRole("table", { name: `${trip.routeLabel} on` })
+      .getByRole("row", { name: new RegExp(trip.vehicleCode) });
     await expect(row).toContainText("4");
 
     await goToOperations(page);
