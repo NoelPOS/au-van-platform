@@ -79,6 +79,8 @@ export const inventoryApi = {
       method: "PUT",
       body: JSON.stringify(input),
     }),
+  deleteSeatLayout: (session: AuthSession, id: string) =>
+    adminRequest<void>(session, `/seat-layouts/${id}`, { method: "DELETE" }),
   createVehicle: (
     session: AuthSession,
     input: Pick<Vehicle, "code" | "name" | "seatLayoutId">,

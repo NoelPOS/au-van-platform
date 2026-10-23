@@ -1,14 +1,12 @@
 import { useState } from "react";
 import type { AuthSession } from "../types/auth";
 import { SeatLayoutBuilder } from "./SeatLayoutBuilder";
-import { VanThumbnail } from "./VanThumbnail";
-import { Button } from "./ui/Button";
+import { SavedLayoutRow } from "./SavedLayoutRow";
 import { EmptyState } from "./ui/EmptyState";
 import { Panel } from "./ui/Panel";
 import { useToast } from "../hooks/useToast";
 import { useCreateSeatLayout, useUpdateSeatLayout } from "../hooks/useInventoryQueries";
 import type { Seat, SeatLayout } from "../types/inventory";
-import { seatCount } from "../utils/format";
 
 export function SeatLayoutsSection({
   session,
@@ -60,28 +58,12 @@ export function SeatLayoutsSection({
         ) : (
           <ul aria-label="Saved layouts" className="grid gap-3">
             {layouts.map((item) => (
-              <li
-                className="flex items-center gap-4 rounded-2xl border border-line bg-card p-4"
+              <SavedLayoutRow
                 key={item.id}
-              >
-                <div className="w-14 shrink-0">
-                  <VanThumbnail seats={item.seats} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-display text-xl text-brand-900">{item.name}</h3>
-                  <p className="text-sm tabular-nums text-muted">
-                    {seatCount(item.seats.length)}
-                  </p>
-                </div>
-                <Button
-                  aria-label={`Edit ${item.name}`}
-                  onClick={() => setEditing(item)}
-                  type="button"
-                  variant="text"
-                >
-                  Edit →
-                </Button>
-              </li>
+                layout={item}
+                onEdit={() => setEditing(item)}
+                session={session}
+              />
             ))}
           </ul>
         )}

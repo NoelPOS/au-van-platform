@@ -6,7 +6,9 @@ import com.auvan.api.inventory.dto.SeatLayoutResponse;
 import com.auvan.api.inventory.dto.UpdateSeatLayoutRequest;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
+import com.auvan.api.inventory.entity.Vehicle;
 import com.auvan.api.inventory.repository.SeatLayoutRepository;
+import com.auvan.api.inventory.repository.VehicleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,11 @@ import java.util.UUID;
 @Service
 public class SeatLayoutService {
     private final SeatLayoutRepository seatLayouts;
+    private final VehicleRepository vehicles;
 
-    public SeatLayoutService(SeatLayoutRepository seatLayouts) {
+    public SeatLayoutService(SeatLayoutRepository seatLayouts, VehicleRepository vehicles) {
         this.seatLayouts = seatLayouts;
+        this.vehicles = vehicles;
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +57,17 @@ public class SeatLayoutService {
         seatLayouts.flush();
         seatLayout.addSeats(replacements);
         return SeatLayoutResponse.from(seatLayout);
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        SeatLayout seatLayout = find(id);
+        List<String> vanCodes = vehicles.findBySeatLayoutIdOrderByCode(id).stream().map(Vehicle::getCode).toList();
+        if (!vanCodes.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Used by " + String.join(", ", vanCodes) + ". Move them to another layout first.");
+        }
+        seatLayouts.delete(seatLayout);
     }
 
     private SeatLayout find(UUID id) {
