@@ -65,9 +65,9 @@ export async function goToPaymentReview(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "Payment review" })).toBeVisible();
 }
 
-export async function goToOperations(page: Page): Promise<void> {
-  await adminDestination(page, "Operations").click();
-  await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
+export async function goToOverview(page: Page): Promise<void> {
+  await adminDestination(page, "Overview").click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 }
 
 export type TripFixture = {
