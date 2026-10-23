@@ -6,6 +6,7 @@ import type {
   SchedulePlan,
 } from "../types/schedule";
 import { longDay } from "../utils/calendar";
+import { bangkokDateTime } from "../utils/dates";
 import { linesOf, plural } from "../utils/schedule";
 import { CancelledTrip } from "./CancelledTrip";
 import { CancelTrip } from "./CancelTrip";
@@ -13,12 +14,13 @@ import { DayDepartures } from "./DayDepartures";
 import { DayTemplateForm } from "./DayTemplateForm";
 import { DayTemplateList } from "./DayTemplateList";
 import { SchedulePreview } from "./SchedulePreview";
+import { TripDetail, type TripTab } from "./TripDetail";
 import { TripForm } from "./TripForm";
 import { Drawer } from "./ui/Drawer";
 
 export type Panel =
   | { kind: "day"; day: string }
-  | { kind: "trip"; trip: Trip | null; day?: string }
+  | { kind: "trip"; trip: Trip | null; day?: string; tab?: TripTab }
   | { kind: "cancel"; trip: Trip }
   | { kind: "templates" }
   | { kind: "template"; template: DayTemplate | null; lines: DepartureLine[] }
@@ -55,7 +57,7 @@ export function TripPanels({
 }) {
   const close = () => onPanel(null);
   const toTemplates = () => onPanel({ kind: "templates" });
-  const heading = headingOf(panel, applyTo.length);
+  const heading = headingOf(panel, applyTo.length, routes);
 
   return (
     <Drawer
@@ -69,7 +71,7 @@ export function TripPanels({
           day={panel.day}
           onAdd={() => onPanel({ kind: "trip", trip: null, day: panel.day })}
           onCopy={() => onCopyDay(panel.day)}
-          onEdit={(trip) => onPanel({ kind: "trip", trip })}
+          onOpen={(trip) => onPanel({ kind: "trip", trip })}
           onSaveAsTemplate={() =>
             onPanel({
               kind: "template",
@@ -84,28 +86,36 @@ export function TripPanels({
           vans={vans}
         />
       )}
-      {panel?.kind === "trip" && panel.trip?.status === "CANCELLED" && (
-        <CancelledTrip
-          route={routes.find((route) => route.id === panel.trip?.routeId)}
-          trip={panel.trip}
-        />
-      )}
-      {panel?.kind === "trip" && panel.trip?.status !== "CANCELLED" && (
-        <TripForm
-          layouts={layouts}
-          onCancelTrip={(trip) => onPanel({ kind: "cancel", trip })}
-          onDone={close}
-          routes={routes}
+      {panel?.kind === "trip" && (
+        <TripDetail
+          onTab={(tab) => onPanel({ ...panel, tab })}
           session={session}
-          startDay={panel.day}
+          tab={panel.tab}
           trip={panel.trip}
-          trips={trips}
-          vans={vans}
-        />
+        >
+          {panel.trip?.status === "CANCELLED" ? (
+            <CancelledTrip
+              route={routes.find((route) => route.id === panel.trip?.routeId)}
+              trip={panel.trip}
+            />
+          ) : (
+            <TripForm
+              layouts={layouts}
+              onCancelTrip={(trip) => onPanel({ kind: "cancel", trip })}
+              onDone={close}
+              routes={routes}
+              session={session}
+              startDay={panel.day}
+              trip={panel.trip}
+              trips={trips}
+              vans={vans}
+            />
+          )}
+        </TripDetail>
       )}
       {panel?.kind === "cancel" && (
         <CancelTrip
-          onBack={() => onPanel({ kind: "trip", trip: panel.trip })}
+          onBack={() => onPanel({ kind: "trip", trip: panel.trip, tab: "edit" })}
           onDone={close}
           route={routes.find((route) => route.id === panel.trip.routeId)}
           session={session}
@@ -156,16 +166,23 @@ export function TripPanels({
   );
 }
 
-function headingOf(panel: Panel | null, applyTo: number) {
+function headingOf(panel: Panel | null, applyTo: number, routes: VanRoute[]) {
   switch (panel?.kind) {
     case "day":
       return {
         title: longDay(panel.day),
         description: "Departures in Bangkok time",
       };
-    case "trip":
-      if (panel.trip?.status === "CANCELLED") return { title: "Cancelled trip" };
-      return { title: panel.trip ? "Edit trip" : "Schedule a trip" };
+    case "trip": {
+      const { trip } = panel;
+      if (!trip) return { title: "Schedule a trip" };
+      const route = routes.find((entry) => entry.id === trip.routeId);
+      const line = route ? `${route.origin} → ${route.destination}` : "Unknown route";
+      return {
+        title: bangkokDateTime(trip.departureAt),
+        description: trip.status === "CANCELLED" ? `${line} · Cancelled` : line,
+      };
+    }
     case "cancel":
       return { title: "Cancel this trip?" };
     case "templates":

@@ -10,6 +10,7 @@ import {
 import {
   drawer,
   freezeBangkokTime,
+  openTrip,
   route,
   showList,
   tripAt,
@@ -39,7 +40,7 @@ function stub(update = () => json(trip)) {
 async function editAndMove() {
   renderAdminPage(<AdminTripsPage session={adminSession} />);
   await showList();
-  fireEvent.click(await screen.findByRole("button", { name: "Edit trip on Mon 5 Jan · 16:00" }));
+  await openTrip("Open trip on Mon 5 Jan · 16:00", "Edit");
   fireEvent.change(drawer().getByLabelText("Time"), { target: { value: "17:30" } });
 }
 
@@ -93,9 +94,10 @@ describe("AdminTripsPage moving and cancelled trips", () => {
     fireEvent.click(await screen.findByRole("radio", { name: "Cancelled" }));
     const row = within(screen.getByRole("table", { name: "AU → Mega Bangna on Tue 6 Jan" }));
     expect(row.getByText(reason)).toBeInTheDocument();
-    fireEvent.click(row.getByRole("button", { name: "See cancelled trip on Tue 6 Jan · 08:00" }));
+    await openTrip("Open cancelled trip on Tue 6 Jan · 08:00", "Details");
 
-    expect(drawer().getByRole("heading", { name: "Cancelled trip" })).toBeInTheDocument();
+    expect(drawer().getByRole("heading", { name: "Tue 6 Jan · 08:00" })).toBeInTheDocument();
+    expect(drawer().getByText("AU → Mega Bangna · Cancelled")).toBeInTheDocument();
     expect(drawer().getByText(reason)).toBeInTheDocument();
     expect(drawer().queryByRole("button", { name: "Save trip" })).toBeNull();
     expect(drawer().queryByRole("button", { name: "Cancel this trip…" })).toBeNull();
@@ -109,7 +111,7 @@ describe("AdminTripsPage moving and cancelled trips", () => {
     fireEvent.click(calendar.getByRole("button", { name: "Tuesday 6 January, 1 departure" }));
 
     expect(
-      drawer().getByRole("button", { name: "See the cancelled 08:00 to Mega Bangna" }),
+      drawer().getByRole("button", { name: "Open the cancelled 08:00 to Mega Bangna" }),
     ).toHaveTextContent(reason);
   });
 

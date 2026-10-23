@@ -6,7 +6,6 @@ import { operationsApi } from "../services/operationsApi";
 const operationsKeys = {
   trip: (tripId: string) => ["operations", "trip", tripId] as const,
   seats: (tripId: string) => ["operations", "seats", tripId] as const,
-  deadLetters: ["operations", "dead-letters"] as const,
 };
 
 export function useTripOperations(session: AuthSession, tripId: string | null) {
@@ -22,12 +21,5 @@ export function useTripSeatStates(session: AuthSession, tripId: string) {
     queryKey: operationsKeys.seats(tripId),
     queryFn: () => bookingApi.getSeatMap(session, tripId),
     staleTime: 0,
-  });
-}
-
-export function useDeadLetters(session: AuthSession) {
-  return useQuery({
-    queryKey: operationsKeys.deadLetters,
-    queryFn: () => operationsApi.listDeadLetters(session),
   });
 }

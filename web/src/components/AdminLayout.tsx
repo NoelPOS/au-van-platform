@@ -1,5 +1,4 @@
 import {
-  Activity,
   Armchair,
   CalendarClock,
   ChartColumn,
@@ -45,12 +44,6 @@ const destinations: Destination[] = [
   },
   { path: "/admin/payments", label: "Payments", icon: ReceiptText },
   { path: "/admin/refunds", label: "Refunds", icon: HandCoins, tucked: true },
-  {
-    path: "/admin/operations",
-    label: "Operations",
-    icon: Activity,
-    tucked: true,
-  },
 ];
 
 const tucked = destinations.filter((entry) => entry.tucked);

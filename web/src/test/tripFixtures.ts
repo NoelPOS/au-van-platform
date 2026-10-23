@@ -57,6 +57,11 @@ export async function showList() {
   fireEvent.click(await screen.findByRole("radio", { name: "List" }));
 }
 
+export async function openTrip(name: string, tab: "Passengers" | "Edit" | "Details") {
+  fireEvent.click(await screen.findByRole("button", { name }));
+  fireEvent.click(drawer().getByRole("radio", { name: tab }));
+}
+
 export function tripOperations(tripId: string) {
   return {
     tripId,

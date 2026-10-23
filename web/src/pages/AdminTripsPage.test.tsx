@@ -10,6 +10,7 @@ import {
 import {
   drawer,
   freezeBangkokTime,
+  openTrip,
   layout,
   route,
   showList,
@@ -19,7 +20,6 @@ import {
 import { AdminTripsPage } from "./AdminTripsPage";
 
 const trip = tripAt("2026-01-05T09:00:00Z", { id: "trip-1" });
-const editTrip = { name: "Edit trip on Mon 5 Jan · 16:00" };
 
 async function renderPage() {
   renderAdminPage(<AdminTripsPage session={adminSession} />);
@@ -65,7 +65,7 @@ describe("AdminTripsPage", () => {
     });
 
     await renderPage();
-    fireEvent.click(await screen.findByRole("button", editTrip));
+    await openTrip("Open trip on Mon 5 Jan · 16:00", "Edit");
 
     const days = within(drawer().getByRole("group", { name: "Day" }));
     expect(days.getByRole("button", { name: "Tomorrow" })).toHaveAttribute(

@@ -43,7 +43,7 @@ export function TripImpact({
   if (operations.error)
     return (
       <p className="rounded-xl border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning" role="alert">
-        Could not count who is booked on this trip. Check it under Operations before you go ahead.
+        Could not count who is booked on this trip. Check its passengers before you go ahead.
       </p>
     );
 

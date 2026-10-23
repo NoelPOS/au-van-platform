@@ -61,14 +61,17 @@ describe("App routing", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends an administrator at the old /admin/inventory address on to trips", async () => {
-    const router = openSignedIn("/admin/inventory", "ADMIN");
+  it.each(["/admin/inventory", "/admin/operations"])(
+    "sends an administrator at the old %s address on to trips",
+    async (path) => {
+      const router = openSignedIn(path, "ADMIN");
 
-    expect(
-      await screen.findByRole("heading", { name: "Trips", level: 1 }),
-    ).toBeInTheDocument();
-    await expectLocation(router, "/admin/trips");
-  });
+      expect(
+        await screen.findByRole("heading", { name: "Trips", level: 1 }),
+      ).toBeInTheDocument();
+      await expectLocation(router, "/admin/trips");
+    },
+  );
 
   it.each([
     ["/admin/trips", "Trips"],
@@ -93,15 +96,6 @@ describe("App routing", () => {
 
     expect(await screen.findByText("Nothing to review")).toBeInTheDocument();
     expect(locationOf(router)).toBe("/admin/payments");
-  });
-
-  it("opens operations for an administrator who signs in at /admin/operations", async () => {
-    const router = openSignedIn("/admin/operations", "ADMIN");
-
-    expect(
-      await screen.findByRole("heading", { name: "Operations" }),
-    ).toBeInTheDocument();
-    expect(locationOf(router)).toBe("/admin/operations");
   });
 
   it("opens the overview for an administrator at /admin", async () => {
@@ -134,13 +128,13 @@ describe("App routing", () => {
       "aria-current",
     );
     expect(screen.getAllByText("Somchai").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("link", { name: "Operations" }));
+    fireEvent.click(screen.getByRole("link", { name: "Vans" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Operations" }),
+      await screen.findByRole("heading", { name: "Vans", level: 1 }),
     ).toBeInTheDocument();
-    expect(locationOf(router)).toBe("/admin/operations");
-    expect(screen.getByRole("link", { name: "Operations" })).toHaveAttribute(
+    expect(locationOf(router)).toBe("/admin/vans");
+    expect(screen.getByRole("link", { name: "Vans" })).toHaveAttribute(
       "aria-current",
       "page",
     );

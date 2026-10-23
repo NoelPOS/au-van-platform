@@ -16,6 +16,7 @@ import {
 import {
   drawer,
   freezeBangkokTime,
+  openTrip,
   layout,
   route,
   tripAt,
@@ -113,9 +114,7 @@ describe("AdminTripsPage past departure times", () => {
     renderAdminPage(<AdminTripsPage session={adminSession} />);
     fireEvent.click(await screen.findByRole("radio", { name: "List" }));
     fireEvent.click(screen.getByRole("radio", { name: "Past" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Edit trip on Fri 2 Jan · 09:00" }),
-    );
+    await openTrip("Open trip on Fri 2 Jan · 09:00", "Edit");
 
     const day = within(drawer().getByRole("group", { name: "Day" }));
     expect(day.getByRole("button", { name: "Fri 2 Jan" })).toBeDisabled();
