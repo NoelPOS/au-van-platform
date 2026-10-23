@@ -10,12 +10,14 @@ import {
   Van,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useDemoSession, type SessionChange } from "../hooks/useDemoSession";
 import { useLiveUpdates } from "../hooks/useLiveUpdates";
+import { usePaymentProofs } from "../hooks/usePaymentQueries";
 import { useRefundsDue } from "../hooks/useRefundQueries";
 import type { AuthSession } from "../types/auth";
+import { CountBadge } from "./CountBadge";
 import { DemoBadge } from "./DemoBadge";
 import { Drawer } from "./ui/Drawer";
 import { Logo } from "./ui/Logo";
@@ -53,15 +55,8 @@ function linkClass({ isActive }: { isActive: boolean }) {
   return `${itemClass} ${isActive ? "bg-paper text-brand-900" : "text-brand-100 hover:bg-white/8 hover:text-white"}`;
 }
 
-function RefundsBadge({ count }: { count: number }) {
-  if (count === 0) return null;
-  return (
-    <span className="rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] leading-none font-semibold text-brand-900 tabular-nums lg:ml-auto">
-      <span aria-hidden>{count}</span>
-      <span className="sr-only">{`, ${count} refunds due`}</span>
-    </span>
-  );
-}
+const navBadgeClass =
+  "max-lg:absolute max-lg:top-1 max-lg:left-1/2 max-lg:ml-1.5 lg:ml-auto";
 
 function Wordmark() {
   return (
@@ -83,8 +78,18 @@ export function AdminLayout({
   const name = session.user.displayName ?? "Administrator";
   const inTucked = tucked.some((entry) => pathname.startsWith(entry.path));
   const refundsDue = useRefundsDue(session).data?.length ?? 0;
+  const slipsWaiting = usePaymentProofs(session).data?.length ?? 0;
   const demo = useDemoSession(onSessionChange);
   useLiveUpdates(session);
+
+  useEffect(() => {
+    if (slipsWaiting === 0) return;
+    const title = document.title;
+    document.title = `(${slipsWaiting}) ${title}`;
+    return () => {
+      document.title = title;
+    };
+  }, [slipsWaiting]);
 
   return (
     <ToastProvider>
@@ -107,7 +112,7 @@ export function AdminLayout({
           {destinations.map(({ path, label, icon: Icon, tucked: hidden }) => (
             <NavLink
               className={(state) =>
-                `${linkClass(state)} ${hidden ? "max-lg:hidden" : ""}`
+                `${linkClass(state)} relative ${hidden ? "max-lg:hidden" : ""}`
               }
               end={path === "/admin"}
               key={path}
@@ -119,7 +124,20 @@ export function AdminLayout({
                 strokeWidth={1.75}
               />
               {label}
-              {path === "/admin/refunds" && <RefundsBadge count={refundsDue} />}
+              {path === "/admin/payments" && (
+                <CountBadge
+                  className={navBadgeClass}
+                  count={slipsWaiting}
+                  label="slips waiting"
+                />
+              )}
+              {path === "/admin/refunds" && (
+                <CountBadge
+                  className={navBadgeClass}
+                  count={refundsDue}
+                  label="refunds due"
+                />
+              )}
             </NavLink>
           ))}
           <button
@@ -130,9 +148,11 @@ export function AdminLayout({
           >
             <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
             More
-            <span className="absolute top-1 left-1/2 ml-1.5">
-              <RefundsBadge count={refundsDue} />
-            </span>
+            <CountBadge
+              className="absolute top-1 left-1/2 ml-1.5"
+              count={refundsDue}
+              label="refunds due"
+            />
           </button>
         </nav>
         <div className="mt-auto hidden border-t border-white/10 px-3 pt-5 lg:block">
@@ -161,9 +181,11 @@ export function AdminLayout({
                 />
                 {label}
                 {path === "/admin/refunds" && (
-                  <span className="ml-auto">
-                    <RefundsBadge count={refundsDue} />
-                  </span>
+                  <CountBadge
+                    className="ml-auto"
+                    count={refundsDue}
+                    label="refunds due"
+                  />
                 )}
               </NavLink>
             </li>

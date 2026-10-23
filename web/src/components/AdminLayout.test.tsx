@@ -7,8 +7,13 @@ class SilentEventSource {
   close() {}
 }
 
-describe("AdminLayout refunds badge", () => {
-  beforeEach(() => vi.stubGlobal("EventSource", SilentEventSource));
+const appTitle = "AU-Van — campus van booking";
+
+describe("AdminLayout badges", () => {
+  beforeEach(() => {
+    vi.stubGlobal("EventSource", SilentEventSource);
+    document.title = appTitle;
+  });
 
   afterEach(() => {
     cleanup();
@@ -27,16 +32,38 @@ describe("AdminLayout refunds badge", () => {
     expect(screen.getByRole("button", { name: "More, 2 refunds due" })).toBeInTheDocument();
   });
 
+  it("counts the slips waiting beside Payments and in the tab title until unmounted", async () => {
+    stubAdminApi({
+      "POST /api/v1/events/ticket": () => json({ ticket: "t" }),
+      "GET /payment-proofs": () => json([{ id: "proof-1" }, { id: "proof-2" }]),
+    });
+
+    const { unmount } = renderAdminPage(
+      <AdminLayout onSessionChange={vi.fn()} session={adminSession} />,
+    );
+
+    expect(await screen.findByRole("link", { name: "Payments, 2 slips waiting" })).toBeInTheDocument();
+    expect(document.title).toBe(`(2) ${appTitle}`);
+
+    unmount();
+
+    expect(document.title).toBe(appTitle);
+  });
+
   it("shows no count when nothing is due", async () => {
     const fetcher = stubAdminApi({
       "POST /api/v1/events/ticket": () => json({ ticket: "t" }),
       "GET /refunds": () => json([]),
+      "GET /payment-proofs": () => json([]),
     });
 
     renderAdminPage(<AdminLayout onSessionChange={vi.fn()} session={adminSession} />);
 
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalledWith("/api/v1/admin/refunds", expect.anything()));
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledWith("/api/v1/admin/payment-proofs", expect.anything()));
     expect(screen.getByRole("link", { name: "Refunds" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Payments" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+    expect(document.title).toBe(appTitle);
   });
 });
