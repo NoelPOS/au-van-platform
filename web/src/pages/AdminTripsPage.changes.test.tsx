@@ -91,7 +91,7 @@ describe("AdminTripsPage moving and cancelled trips", () => {
     renderAdminPage(<AdminTripsPage session={adminSession} />);
     await showList();
     fireEvent.click(await screen.findByRole("radio", { name: "Cancelled" }));
-    const row = within(screen.getByRole("table", { name: "Trips on Tue 6 Jan" }));
+    const row = within(screen.getByRole("table", { name: "AU → Mega Bangna on Tue 6 Jan" }));
     expect(row.getByText(reason)).toBeInTheDocument();
     fireEvent.click(row.getByRole("button", { name: "See cancelled trip on Tue 6 Jan · 08:00" }));
 

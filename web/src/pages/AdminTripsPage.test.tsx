@@ -35,7 +35,7 @@ describe("AdminTripsPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("lists a trip under its Bangkok day with its time, route line and van", async () => {
+  it("lists a trip under its Bangkok day and route with its time and van", async () => {
     stubAdminApi({
       "GET /trips": () => json([trip]),
       "GET /routes": () => json([route]),
@@ -45,11 +45,13 @@ describe("AdminTripsPage", () => {
 
     await renderPage();
 
-    const day = await screen.findByRole("table", { name: "Trips on Mon 5 Jan" });
+    const day = await screen.findByRole("table", {
+      name: "AU → Mega Bangna on Mon 5 Jan",
+    });
     const row = within(day).getByRole("row", { name: /VAN-01/ });
     expect(row).toHaveTextContent("16:00");
     expect(
-      within(row).getByRole("cell", { name: "AU → Mega Bangna" }),
+      screen.getByRole("heading", { level: 3, name: /^AU → Mega Bangna/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /Tomorrow · Mon 5 Jan/ }),

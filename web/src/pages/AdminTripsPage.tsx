@@ -2,6 +2,7 @@ import { CalendarCheck, LayoutTemplate, Plus } from "lucide-react";
 import { useState } from "react";
 import { InventoryPage } from "../components/InventoryPage";
 import { PlanBar } from "../components/PlanBar";
+import { RouteFilter } from "../components/RouteFilter";
 import { TripCalendar } from "../components/TripCalendar";
 import { TripList } from "../components/TripList";
 import { TripPanels, type Panel } from "../components/TripPanels";
@@ -14,9 +15,11 @@ import {
   useTrips,
   useVehicles,
 } from "../hooks/useInventoryQueries";
+import { useRouteFilter } from "../hooks/useRouteFilter";
 import type { AuthSession } from "../types/auth";
 import type { DepartureLine } from "../types/schedule";
 import { bangkokToday, shortDay } from "../utils/calendar";
+import { routeIdentities, routesIn } from "../utils/routeIdentity";
 import { linesOf, tripsByDay } from "../utils/schedule";
 
 type View = "month" | "week" | "list";
@@ -39,9 +42,12 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const filter = useRouteFilter();
   const allTrips = trips.data ?? [];
   const routeList = routes.data ?? [];
   const vanList = vans.data ?? [];
+  const identities = routeIdentities(routeList);
+  const shownTrips = allTrips.filter((trip) => filter.shows(trip.routeId));
   const days = tripsByDay(allTrips);
   const today = bangkokToday();
 
@@ -112,21 +118,30 @@ export function AdminTripsPage({ session }: { session: AuthSession }) {
           </Button>
         )}
       </div>
+      <RouteFilter
+        chosen={filter.chosen}
+        className="mt-5"
+        onChoose={filter.choose}
+        routes={routesIn(identities, [
+          ...allTrips.map((trip) => trip.routeId),
+          ...filter.chosen,
+        ])}
+      />
       {view === "list" ? (
         <TripList
           onEdit={(trip) => setPanel({ kind: "trip", trip })}
-          routes={routeList}
+          routes={identities}
           today={today}
-          trips={allTrips}
+          trips={shownTrips}
           vans={vanList}
         />
       ) : (
         <div className={planning ? "pb-32 lg:pb-24" : undefined}>
           <TripCalendar
-            days={days}
+            days={tripsByDay(shownTrips)}
             onOpen={(day) => setPanel({ kind: "day", day })}
             onToggle={toggle}
-            routes={routeList}
+            routes={identities}
             selected={selected}
             selecting={planning !== null}
             today={today}
