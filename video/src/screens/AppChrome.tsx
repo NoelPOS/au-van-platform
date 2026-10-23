@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCurrentFrame } from "remotion";
+import { Logo, Wordmark } from "../components/Logo";
 import { progress } from "../motion";
 import { color, font } from "../theme";
 
@@ -78,20 +79,41 @@ export function AppScreen({ children, tabs = true }: { children: ReactNode; tabs
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "baseline",
-          padding: "26px 26px 0",
+          alignItems: "center",
+          padding: "41px 32px 0",
         }}
       >
-        <span style={{ fontFamily: font.display, fontSize: 26, color: color.navy }}>
-          AU<span style={{ color: color.amber }}>·</span>Van
+        <span style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <Logo size={27} />
+          <Wordmark size={21} />
         </span>
         <span style={{ fontSize: 16, color: color.muted }}>Ploy</span>
       </div>
-      <div style={{ padding: "22px 26px 0" }}>{children}</div>
+      <div style={{ padding: "28px 32px 0" }}>{children}</div>
       {tabs && <TabBar />}
     </div>
   );
 }
+
+const tabIcons = [
+  <>
+    <path d="M4 6 2 7" />
+    <path d="M10 6h4" />
+    <path d="m22 7-2-1" />
+    <rect height="16" rx="2" width="16" x="4" y="3" />
+    <path d="M4 11h16" />
+    <path d="M8 15h.01" />
+    <path d="M16 15h.01" />
+    <path d="M6 19v2" />
+    <path d="M18 21v-2" />
+  </>,
+  <>
+    <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+    <path d="M13 5v2" />
+    <path d="M13 17v2" />
+    <path d="M13 11v2" />
+  </>,
+];
 
 function TabBar() {
   return (
@@ -103,12 +125,12 @@ function TabBar() {
         bottom: 0,
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        height: 82,
-        paddingBottom: 14,
+        height: 60,
         borderTop: `1px solid ${color.line}`,
         background: color.card,
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: 500,
+        letterSpacing: "0.02em",
       }}
     >
       {["Departures", "Tickets"].map((label, index) => (
@@ -116,8 +138,11 @@ function TabBar() {
           key={label}
           style={{
             position: "relative",
-            display: "grid",
-            placeItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
             color: index === 0 ? color.navy : color.muted,
           }}
         >
@@ -126,14 +151,26 @@ function TabBar() {
               style={{
                 position: "absolute",
                 top: 0,
-                left: 60,
-                right: 60,
-                height: 3,
+                left: 34,
+                right: 34,
+                height: 2,
                 borderRadius: 2,
                 background: color.amber,
               }}
             />
           )}
+          <svg
+            fill="none"
+            height={21}
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.75}
+            viewBox="0 0 24 24"
+            width={21}
+          >
+            {tabIcons[index]}
+          </svg>
           {label}
         </span>
       ))}
