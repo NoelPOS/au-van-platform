@@ -11,6 +11,7 @@ const allLiveKeys: QueryKey[] = [
   ["payments"],
   ["overview"],
   ["operations"],
+  ["insights"],
 ];
 
 function keysFor(signal: LiveSignal): QueryKey[] {
@@ -21,6 +22,7 @@ function keysFor(signal: LiveSignal): QueryKey[] {
       ["booking", "seat-map", signal.id],
       ["overview"],
       ["operations"],
+      ["insights"],
     ];
   return [];
 }
