@@ -35,6 +35,18 @@ async function openSchedule(handlers: Parameters<typeof stubAdminApi>[0]) {
   return fetcher;
 }
 
+async function openScheduleFor(dayName: string) {
+  const fetcher = stubAdminApi({
+    ...inventory,
+    "POST /trips": (body) =>
+      json(tripAt((body as { departureAt: string }).departureAt), 201),
+  });
+  renderAdminPage(<AdminTripsPage session={adminSession} />);
+  fireEvent.click(await screen.findByRole("button", { name: dayName }));
+  fireEvent.click(drawer().getByRole("button", { name: "Add departure" }));
+  return fetcher;
+}
+
 function day(name: string) {
   return within(drawer().getByRole("group", { name: "Days" })).getByRole(
     "button",
@@ -111,6 +123,37 @@ describe("AdminTripsPage scheduling", () => {
     expect(sentTo(fetcher, "POST /trips")[3]).toEqual(
       expect.objectContaining({ departureAt: "2026-01-06T09:00:00.000Z" }),
     );
+  });
+
+  it("schedules on the day it was opened for, without a grid of days", async () => {
+    const fetcher = await openScheduleFor("Tuesday 6 January, 0 departures");
+
+    expect(drawer().getByRole("heading", { name: "Schedule a trip" })).toBeInTheDocument();
+    expect(drawer().getByText("Tue 6 Jan")).toBeInTheDocument();
+    expect(drawer().queryByRole("group", { name: "Days" })).toBeNull();
+    typeTime("16:00");
+    fireEvent.click(drawer().getByRole("button", { name: "Schedule trip" }));
+
+    expect(await screen.findByText("Trip scheduled")).toBeInTheDocument();
+    expect(sentTo(fetcher, "POST /trips")).toEqual([
+      expect.objectContaining({ departureAt: "2026-01-06T09:00:00.000Z" }),
+    ]);
+  });
+
+  it("opens the grid of days, the clicked one chosen, to schedule more", async () => {
+    const fetcher = await openScheduleFor("Tuesday 6 January, 0 departures");
+
+    fireEvent.click(drawer().getByRole("button", { name: "Change days" }));
+    expect(day("Tue 6")).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(day("Wed 7"));
+    typeTime("16:00");
+    fireEvent.click(drawer().getByRole("button", { name: "Schedule 2 trips" }));
+
+    expect(await screen.findByText("2 trips scheduled")).toBeInTheDocument();
+    expect(sentTo(fetcher, "POST /trips")).toEqual([
+      expect.objectContaining({ departureAt: "2026-01-06T09:00:00.000Z" }),
+      expect.objectContaining({ departureAt: "2026-01-07T09:00:00.000Z" }),
+    ]);
   });
 
   it("refuses a time that is not a 24-hour clock and sends nothing", async () => {
