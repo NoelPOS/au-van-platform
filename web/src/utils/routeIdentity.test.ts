@@ -94,7 +94,7 @@ describe("tripsByRoute", () => {
       [
         trip("back-late", "from-mega", "2026-01-05T11:00:00Z"),
         trip("out-late", "to-mega", "2026-01-05T09:00:00Z"),
-        trip("back-early", "from-mega", "2026-01-05T03:00:00Z"),
+        trip("back-early", "from-mega", "2026-01-05T00:30:00Z"),
         trip("out-early", "to-mega", "2026-01-05T01:00:00Z"),
       ],
       identities,

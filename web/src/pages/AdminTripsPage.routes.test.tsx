@@ -23,7 +23,7 @@ const siamBack = { ...siam, id: "route-4", origin: "Siam Paragon", destination: 
 
 const trips = [
   tripAt("2026-01-05T09:00:00Z"),
-  tripAt("2026-01-05T11:00:00Z", { routeId: "route-2" }),
+  tripAt("2026-01-04T23:00:00Z", { routeId: "route-2" }),
   tripAt("2026-01-05T00:30:00Z"),
   tripAt("2026-01-06T05:00:00Z", { routeId: "route-4" }),
   tripAt("2026-01-06T04:00:00Z", { routeId: "route-3" }),
@@ -82,13 +82,13 @@ describe("AdminTripsPage routes", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     const monday = within(screen.getByRole("region", { name: "Monday 5 January" }));
 
-    expect(monday.getByText("18:00").closest("li")).toHaveTextContent(
+    expect(monday.getByText("06:00").closest("li")).toHaveTextContent(
       "from Mega Bangna",
     );
-    expect(monday.getByText("18:00").closest("li")).toHaveClass("bg-route-1/8");
+    expect(monday.getByText("06:00").closest("li")).toHaveClass("bg-route-1/8");
 
     fireEvent.click(legend().getByRole("button", { name: "Mega Bangna → AU" }));
-    expect(monday.getByText("18:00")).toBeInTheDocument();
+    expect(monday.getByText("06:00")).toBeInTheDocument();
     expect(monday.queryByText("16:00")).toBeNull();
     expect(legend().getByRole("button", { name: "All routes" })).toHaveAttribute(
       "aria-pressed",
