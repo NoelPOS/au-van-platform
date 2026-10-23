@@ -10,6 +10,7 @@ import { AdminLayout } from "./components/AdminLayout";
 import { DemoRenewal } from "./components/DemoRenewal";
 import { DemoStaffSignIn } from "./components/DemoStaffSignIn";
 import { RedirectHome, RequireRole } from "./components/RouteGuards";
+import { AdminInsightsPage } from "./pages/AdminInsightsPage";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminOverviewPage } from "./pages/AdminOverviewPage";
 import { AdminPaymentReviewPage } from "./pages/AdminPaymentReviewPage";
@@ -113,6 +114,10 @@ function App() {
         }
       >
         <Route index element={<AdminOverviewPage session={session} />} />
+        <Route
+          path="insights"
+          element={<AdminInsightsPage session={session} />}
+        />
         <Route path="trips" element={<AdminTripsPage session={session} />} />
         <Route path="routes" element={<AdminRoutesPage session={session} />} />
         <Route path="vans" element={<AdminVansPage session={session} />} />

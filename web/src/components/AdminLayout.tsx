@@ -2,6 +2,7 @@ import {
   Activity,
   Armchair,
   CalendarClock,
+  ChartColumn,
   Ellipsis,
   HandCoins,
   LayoutDashboard,
@@ -32,6 +33,7 @@ type Destination = {
 
 const destinations: Destination[] = [
   { path: "/admin", label: "Overview", icon: LayoutDashboard },
+  { path: "/admin/insights", label: "Insights", icon: ChartColumn },
   { path: "/admin/trips", label: "Trips", icon: CalendarClock },
   { path: "/admin/routes", label: "Routes", icon: Signpost, tucked: true },
   { path: "/admin/vans", label: "Vans", icon: Van, tucked: true },
@@ -43,7 +45,12 @@ const destinations: Destination[] = [
   },
   { path: "/admin/payments", label: "Payments", icon: ReceiptText },
   { path: "/admin/refunds", label: "Refunds", icon: HandCoins, tucked: true },
-  { path: "/admin/operations", label: "Operations", icon: Activity },
+  {
+    path: "/admin/operations",
+    label: "Operations",
+    icon: Activity,
+    tucked: true,
+  },
 ];
 
 const tucked = destinations.filter((entry) => entry.tucked);
