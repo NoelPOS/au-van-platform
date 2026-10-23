@@ -50,6 +50,14 @@ auth:
     staff-passcode: ${DEMO_STAFF_PASSCODE:}
     staff-token-ttl: ${DEMO_STAFF_TOKEN_TTL:PT2H}
 
+inventory:
+  rolling-schedule:
+    # Keeps the next days-ahead days filled from the named day template, so the demo never runs dry.
+    enabled: ${ROLLING_SCHEDULE_ENABLED:false}
+    template: ${ROLLING_SCHEDULE_TEMPLATE:Weekday}
+    days-ahead: 7
+    cron: "0 5 0 * * *"
+
 booking:
   hold-ttl: PT5M
   max-seats-per-hold: 4

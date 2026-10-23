@@ -482,6 +482,11 @@ Generate every secret on the server, not on a laptop:
 - `DEMO_LOGIN_ENABLED`: leave it empty. `compose.prod.yaml` turns demo sign-in
   on for this host when it is empty; set it to `false` to turn both demo
   endpoints off.
+- `ROLLING_SCHEDULE_ENABLED`: leave it empty. `compose.prod.yaml` turns it on,
+  so every night at 00:05 Bangkok time the API fills the next 7 days from the
+  day template named by `ROLLING_SCHEDULE_TEMPLATE` (default `Weekday`). It
+  also runs once at startup. Departures that already exist or were cancelled
+  are left alone. Set it to `false` to schedule every trip by hand.
 
 Leave `CORS_ALLOWED_ORIGINS` and `PAYMENT_PROOF_ENDPOINT` as they are:
 `compose.prod.yaml` sets the first to `https://$PUBLIC_HOST` and `compose.yaml`
