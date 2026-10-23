@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { CooldownBanner } from "../components/CooldownBanner";
 import { DayStrip } from "../components/DayStrip";
 import { DepartureBoard } from "../components/DepartureBoard";
+import { RouteFilters } from "../components/RouteFilters";
 import { RoutePicker } from "../components/RoutePicker";
 import { UnpaidBookingBanner } from "../components/UnpaidBookingBanner";
 import { Button } from "../components/ui/Button";
@@ -18,7 +19,11 @@ import { useStudent } from "../hooks/useStudent";
 import { useWaitlist } from "../hooks/useWaitlist";
 import { dayOf, formatLongDate, groupByDay } from "../utils/days";
 import { formatBaht } from "../utils/format";
-import { groupByRoute } from "../utils/tripRoutes";
+import {
+  groupByRoute,
+  matchesFilter,
+  type RouteFilter,
+} from "../utils/tripRoutes";
 
 export function StudentTripsPage() {
   const { session, setNotice } = useStudent();
@@ -33,6 +38,11 @@ export function StudentTripsPage() {
   const route =
     routes.find((entry) => entry.routeId === params.get("route")) ??
     (routes.length === 1 ? routes[0] : undefined);
+  const filter: RouteFilter = {
+    from: params.get("from") ?? "",
+    to: params.get("to") ?? "",
+  };
+  const matching = routes.filter((entry) => matchesFilter(entry, filter));
   const byDay = groupByDay(route?.trips ?? [], (trip) => trip.departureAt);
   const keys = [...byDay.keys()];
   const requested = params.get("day");
@@ -46,11 +56,15 @@ export function StudentTripsPage() {
         ? "Where are you heading?"
         : null;
 
-  function show(next: { route?: string; day?: string }) {
+  function show(
+    next: { route?: string; day?: string } & Partial<RouteFilter>,
+    replace = Boolean(next.day),
+  ) {
     const search = new URLSearchParams();
-    if (next.route) search.set("route", next.route);
-    if (next.day) search.set("day", next.day);
-    setParams(search, { replace: Boolean(next.day) });
+    for (const [key, value] of Object.entries(next)) {
+      if (value) search.set(key, value);
+    }
+    setParams(search, { replace });
   }
 
   return (
@@ -93,10 +107,33 @@ export function StudentTripsPage() {
         />
       )}
       {!route && routes.length > 0 && (
-        <RoutePicker
-          onSelect={(picked) => show({ route: picked.routeId })}
-          routes={routes}
-        />
+        <>
+          <RouteFilters
+            filter={filter}
+            onChange={(next) => show(next, true)}
+            routes={routes}
+          />
+          {matching.length > 0 ? (
+            <RoutePicker
+              onSelect={(picked) => show({ ...filter, route: picked.routeId })}
+              routes={matching}
+            />
+          ) : (
+            <EmptyState
+              action={
+                <button
+                  className="text-sm font-semibold text-brand-700 underline underline-offset-4"
+                  onClick={() => show({}, true)}
+                  type="button"
+                >
+                  Clear filters
+                </button>
+              }
+              detail="No van runs between those stops right now."
+              title="No matching routes"
+            />
+          )}
+        </>
       )}
       {route && selected && (
         <>
@@ -112,7 +149,7 @@ export function StudentTripsPage() {
             {routes.length > 1 && (
               <button
                 className="-mr-1 inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-900"
-                onClick={() => show({})}
+                onClick={() => show(filter)}
                 type="button"
               >
                 <ArrowLeft aria-hidden className="size-4" />
@@ -123,7 +160,9 @@ export function StudentTripsPage() {
           <DayStrip
             counts={new Map(keys.map((key) => [key, byDay.get(key)?.length ?? 0]))}
             days={keys.map((key) => dayOf(key))}
-            onSelect={(key) => show({ route: route.routeId, day: key })}
+            onSelect={(key) =>
+              show({ ...filter, route: route.routeId, day: key })
+            }
             selected={selected}
           />
           <DepartureBoard
