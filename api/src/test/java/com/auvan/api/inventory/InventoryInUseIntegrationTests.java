@@ -1,5 +1,6 @@
 package com.auvan.api.inventory;
 
+import com.auvan.api.inventory.entity.RouteStatus;
 import com.auvan.api.inventory.entity.SeatLayout;
 import com.auvan.api.inventory.entity.SeatLayoutSeat;
 import com.auvan.api.inventory.entity.Trip;
@@ -49,6 +50,29 @@ class InventoryInUseIntegrationTests extends ScheduleTestSupport {
     }
 
     @Test
+    void aRouteWithUpcomingTripsCannotBeMarkedInactive() throws Exception {
+        tripAt(today().plusDays(1), "07:00");
+
+        markRoute(RouteStatus.INACTIVE)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(
+                        "AU → Asok still has 1 upcoming trip. Cancel them before marking it inactive."));
+        assertThat(routes.findById(route.getId()).orElseThrow().getStatus()).isEqualTo(RouteStatus.ACTIVE);
+    }
+
+    @Test
+    void aRouteWithOnlyPastOrCancelledTripsCanBeMarkedInactive() throws Exception {
+        tripAt(today().minusDays(1), "07:00");
+        Trip cancelled = tripAt(today().plusDays(1), "07:00");
+        cancelled.cancel("Road closed.");
+        trips.save(cancelled);
+
+        markRoute(RouteStatus.INACTIVE)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INACTIVE"));
+    }
+
+    @Test
     void aSeatLayoutNoVanUsesCanBeDeleted() throws Exception {
         SeatLayout spare = seatLayouts.save(new SeatLayout("Spare", List.of(new SeatLayoutSeat("A1", 1, 1))));
 
@@ -76,6 +100,13 @@ class InventoryInUseIntegrationTests extends ScheduleTestSupport {
                 .content("""
                         {"code":"VAN-01","name":"Hiace","seatLayoutId":"%s","status":"%s"}
                         """.formatted(van.getSeatLayout().getId(), status)));
+    }
+
+    private ResultActions markRoute(RouteStatus status) throws Exception {
+        return mockMvc.perform(put("/api/v1/admin/routes/" + route.getId())
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"" + status + "\"}"));
     }
 
     private ResultActions deleteLayout(UUID id) throws Exception {

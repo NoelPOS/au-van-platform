@@ -15,7 +15,7 @@ Until issue #27 this was not the case: `flyway-core` was on the classpath withou
 | Entity | Migration | Purpose |
 | --- | --- | --- |
 | `app_users` | `V1` | Student and administrator identities, roles, and LINE linkage; a demo user's `line_subject` is `demo-student:<uuid>` or `demo-staff` (ADR-020) |
-| `routes` | `V2` | Active or inactive van routes, fare, and duration |
+| `routes` | `V2` | Active or inactive van routes, fare, and duration; a route with an active future trip cannot be marked inactive |
 | `seat_layouts` | `V2` | Named reusable vehicle seat templates; one can be deleted only while no van uses it |
 | `seat_layout_seats` | `V2` | Labelled row/column positions inside a reusable layout |
 | `vehicles` | `V2` | Vehicle code, name, active status, and assigned seat layout; a van with an active future trip cannot be marked inactive |
