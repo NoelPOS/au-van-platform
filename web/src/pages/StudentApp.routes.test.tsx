@@ -177,4 +177,22 @@ describe("Student picks a route first", () => {
     expect(routeNames()).toHaveLength(3);
     expect(screen.getByRole("button", { name: "From Any" })).toBeInTheDocument();
   });
+
+  it("groups routes under where they leave from once there is more than one start", async () => {
+    stubApi({ trips: () => json([siamHome, siam, megaMorning]) });
+
+    renderPage();
+
+    const routes = await screen.findByRole("region", { name: "Routes" });
+    expect(
+      within(routes)
+        .getAllByRole("heading")
+        .map((heading) => heading.textContent),
+    ).toEqual(["From AU", "From Siam Paragon"]);
+    expect(routeNames()).toEqual([
+      expect.stringMatching(/^To Mega Bangna/),
+      expect.stringMatching(/^To Siam Paragon/),
+      expect.stringMatching(/^To AU/),
+    ]);
+  });
 });
