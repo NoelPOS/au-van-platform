@@ -72,6 +72,7 @@ export async function goToOperations(page: Page): Promise<void> {
 
 export type TripFixture = {
   routeLabel: string;
+  destination: string;
   departureName: string;
   vehicleCode: string;
   seatLabels: string[];
@@ -147,6 +148,7 @@ export async function createTrip(
 
   return {
     routeLabel,
+    destination,
     departureName: `${origin} to ${destination}`,
     vehicleCode,
     seatLabels,
@@ -155,6 +157,11 @@ export async function createTrip(
 
 export async function findDeparture(page: Page, trip: TripFixture) {
   const departure = page.getByRole("button", { name: trip.departureName });
+  const routes = page.getByRole("region", { name: "Routes" });
+  await expect(page.getByRole("tab").first().or(routes)).toBeVisible();
+  if (await routes.isVisible()) {
+    await routes.getByRole("button", { name: trip.destination }).click();
+  }
   await expect(page.getByRole("tab").first()).toBeVisible();
   for (const day of await page.getByRole("tab").all()) {
     await day.click();
