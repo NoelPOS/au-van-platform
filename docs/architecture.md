@@ -47,7 +47,7 @@ Booking expiry and seat release, the other half of ADR-010, are implemented too.
 - A scheduled sweep, gated on `booking.expiry.enabled` exactly as the dispatcher is, reads candidate **ids**, locks each booking, and decides only from what the lock returned. An expiry cancels the booking, appends an `EXPIRED` history entry with no actor, deletes its `seat_claims`, and records one outbox row — all in one transaction per booking, so a booking that loses its race neither rolls back nor blocks the batch.
 - The same sweep prunes `idempotency_keys` past their retention window, which ADR-008 left owing.
 
-A student who cannot book a full trip can now queue for it, and a seat that comes free is offered to whoever has waited longest. ADR-011 records the decision; the queue, the promotion sweep, and the administrator's read-only view of both at `/api/v1/admin/operations` are implemented.
+A student who cannot book a full trip can now queue for it, and a seat that comes free is offered to whoever has waited longest. ADR-011 records the decision; the queue, the promotion sweep, and the administrator's read-only view of both at `/api/v1/admin/operations` are implemented. The web app shows that view on a departure's **Passengers** tab on the Trips page, and the dead letters on the Overview; there is no separate Operations page, and `/admin/operations` redirects to `/admin/trips` (ADR-022).
 
 - `waitlist_entries` holds one row per student per trip, ordered by when they joined, with the position derived on every read rather than stored. Joining a trip that still has a free seat is refused, so the queue only ever holds students who could not simply book.
 - Promotion is a **scheduled sweep**, not a hook on the places that free a seat. Three of those places run code and a fourth runs none at all — ADR-006 made hold expiry lazy, and an abandoned hold is the commonest way a seat comes free. One sweep covers all four, gated on `booking.waitlist.enabled` exactly as the expiry sweep and the dispatcher are. It reads candidate **ids**, locks each entry, and decides only from what the lock returned, in one transaction per entry.
@@ -60,6 +60,14 @@ Administrators read revenue and demand at `GET /api/v1/admin/insights?from=YYYY-
 - Both dates are inclusive Bangkok calendar days and select trips by **departure** day, not booking day. A reversed period is refused with `insights_range_reversed`, and one longer than 366 days with `insights_range_too_long`.
 - `totals` holds revenue (fares of `CONFIRMED` bookings), fares awaiting payment, refunds owed (`DUE`) and sent (`REFUNDED`), non-cancelled bookings, seats sold and offered, occupancy, and running and cancelled trip counts. `byRoute` covers running trips only, highest revenue first. `byDay` has one row for every day in the period, zero days included.
 - One query reads a row per trip with its figures as correlated aggregates; the service groups those rows by route and by Bangkok day. It is read-only.
+
+Departures are planned in batches from day templates through one `SchedulePlanner` (ADR-019). A rolling schedule reuses it (ADR-021).
+
+- `RollingScheduleJob` exists only when `inventory.rolling-schedule.enabled` is `true` (`ROLLING_SCHEDULE_ENABLED`, off by default, on in `compose.prod.yaml`). It runs once at startup and at 00:05 Asia/Bangkok every day.
+- Each run plans the day template named by `inventory.rolling-schedule.template` (`ROLLING_SCHEDULE_TEMPLATE`, default `Weekday`) across today and the next six Bangkok days, and creates only what the planner marks creatable, in one transaction. Past, inactive and clashing departures are skipped, and so is any departure already scheduled, which makes a rerun create nothing new.
+- A failed run is logged and rolled back; the next run tries again.
+
+Route grouping, colours and labels in the web app are presentation and are derived in the browser from the route list, with no API or schema support (ADR-022). Students pick a route before a day and a departure; staff views stay organised by day and are grouped, coloured and filtered by route.
 
 ## Boundaries
 
@@ -85,3 +93,5 @@ Administrators read revenue and demand at `GET /api/v1/admin/insights?from=YYYY-
 - [ADR-017: Cancel and Reschedule Trips in One Locked Transaction, and Track Refunds on the Booking](adr/017-trip-cancellation-cascade-and-refund-tracking.md)
 - [ADR-019: Plan Departures in Batches from Day Templates, Previewed and Applied Exactly Once](adr/019-day-templates-and-batch-scheduling.md)
 - [ADR-020: Sign In to the Live Demo Without LINE](adr/020-demo-sign-in.md)
+- [ADR-021: Keep the Next Week Scheduled from a Day Template with an In-App Job](adr/021-rolling-schedule-from-a-day-template.md)
+- [ADR-022: Students Pick a Route First; Staff Keep the Day and See Routes by Colour](adr/022-route-first-navigation-and-route-identity.md)
