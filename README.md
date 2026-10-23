@@ -73,16 +73,16 @@ messages, and payments are samples
   - waitlist promotion offered, and the offer lapsing
 
 **Administrators (web portal, `/admin`)**
-- **Overview:** next departures, slips waiting for review, and notifications
-  that failed for good (dead letters).
+- **Overview:** next departures, slips waiting for review, and the list of
+  notifications that failed for good (dead letters).
 - **Seat layouts:** a visual grid builder for each van model.
 - **Routes and vans:** fares, durations, and active or inactive status.
 - **Trips:** schedule one route, van and time across several days at once. The
   database refuses to put one van on two trips at the same departure time.
+  Opening a departure shows its passengers: the live seat plan, bookings by
+  status and the waitlist.
 - **Payments:** review queue. Slip images are streamed through the API, never
   from a public URL. Approve, or reject with a note.
-- **Operations:** a departure's live seat plan, its bookings by status, its
-  waitlist, and a timeline.
 
 ## Screenshots
 
