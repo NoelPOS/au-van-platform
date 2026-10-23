@@ -147,9 +147,9 @@ describe("landing page", () => {
     stubApi(() => new Response(null));
     renderLanding();
 
-    fireEvent.error(screen.getByAltText("The trip calendar"));
+    fireEvent.error(screen.getByAltText("Trips by route"));
 
-    expect(screen.queryByAltText("The trip calendar")).toBeNull();
-    expect(screen.getAllByText("The trip calendar").length).toBe(2);
+    expect(screen.queryByAltText("Trips by route")).toBeNull();
+    expect(screen.getAllByText("Trips by route").length).toBe(2);
   });
 });
