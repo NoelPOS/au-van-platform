@@ -3,6 +3,7 @@ package com.auvan.api.booking.repository;
 import com.auvan.api.booking.entity.Booking;
 import com.auvan.api.booking.entity.BookingStatus;
 import com.auvan.api.booking.entity.RefundStatus;
+import com.auvan.api.inventory.entity.TripStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -66,4 +68,31 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             order by booking.paymentDeadlineAt asc
             """)
     List<UUID> findExpirable(@Param("now") OffsetDateTime now, Pageable pageable);
+
+    record TripFigures(UUID routeId, String origin, String destination, OffsetDateTime departureAt,
+                       TripStatus status, long seats, long seatsSold, long bookings, BigDecimal revenue,
+                       BigDecimal awaitingPayment, BigDecimal refundsDue, BigDecimal refunded) { }
+
+    @Query("""
+            select new com.auvan.api.booking.repository.BookingRepository$TripFigures(
+                route.id, route.origin, route.destination, trip.departureAt, trip.status,
+                (select count(seat) from TripSeat seat where seat.trip = trip),
+                (select count(sold) from BookingSeat sold
+                 where sold.booking.trip = trip and sold.booking.status = CONFIRMED),
+                (select count(booking) from Booking booking
+                 where booking.trip = trip and booking.status <> CANCELLED),
+                (select coalesce(sum(booking.totalFare), 0) from Booking booking
+                 where booking.trip = trip and booking.status = CONFIRMED),
+                (select coalesce(sum(booking.totalFare), 0) from Booking booking
+                 where booking.trip = trip
+                   and booking.status in (PENDING_PAYMENT, PAYMENT_UNDER_REVIEW, PAYMENT_REJECTED)),
+                (select coalesce(sum(booking.totalFare), 0) from Booking booking
+                 where booking.trip = trip and booking.refundStatus = DUE),
+                (select coalesce(sum(booking.totalFare), 0) from Booking booking
+                 where booking.trip = trip and booking.refundStatus = REFUNDED))
+            from Trip trip join trip.route route
+            where trip.departureAt >= :from and trip.departureAt < :until
+            """)
+    List<TripFigures> findTripFiguresBetween(@Param("from") OffsetDateTime from,
+                                             @Param("until") OffsetDateTime until);
 }
