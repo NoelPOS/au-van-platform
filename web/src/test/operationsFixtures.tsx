@@ -106,6 +106,7 @@ export function seatMap(states: string[]) {
 
 type Routes = {
   trips?: () => Response;
+  routes?: () => Response;
   seats?: () => Response;
   trip?: () => Response;
   deadLetters?: () => Response;
@@ -122,7 +123,7 @@ export function stubApi(overrides: Routes = {}) {
       if (url.endsWith("/operations/dead-letters"))
         return overrides.deadLetters?.() ?? json([deadLetter]);
       if (url.endsWith("/admin/trips")) return overrides.trips?.() ?? json([trip]);
-      if (url.endsWith("/admin/routes")) return json([route]);
+      if (url.endsWith("/admin/routes")) return overrides.routes?.() ?? json([route]);
       throw new Error(`unexpected request: ${url}`);
     },
   );

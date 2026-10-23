@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { DeadLettersTable } from "../components/DeadLettersTable";
+import { RouteFilter } from "../components/RouteFilter";
 import { TripOperationsPanel } from "../components/TripOperationsPanel";
 import { TripTimeline } from "../components/TripTimeline";
 import { Button } from "../components/ui/Button";
@@ -13,7 +14,9 @@ import {
   useDeadLetters,
   useTripOperations,
 } from "../hooks/useOperationsQueries";
+import { useRouteFilter } from "../hooks/useRouteFilter";
 import type { AuthSession } from "../types/auth";
+import { routeIdentities, routesIn } from "../utils/routeIdentity";
 
 const page = "mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-14";
 
@@ -23,6 +26,7 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   const routes = useRoutes(session);
   const operations = useTripOperations(session, tripId);
   const deadLetters = useDeadLetters(session);
+  const filter = useRouteFilter();
   const detail = useRef<HTMLElement>(null);
 
   function choose(id: string) {
@@ -70,6 +74,7 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
   }
 
   const trip = operations.data ?? null;
+  const tripList = trips.data ?? [];
 
   return (
     <main className={page}>
@@ -78,13 +83,22 @@ export function AdminOperationsPage({ session }: { session: AuthSession }) {
         eyebrow="Dispatch"
         title="Operations"
       />
+      <RouteFilter
+        chosen={filter.chosen}
+        className="mt-6"
+        onChoose={filter.choose}
+        routes={routesIn(routeIdentities(routes.data ?? []), [
+          ...tripList.map((entry) => entry.routeId),
+          ...filter.chosen,
+        ])}
+      />
 
       <div className="mt-10 grid items-start gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <TripTimeline
           onSelect={choose}
           routes={routes.data ?? []}
           selectedId={tripId}
-          trips={trips.data ?? []}
+          trips={tripList.filter((entry) => filter.shows(entry.routeId))}
         />
         <section
           aria-label="Selected trip"

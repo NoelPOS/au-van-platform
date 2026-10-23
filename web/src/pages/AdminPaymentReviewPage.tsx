@@ -1,19 +1,27 @@
 import { useState } from "react";
 import { PaymentQueue } from "../components/PaymentQueue";
+import { RouteFilter } from "../components/RouteFilter";
 import { SlipReview } from "../components/SlipReview";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Panel } from "../components/ui/Panel";
 import { Skeleton } from "../components/ui/Skeleton";
+import { useRoutes, useTrips } from "../hooks/useInventoryQueries";
 import { usePaymentProofs } from "../hooks/usePaymentQueries";
+import { useRouteFilter } from "../hooks/useRouteFilter";
 import type { AuthSession } from "../types/auth";
+import type { PaymentProof } from "../types/payments";
+import { routeIdentities, routesIn } from "../utils/routeIdentity";
 
 const page = "mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-12 lg:py-14";
 
 export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
   const [reviewing, setReviewing] = useState<string | null>(null);
   const proofs = usePaymentProofs(session);
+  const routes = useRoutes(session);
+  const trips = useTrips(session);
+  const filter = useRouteFilter();
 
   if (proofs.isPending) {
     return (
@@ -46,6 +54,9 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
 
   const queue = proofs.data;
   const selected = queue.find((proof) => proof.id === reviewing) ?? null;
+  const routeOf = (proof: PaymentProof) =>
+    trips.data?.find((trip) => trip.id === proof.trip.id)?.routeId ?? "";
+  const shown = queue.filter((proof) => filter.shows(routeOf(proof)));
 
   return (
     <main className={page}>
@@ -54,17 +65,26 @@ export function AdminPaymentReviewPage({ session }: { session: AuthSession }) {
         eyebrow="Payments"
         title="Payment review"
       />
+      <RouteFilter
+        chosen={filter.chosen}
+        className="mt-6"
+        onChoose={filter.choose}
+        routes={routesIn(routeIdentities(routes.data ?? []), [
+          ...queue.map(routeOf),
+          ...filter.chosen,
+        ])}
+      />
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
         <section
           aria-label="Review queue"
           className={selected ? "hidden lg:block" : undefined}
         >
           <p className="mb-3 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase tabular-nums">
-            {`${queue.length} waiting`}
+            {`${shown.length} waiting`}
           </p>
           <PaymentQueue
             onSelect={setReviewing}
-            proofs={queue}
+            proofs={shown}
             selectedId={reviewing}
           />
         </section>
