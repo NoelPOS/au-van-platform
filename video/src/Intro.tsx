@@ -9,7 +9,7 @@ import { Title } from "./scenes/Title";
 import { UnderTheHood } from "./scenes/UnderTheHood";
 import { tear } from "./transitions/tear";
 
-const scene = { title: 135, board: 165, student: 465, staff: 225, hood: 315, end: 150 };
+const scene = { title: 126, board: 150, student: 501, staff: 225, hood: 303, end: 150 };
 const tearFrames = 26;
 const slideFrames = 20;
 

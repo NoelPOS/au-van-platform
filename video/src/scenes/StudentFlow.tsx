@@ -3,10 +3,11 @@ import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { PhoneFrame, Screenshot } from "../components/Devices";
 import { progress, rise } from "../motion";
 import { LineMessage, PassScreen } from "../screens/PassScreen";
-import { StatusBar } from "../screens/AppChrome";
+import { StatusBar, TapRipple } from "../screens/AppChrome";
 import { PayScreen } from "../screens/PayScreen";
+import { routeTapAt, RoutesScreen } from "../screens/RoutesScreen";
 import { HoldOverlay, SeatScreen } from "../screens/SeatScreen";
-import { TapOverlay, TripsScreen } from "../screens/TripsScreen";
+import { TripsScreen } from "../screens/TripsScreen";
 import { color, font } from "../theme";
 
 type Step = {
@@ -19,11 +20,17 @@ type Step = {
 
 const steps: Step[] = [
   {
-    title: "Pick a departure.",
-    detail: "Today’s vans and the seats left, right inside LINE.",
+    title: "Choose a route.",
+    detail: "Every route, its next van and the fare, right inside LINE.",
     shot: "student-trips.webp",
+    Mock: RoutesScreen,
+    Overlay: TapRoute,
+  },
+  {
+    title: "Pick a departure.",
+    detail: "That route’s days and times, with the seats left.",
+    shot: null,
     Mock: TripsScreen,
-    Overlay: TapOverlay,
   },
   {
     title: "Hold a seat.",
@@ -47,7 +54,11 @@ const steps: Step[] = [
   },
 ];
 
-const stepFrames = 112;
+const stepFrames = 96;
+
+function TapRoute() {
+  return <TapRipple at={routeTapAt} left={218} top={651} />;
+}
 
 function ArrivedInLine() {
   return <LineMessage at={30} />;
@@ -83,7 +94,7 @@ function Caption({ step, index }: { step: Step; index: number }) {
   return (
     <div style={{ opacity: fade }}>
       <p style={{ margin: 0, fontFamily: font.mono, fontSize: 20, letterSpacing: "0.18em", color: color.muted, ...rise(frame, 4, 16) }}>
-        {`STEP ${String(index + 1).padStart(2, "0")} / 04`}
+        {`STEP ${String(index + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")}`}
       </p>
       <p
         style={{
