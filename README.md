@@ -226,10 +226,57 @@ The backend is one Spring Boot application split into modules:
 | `booking` | Holds, bookings, payment proofs, expiry, waitlist |
 | `outbox` | Recording and dispatching notifications |
 | `notification` | LINE Flex cards |
+| `live` | Server-sent events for live updates |
 
 The modules call each other in-process, and anything with a side effect goes
 through the outbox. The React SPA serves both the student LIFF pages and the
 admin portal, and reaches the API on the same origin.
+
+```mermaid
+flowchart TB
+  student["Student<br/>LINE app (LIFF)"]
+  staff["Staff<br/>browser"]
+
+  subgraph web["React SPA (web/)"]
+    studentUi["Student pages<br/>routes, seats, tickets"]
+    adminUi["Admin portal<br/>trips, payments, insights"]
+  end
+
+  subgraph backend["Spring Boot API (api/)"]
+    gate["REST controllers, /api/v1<br/>Spring Security checks the JWT"]
+    auth["auth<br/>LINE token to JWT"]
+    inventory["inventory<br/>routes, vans, trips,<br/>templates, rolling schedule"]
+    booking["booking<br/>holds, bookings, slips,<br/>waitlist, refunds, insights"]
+    outbox["outbox<br/>dispatcher, retries"]
+    notification["notification<br/>LINE Flex messages"]
+    live["live<br/>SSE streams"]
+  end
+
+  pg[("PostgreSQL<br/>seat_claims UNIQUE,<br/>idempotency_keys, outbox_events")]
+  s3[("S3-compatible storage<br/>private payment slips")]
+  lineLogin["LINE Login"]
+  lineMsg["LINE Messaging API"]
+
+  student --> studentUi
+  staff --> adminUi
+  studentUi --> gate
+  adminUi --> gate
+  gate --> auth
+  gate --> inventory
+  gate --> booking
+  auth -->|"verify ID token"| lineLogin
+  inventory --> pg
+  booking -->|"change and outbox row,<br/>one transaction"| pg
+  booking --> s3
+  pg -->|"due rows"| outbox
+  outbox --> notification
+  notification -->|"push, X-Line-Retry-Key"| lineMsg
+  pg -.->|"NOTIFY after commit"| live
+  studentUi -.->|"SSE stream"| live
+  adminUi -.->|"SSE stream"| live
+```
+
+[`docs/architecture.md`](docs/architecture.md) explains each path in the diagram.
 
 The design target is a highly available AWS stack, written in Terraform under
 [`infra/demo`](infra/demo). By default the module runs one or two Fargate

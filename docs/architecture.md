@@ -6,25 +6,56 @@ AU-Van will begin as a modular monolith: one React web application and one Sprin
 
 ## Logical components
 
-```text
-React web application
-  - Admin portal
-  - Student LIFF experience
-        |
-        v
-Spring Boot API
-  - Identity and access
-  - Scheduling and seat inventory
-  - Booking
-  - Payment review
-  - Notifications
-  - Administration and audit
-        |
-        +--> PostgreSQL: authoritative transactional data
-        +--> Redis: temporary holds, idempotency, cache, rate limits
-        +--> Object storage: payment-proof images
-        +--> Queue/worker: retries, reminders, expiry, LINE delivery
+The system as built. The React SPA serves both the student LIFF pages and the admin portal, and every request reaches one Spring Boot application split into modules. PostgreSQL holds all authoritative state, including the outbox and idempotency records; there is no Redis or queue in the running system (ADR-003, ADR-010).
+
+```mermaid
+flowchart TB
+  student["Student<br/>LINE app (LIFF)"]
+  staff["Staff<br/>browser"]
+
+  subgraph web["React SPA (web/)"]
+    studentUi["Student pages<br/>routes, seats, tickets"]
+    adminUi["Admin portal<br/>trips, payments, insights"]
+  end
+
+  subgraph backend["Spring Boot API (api/)"]
+    gate["REST controllers, /api/v1<br/>Spring Security checks the JWT"]
+    auth["auth<br/>LINE token to JWT"]
+    inventory["inventory<br/>routes, vans, trips,<br/>templates, rolling schedule"]
+    booking["booking<br/>holds, bookings, slips,<br/>waitlist, refunds, insights"]
+    outbox["outbox<br/>dispatcher, retries"]
+    notification["notification<br/>LINE Flex messages"]
+    live["live<br/>SSE streams"]
+  end
+
+  pg[("PostgreSQL<br/>seat_claims UNIQUE,<br/>idempotency_keys, outbox_events")]
+  s3[("S3-compatible storage<br/>private payment slips")]
+  lineLogin["LINE Login"]
+  lineMsg["LINE Messaging API"]
+
+  student --> studentUi
+  staff --> adminUi
+  studentUi --> gate
+  adminUi --> gate
+  gate --> auth
+  gate --> inventory
+  gate --> booking
+  auth -->|"verify ID token"| lineLogin
+  inventory --> pg
+  booking -->|"change and outbox row,<br/>one transaction"| pg
+  booking --> s3
+  pg -->|"due rows"| outbox
+  outbox --> notification
+  notification -->|"push, X-Line-Retry-Key"| lineMsg
+  pg -.->|"NOTIFY after commit"| live
+  studentUi -.->|"SSE stream"| live
+  adminUi -.->|"SSE stream"| live
 ```
+
+- **Request path:** a page calls the API with the access token; Spring Security checks it, and the module's service applies the rules inside a database transaction.
+- **Notifications:** a state change and its outbox row commit together; the dispatcher later sends due rows to LINE (ADR-010).
+- **Live updates:** a change publishes `pg_notify` inside its transaction, so only committed changes reach the `live` module, which tells open SSE streams what changed (ADR-018).
+- **Background work:** scheduled jobs dispatch the outbox, expire unpaid bookings, promote the waitlist, and fill the rolling schedule (ADR-010, ADR-011, ADR-021).
 
 ## Consistency model
 
@@ -74,7 +105,7 @@ Route grouping, colours and labels in the web app are presentation and are deriv
 - React does not contain booking, payment, or authorization rules.
 - Controllers validate and orchestrate only.
 - Spring application/domain services own workflows and state transitions.
-- Infrastructure adapters isolate PostgreSQL, Redis, S3, SQS, and LINE APIs from core business logic.
+- Infrastructure adapters isolate PostgreSQL, S3 and the LINE APIs from core business logic.
 
 ## Accepted decisions
 
